@@ -21,8 +21,9 @@
       </div>
 
       <div class="flex flex-col basis-0 items-start justify-center gap-2">
-        <div v-if="upcomingEvents.length === 0" class="text-gray-500 text-sm">
-          No events scheduled for today
+        <div v-if="upcomingEvents.length === 0" class="text-gray-500 text-sm border w-full h-full border-dashed rounded-4xl flex flex-col text-center items-center justify-center border-white dark:border-black/30">
+          <span>No events scheduled for today</span>
+          <NuxtLink to="" class="py-3 px-4 border rounded-full mt-4 cursor-pointer border-white dark:border-black/30">Click here to create a new one</NuxtLink>
         </div>
         <div v-else class="flex flex-col basis-0 items-start justify-center gap-2 w-full">
         <EventCard

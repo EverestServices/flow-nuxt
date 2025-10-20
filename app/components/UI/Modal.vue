@@ -12,14 +12,14 @@
         <!-- Modal Container -->
         <div :class="computedModalClasses" role="dialog" aria-modal="true">
           <!-- Header -->
-          <div v-if="$slots.header || title" class="flex items-center justify-between p-6 border-b border-gray-200">
+          <div v-if="$slots.header || title" class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <slot name="header">
-              <h3 class="outfit font-bold text-xl">{{ title }}</h3>
+              <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">{{ title }}</h3>
             </slot>
             <button
               v-if="closeable"
               @click="handleClose"
-              class="text-gray-400 hover:text-gray-600 transition-colors"
+              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
               aria-label="Close modal"
             >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,7 +34,7 @@
           </div>
 
           <!-- Footer -->
-          <div v-if="$slots.footer" class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+          <div v-if="$slots.footer" class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <slot name="footer" />
           </div>
         </div>
@@ -101,9 +101,9 @@ const computedModalClasses = computed(() => {
 
   // Glass variant
   if (props.glass) {
-    classes.push('bg-white/90', 'backdrop-blur-2xl', 'border', 'border-white')
+    classes.push('bg-white/90', 'dark:bg-gray-900/90', 'backdrop-blur-2xl', 'border', 'border-white', 'dark:border-gray-700')
   } else {
-    classes.push('bg-white')
+    classes.push('bg-white', 'dark:bg-gray-900')
   }
 
   return classes.join(' ')

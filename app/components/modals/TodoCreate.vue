@@ -1,71 +1,163 @@
 <template>
   <div>
-    <button @click="isOpen = true">
-      Add Todo
-    </button>
+    <UIBox @click="isOpen = true" class="px-4 py-2 cursor-pointer text-sm text-white" background="bg-green-500">
+      Create Task
+    </UIBox>
 
-    <div v-if="isOpen" class="modal">
-      <div class="modal-content">
-        <h3>{{ editingTodo ? 'Edit Todo' : 'Create New Todo' }}</h3>
+    <UIModal
+      v-model="isOpen"
+      :title="editingTodo ? 'Edit Task' : 'Create New Task'"
+      size="md"
+      :closeable="!submitting"
+    >
+      <form @submit.prevent="handleSubmit" class="space-y-6">
+        <!-- Title -->
+        <UIInput
+          v-model="formState.title"
+          label="Title"
+          placeholder="Enter task title"
+          required
+          :disabled="submitting"
+          :error="errors.title"
+        >
+          <template #prefix>
+            <Icon name="i-lucide-text" class="w-5 h-5" />
+          </template>
+        </UIInput>
 
-        <form @submit.prevent="handleSubmit">
-          <div>
-            <label>Title*</label>
-            <input
-              v-model="formState.title"
-              placeholder="Enter todo title"
-              required
+        <!-- Description -->
+        <UITextarea
+          v-model="formState.description"
+          label="Description"
+          placeholder="Add more details about this task (optional)"
+          :rows="4"
+          :max-length="500"
+          :disabled="submitting"
+        />
+
+        <!-- Priority & Category Row -->
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Priority -->
+          <UISelect
+            v-model="formState.priority"
+            label="Priority"
+            :options="priorityOptions"
+            :disabled="submitting"
+          />
+
+          <!-- Category -->
+          <UIInput
+            v-model="formState.category"
+            label="Category"
+            placeholder="e.g., Work, Personal"
+            :disabled="submitting"
+          >
+            <template #prefix>
+              <Icon name="i-lucide-tag" class="w-5 h-5" />
+            </template>
+          </UIInput>
+        </div>
+
+        <!-- Due Date -->
+        <UIInput
+          v-model="formState.due_date"
+          label="Due Date"
+          type="datetime-local"
+          :disabled="submitting"
+        >
+          <template #prefix>
+            <Icon name="i-lucide-calendar" class="w-5 h-5" />
+          </template>
+        </UIInput>
+
+        <!-- Assigned To (if available) -->
+        <div v-if="colleagues.length > 0">
+          <UISelect
+            v-model="formState.assigned_to"
+            label="Assign To"
+            :options="colleagueOptions"
+            placeholder="Select a colleague (optional)"
+            :disabled="submitting"
+          />
+        </div>
+
+        <!-- Tags Input (optional enhancement) -->
+        <div>
+          <label class="outfit font-medium text-sm text-gray-700 dark:text-gray-300 mb-1.5 block">
+            Tags
+            <span class="text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+          </label>
+          <div class="flex flex-wrap gap-2 mb-2">
+            <UIBadge
+              v-for="(tag, index) in formState.tags"
+              :key="index"
+              variant="primary"
+              size="md"
+              class="cursor-pointer hover:opacity-80"
+              @click="removeTag(index)"
+            >
+              {{ tag }}
+              <Icon name="i-lucide-x" class="w-3 h-3 ml-1" />
+            </UIBadge>
+          </div>
+          <div class="flex gap-2">
+            <UIInput
+              v-model="newTag"
+              placeholder="Add a tag"
+              :disabled="submitting"
+              @keypress.enter.prevent="addTag"
             />
+            <UIButtonEnhanced
+              variant="outline"
+              size="md"
+              type="button"
+              @click="addTag"
+              :disabled="!newTag.trim() || submitting"
+            >
+              Add
+            </UIButtonEnhanced>
           </div>
+        </div>
 
-          <div>
-            <label>Description</label>
-            <textarea
-              v-model="formState.description"
-              placeholder="Enter todo description (optional)"
-            ></textarea>
-          </div>
+        <!-- Error Alert -->
+        <UIAlert v-if="errors.submit" variant="danger" dismissible @dismiss="errors.submit = null">
+          {{ errors.submit }}
+        </UIAlert>
+      </form>
 
-          <div>
-            <label>Priority</label>
-            <select v-model="formState.priority">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Category</label>
-            <input
-              v-model="formState.category"
-              placeholder="e.g., Work, Personal, Project"
-            />
-          </div>
-
-          <div>
-            <label>Due Date</label>
-            <input
-              v-model="formState.due_date"
-              type="datetime-local"
-            />
-          </div>
-
-          <div>
-            <button type="button" @click="closeModal">Cancel</button>
-            <button type="submit" :disabled="!formState.title?.trim()">
-              {{ editingTodo ? 'Update' : 'Create' }} Todo
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <template #footer>
+        <UIButtonEnhanced
+          variant="ghost"
+          @click="closeModal"
+          :disabled="submitting"
+        >
+          Cancel
+        </UIButtonEnhanced>
+        <UIButtonEnhanced
+          variant="primary"
+          @click="handleSubmit"
+          :disabled="!formState.title?.trim() || submitting"
+          :loading="submitting"
+        >
+          <template #icon>
+            <Icon v-if="!submitting" name="i-lucide-check" class="w-5 h-5" />
+          </template>
+          {{ editingTodo ? 'Update Task' : 'Create Task' }}
+        </UIButtonEnhanced>
+      </template>
+    </UIModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { CreateTodo, Todo } from '~/composables/useTodos'
+import UIButtonEnhanced from '~/components/UI/ButtonEnhanced.vue'
+import UIModal from '~/components/UI/Modal.vue'
+import UIInput from '~/components/UI/Input.vue'
+import UITextarea from '~/components/UI/Textarea.vue'
+import UISelect from '~/components/UI/Select.vue'
+import UIBadge from '~/components/UI/Badge.vue'
+import UIAlert from '~/components/UI/Alert.vue'
 
 // Props
 interface Props {
@@ -84,10 +176,32 @@ const emit = defineEmits<{
 
 // Composables
 const { createTodo, updateTodo } = useTodos()
+const { colleagues, fetchColleagues } = useColleagues()
 
 // State
 const isOpen = ref(false)
 const submitting = ref(false)
+const newTag = ref('')
+const errors = ref({
+  title: null,
+  submit: null
+})
+
+// Priority options
+const priorityOptions = [
+  { label: '🔴 Urgent', value: 'urgent' },
+  { label: '🟠 High', value: 'high' },
+  { label: '🟡 Medium', value: 'medium' },
+  { label: '🟢 Low', value: 'low' }
+]
+
+// Colleague options for assignment
+const colleagueOptions = computed(() => {
+  return colleagues.value.map(colleague => ({
+    label: `${colleague.first_name} ${colleague.last_name}`.trim() || colleague.email,
+    value: colleague.user_id
+  }))
+})
 
 // Form state
 const defaultFormState: CreateTodo = {
@@ -106,16 +220,41 @@ const defaultFormState: CreateTodo = {
 const formState = ref<CreateTodo>({ ...defaultFormState })
 
 // Methods
+const addTag = () => {
+  const tag = newTag.value.trim()
+  if (tag && !formState.value.tags?.includes(tag)) {
+    formState.value.tags = [...(formState.value.tags || []), tag]
+    newTag.value = ''
+  }
+}
+
+const removeTag = (index: number) => {
+  formState.value.tags = formState.value.tags?.filter((_, i) => i !== index) || []
+}
+
 const resetForm = () => {
   formState.value = { ...defaultFormState }
+  newTag.value = ''
+  errors.value = { title: null, submit: null }
 }
 
 const closeModal = () => {
-  isOpen.value = false
-  resetForm()
+  if (!submitting.value) {
+    isOpen.value = false
+    resetForm()
+  }
 }
 
 const handleSubmit = async () => {
+  // Validate
+  errors.value.title = null
+  errors.value.submit = null
+
+  if (!formState.value.title?.trim()) {
+    errors.value.title = 'Title is required'
+    return
+  }
+
   try {
     submitting.value = true
 
@@ -141,6 +280,7 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error('Error submitting todo:', error)
+    errors.value.submit = 'Failed to save task. Please try again.'
   } finally {
     submitting.value = false
   }
@@ -169,4 +309,9 @@ watch(
   },
   { immediate: true }
 )
+
+// Fetch colleagues on mount
+onMounted(() => {
+  fetchColleagues()
+})
 </script>

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <UIBox @click="isOpen = true" class="px-4 py-2 cursor-pointer text-sm text-white" background="bg-green-500">
+    <UIBox @click="isOpen = true" class="px-4 py-4 cursor-pointer text-sm text-white" background="bg-green-500">
       Create Event
     </UIBox>
 
@@ -739,10 +739,18 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.dark .modal-content {
+  background: rgb(17, 24, 39);
+}
+
 .modal-content h3 {
   margin: 0 0 20px 0;
   color: #333;
   font-size: 24px;
+}
+
+.dark .modal-content h3 {
+  color: white;
 }
 
 .form-group {
@@ -754,6 +762,10 @@ onMounted(() => {
   font-weight: 500;
   color: #333;
   margin-bottom: 4px;
+}
+
+.dark .form-group label {
+  color: rgb(209, 213, 219);
 }
 
 .checkbox-label {
@@ -780,6 +792,11 @@ onMounted(() => {
   margin-top: 4px;
 }
 
+.dark .attendees-input {
+  background: rgb(31, 41, 55);
+  border-color: rgb(75, 85, 99);
+}
+
 .attendee-row {
   display: flex;
   align-items: center;
@@ -800,6 +817,11 @@ onMounted(() => {
   background: #fafafa;
 }
 
+.dark .colleagues-section {
+  background: rgb(31, 41, 55);
+  border-color: rgb(75, 85, 99);
+}
+
 .colleagues-header {
   display: flex;
   justify-content: between;
@@ -813,6 +835,10 @@ onMounted(() => {
   font-weight: 600;
   color: #333;
   flex: 1;
+}
+
+.dark .colleagues-header h4 {
+  color: white;
 }
 
 .refresh-btn {
@@ -891,11 +917,19 @@ onMounted(() => {
   padding: 16px;
 }
 
+.dark .error-state {
+  color: rgb(248, 113, 113);
+}
+
 .empty-state {
   color: #666;
   font-size: 14px;
   text-align: center;
   padding: 16px;
+}
+
+.dark .empty-state {
+  color: rgb(156, 163, 175);
 }
 
 .colleagues-list {
@@ -904,6 +938,11 @@ onMounted(() => {
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   background: white;
+}
+
+.dark .colleagues-list {
+  background: rgb(17, 24, 39);
+  border-color: rgb(55, 65, 81);
 }
 
 .colleague-item {
@@ -915,6 +954,10 @@ onMounted(() => {
   transition: background-color 0.2s;
 }
 
+.dark .colleague-item {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .colleague-item:last-child {
   border-bottom: none;
 }
@@ -923,9 +966,18 @@ onMounted(() => {
   background: #f8f9fa;
 }
 
+.dark .colleague-item:hover {
+  background: rgb(31, 41, 55);
+}
+
 .colleague-item.selected {
   background: #e3f2fd;
   border-color: #2196f3;
+}
+
+.dark .colleague-item.selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgb(96, 165, 250);
 }
 
 .colleague-avatar {
@@ -972,12 +1024,20 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
+.dark .colleague-name {
+  color: white;
+}
+
 .colleague-email {
   font-size: 12px;
   color: #666;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.dark .colleague-email {
+  color: rgb(156, 163, 175);
 }
 
 .colleague-status {
@@ -1002,11 +1062,20 @@ onMounted(() => {
   background: #fafafa;
 }
 
+.dark .manual-attendees-section {
+  background: rgb(31, 41, 55);
+  border-color: rgb(75, 85, 99);
+}
+
 .manual-attendees-section h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
   color: #333;
+}
+
+.dark .manual-attendees-section h4 {
+  color: white;
 }
 
 .selected-summary {
@@ -1016,11 +1085,20 @@ onMounted(() => {
   background: #f8fff8;
 }
 
+.dark .selected-summary {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgb(34, 197, 94);
+}
+
 .selected-summary h4 {
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
   color: #28a745;
+}
+
+.dark .selected-summary h4 {
+  color: rgb(34, 197, 94);
 }
 
 .selected-list {
@@ -1047,6 +1125,16 @@ onMounted(() => {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+  background: white;
+  color: #333;
+}
+
+.dark .form-group input,
+.dark .form-group select,
+.dark .form-group textarea {
+  background: rgb(31, 41, 55);
+  color: white;
+  border-color: rgb(75, 85, 99);
 }
 
 .form-group input:focus,
@@ -1057,10 +1145,22 @@ onMounted(() => {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
+.dark .form-group input:focus,
+.dark .form-group select:focus,
+.dark .form-group textarea:focus {
+  border-color: rgb(96, 165, 250);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+}
+
 .form-group input:disabled {
   background: #f5f5f5;
   color: #999;
   cursor: not-allowed;
+}
+
+.dark .form-group input:disabled {
+  background: rgb(55, 65, 81);
+  color: rgb(156, 163, 175);
 }
 
 .form-actions {
@@ -1089,14 +1189,29 @@ onMounted(() => {
   border-left-color: #2196f3;
 }
 
+.dark .travel-info-box.info {
+  background: rgba(59, 130, 246, 0.1);
+  border-left-color: rgb(96, 165, 250);
+}
+
 .travel-info-box.warning {
   background: #fff3e0;
   border-left-color: #ff9800;
 }
 
+.dark .travel-info-box.warning {
+  background: rgba(251, 146, 60, 0.1);
+  border-left-color: rgb(251, 146, 60);
+}
+
 .travel-info-box.error {
   background: #ffebee;
   border-left-color: #f44336;
+}
+
+.dark .travel-info-box.error {
+  background: rgba(248, 113, 113, 0.1);
+  border-left-color: rgb(248, 113, 113);
 }
 
 .travel-info-icon {
@@ -1115,6 +1230,10 @@ onMounted(() => {
   color: #1f2937;
 }
 
+.dark .travel-info-title {
+  color: white;
+}
+
 .travel-info-message {
   font-size: 13px;
   color: #4b5563;
@@ -1122,11 +1241,20 @@ onMounted(() => {
   line-height: 1.4;
 }
 
+.dark .travel-info-message {
+  color: rgb(209, 213, 219);
+}
+
 .travel-info-departure,
 .travel-info-distance {
   font-size: 13px;
   color: #1f2937;
   margin-top: 6px;
+}
+
+.dark .travel-info-departure,
+.dark .travel-info-distance {
+  color: rgb(229, 231, 235);
 }
 
 .travel-info-departure strong,

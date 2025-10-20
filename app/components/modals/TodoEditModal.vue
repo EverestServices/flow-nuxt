@@ -1,115 +1,127 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black/20 z-40"
-    @click="closeModal"
-  ></div>
+  <UIModal
+    v-model="isOpenInternal"
+    title="Edit Task"
+    size="md"
+    :closeable="!loading"
+    @close="handleClose"
+  >
+    <form @submit.prevent="handleSubmit" class="space-y-6">
+      <!-- Title -->
+      <UIInput
+        v-model="formData.title"
+        label="Title"
+        placeholder="Task title"
+        required
+        :disabled="loading"
+        clearable
+      >
+        <template #prefix>
+          <Icon name="i-lucide-text" class="w-5 h-5" />
+        </template>
+      </UIInput>
 
-  <!-- Todo edit modal -->
-  <Transition name="slide-todo-modal">
-    <div
-      v-if="isOpen && todo"
-      class="fixed bottom-2 right-2 top-2 w-96 bg-white/95 backdrop-blur-xl border border-gray-200 rounded-2xl flex flex-col shadow-2xl z-50"
-    >
-      <!-- Header -->
-      <div class="p-6 pb-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-gray-900 font-semibold text-lg">Edit Todo</h3>
-          <button
-            @click="closeModal"
-            class="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            ✕
-          </button>
+      <!-- Description -->
+      <UITextarea
+        v-model="formData.description"
+        label="Description"
+        placeholder="Task description (optional)"
+        :rows="4"
+        :max-length="500"
+        :disabled="loading"
+      />
+
+      <!-- Priority & Status Row -->
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Priority -->
+        <UISelect
+          v-model="formData.priority"
+          label="Priority"
+          :options="priorityOptions"
+          :disabled="loading"
+        />
+
+        <!-- Category -->
+        <UIInput
+          v-model="formData.category"
+          label="Category"
+          placeholder="e.g., Work"
+          :disabled="loading"
+        >
+          <template #prefix>
+            <Icon name="i-lucide-tag" class="w-5 h-5" />
+          </template>
+        </UIInput>
+      </div>
+
+      <!-- Due Date -->
+      <UIInput
+        v-model="formData.due_date"
+        label="Due Date"
+        type="date"
+        :disabled="loading"
+      >
+        <template #prefix>
+          <Icon name="i-lucide-calendar" class="w-5 h-5" />
+        </template>
+      </UIInput>
+
+      <!-- Completed Status -->
+      <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+            <Icon name="i-lucide-check-circle" class="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <p class="font-medium text-gray-900 dark:text-white outfit">Task Status</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Mark as completed when done</p>
+          </div>
         </div>
+        <UISwitch
+          v-model="formData.completed"
+          :disabled="loading"
+          size="lg"
+        />
       </div>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6">
-        <form @submit.prevent="handleSubmit" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input
-              v-model="formData.title"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Todo title"
-              required
-            />
-          </div>
+      <!-- Error Alert -->
+      <UIAlert v-if="error" variant="danger" dismissible @dismiss="error = null">
+        Failed to update task. Please try again.
+      </UIAlert>
+    </form>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              v-model="formData.description"
-              rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Todo description (optional)"
-            ></textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select
-              v-model="formData.priority"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-            <input
-              v-model="formData.due_date"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div class="flex items-center">
-            <input
-              v-model="formData.completed"
-              type="checkbox"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label class="ml-2 block text-sm text-gray-700">
-              Mark as completed
-            </label>
-          </div>
-        </form>
-      </div>
-
-      <!-- Footer -->
-      <div class="p-6 pt-4 border-t border-gray-200">
-        <div class="flex justify-end gap-3">
-          <button
-            @click="closeModal"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleSubmit"
-            :disabled="!formData.title.trim() || loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span v-if="loading">Saving...</span>
-            <span v-else>Save Changes</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </Transition>
+    <template #footer>
+      <UIButtonEnhanced
+        variant="ghost"
+        @click="handleClose"
+        :disabled="loading"
+      >
+        Cancel
+      </UIButtonEnhanced>
+      <UIButtonEnhanced
+        variant="primary"
+        @click="handleSubmit"
+        :disabled="!formData.title.trim() || loading"
+        :loading="loading"
+      >
+        <template #icon>
+          <Icon v-if="!loading" name="i-lucide-save" class="w-5 h-5" />
+        </template>
+        Save Changes
+      </UIButtonEnhanced>
+    </template>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
 import type { Todo } from '~/composables/useTodos'
+import UIModal from '~/components/UI/Modal.vue'
+import UIInput from '~/components/UI/Input.vue'
+import UITextarea from '~/components/UI/Textarea.vue'
+import UISelect from '~/components/UI/Select.vue'
+import UISwitch from '~/components/UI/Switch.vue'
+import UIButtonEnhanced from '~/components/UI/ButtonEnhanced.vue'
+import UIAlert from '~/components/UI/Alert.vue'
 
 // Props
 interface Props {
@@ -130,10 +142,29 @@ const emit = defineEmits<{
 
 // State
 const loading = ref(false)
+const error = ref(false)
+const isOpenInternal = computed({
+  get: () => props.isOpen,
+  set: (value) => {
+    if (!value) {
+      handleClose()
+    }
+  }
+})
+
+// Priority options
+const priorityOptions = [
+  { label: '🔴 Urgent', value: 'urgent' },
+  { label: '🟠 High', value: 'high' },
+  { label: '🟡 Medium', value: 'medium' },
+  { label: '🟢 Low', value: 'low' }
+]
+
 const formData = ref({
   title: '',
   description: '',
   priority: 'medium',
+  category: '',
   due_date: '',
   completed: false
 })
@@ -141,19 +172,34 @@ const formData = ref({
 // Watch for todo changes to populate form
 watch(() => props.todo, (newTodo) => {
   if (newTodo) {
+    // Format date if exists
+    let formattedDate = ''
+    if (newTodo.due_date) {
+      try {
+        const date = new Date(newTodo.due_date)
+        formattedDate = date.toISOString().split('T')[0]
+      } catch (e) {
+        console.error('Error formatting date:', e)
+      }
+    }
+
     formData.value = {
       title: newTodo.title || '',
       description: newTodo.description || '',
       priority: newTodo.priority || 'medium',
-      due_date: newTodo.due_date || '',
+      category: newTodo.category || '',
+      due_date: formattedDate,
       completed: newTodo.completed || false
     }
+    error.value = false
   }
 }, { immediate: true })
 
 // Methods
-const closeModal = () => {
-  emit('close')
+const handleClose = () => {
+  if (!loading.value) {
+    emit('close')
+  }
 }
 
 const handleSubmit = async () => {
@@ -161,33 +207,41 @@ const handleSubmit = async () => {
 
   try {
     loading.value = true
+    error.value = false
 
     const client = useSupabaseClient()
-    const { error } = await client
+
+    // Prepare update data
+    const updateData = {
+      title: formData.value.title.trim(),
+      description: formData.value.description || null,
+      priority: formData.value.priority,
+      category: formData.value.category || null,
+      due_date: formData.value.due_date || null,
+      completed: formData.value.completed
+    }
+
+    const { error: updateError } = await client
       .from('todos')
-      .update({
-        title: formData.value.title,
-        description: formData.value.description,
-        priority: formData.value.priority,
-        due_date: formData.value.due_date || null,
-        completed: formData.value.completed
-      })
+      .update(updateData)
       .eq('id', props.todo.id)
 
-    if (error) {
-      console.error('Error updating todo:', error)
+    if (updateError) {
+      console.error('Error updating todo:', updateError)
+      error.value = true
       return
     }
 
     // Emit success
     emit('updated', {
       ...props.todo,
-      ...formData.value
+      ...updateData
     })
 
-    closeModal()
+    handleClose()
   } catch (err) {
     console.error('Error updating todo:', err)
+    error.value = true
   } finally {
     loading.value = false
   }
@@ -195,15 +249,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-/* Right-sliding modal animation */
-.slide-todo-modal-enter-active,
-.slide-todo-modal-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.slide-todo-modal-enter-from,
-.slide-todo-modal-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
+.outfit {
+  font-family: 'Outfit', sans-serif;
 }
 </style>

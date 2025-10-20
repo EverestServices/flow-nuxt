@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-24 items-center justify-between">
     <div>
-      <div class="text-2xl font-light outfit">Task<span class="font-black">Management</span></div>
+      <div class="text-2xl font-light outfit">Todo</div>
       <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize and track your daily tasks efficiently</p>
     </div>
     <Modals-Todo-Create @created="handleTodoCreated" @updated="handleTodoUpdated" />
@@ -15,7 +15,7 @@
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Total Tasks</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ todos?.length || 0 }}</h3>
         </div>
-        <div class="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+        <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-list-todo" class="w-8 h-8 text-blue-500" />
         </div>
       </div>
@@ -27,7 +27,7 @@
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Pending</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ pendingTodos?.length || 0 }}</h3>
         </div>
-        <div class="w-16 h-16 bg-yellow-500/20 rounded-2xl flex items-center justify-center">
+        <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-clock" class="w-8 h-8 text-yellow-600" />
         </div>
       </div>
@@ -39,7 +39,7 @@
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Completed</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ completedTodos?.length || 0 }}</h3>
         </div>
-        <div class="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center">
+        <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
         </div>
       </div>
@@ -96,7 +96,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col gap-y-4">
+    <div class="flex flex-col gap-y-4 min-h-128">
       <TodoItem
         v-for="(todo, index) in filteredTodos"
         :key="todo?.id || index"

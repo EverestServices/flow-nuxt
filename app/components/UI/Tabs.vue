@@ -55,9 +55,9 @@ const computedTabListClasses = computed(() => {
   const classes = ['flex']
 
   if (props.variant === 'default' || props.variant === 'underline') {
-    classes.push('border-b', 'border-gray-200', 'gap-6')
+    classes.push('border-b', 'border-gray-200', 'dark:border-gray-700', 'gap-6')
   } else if (props.variant === 'pills') {
-    classes.push('gap-2', 'p-1', 'bg-gray-100', 'rounded-xl', 'inline-flex')
+    classes.push('gap-2', 'p-1', 'bg-gray-100', 'dark:bg-gray-800', 'rounded-3xl', 'inline-flex')
   }
 
   return classes.join(' ')
@@ -75,25 +75,25 @@ const computedTabClasses = (index: number) => {
   const isActive = activeTab.value === index
 
   if (props.variant === 'pills') {
-    classes.push('px-4', 'py-2', 'rounded-lg')
+    classes.push('px-4', 'py-2', 'rounded-3xl', 'cursor-pointer')
     if (isActive) {
-      classes.push('bg-white', 'text-blue-600', 'shadow-sm')
+      classes.push('bg-white', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-blue-400', 'shadow-sm')
     } else {
-      classes.push('text-gray-600', 'hover:text-gray-900')
+      classes.push('text-gray-600', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-200')
     }
   } else if (props.variant === 'underline') {
     classes.push('pb-3', 'border-b-2', '-mb-px')
     if (isActive) {
-      classes.push('border-blue-500', 'text-blue-600')
+      classes.push('border-blue-500', 'dark:border-blue-400', 'text-blue-600', 'dark:text-blue-400')
     } else {
-      classes.push('border-transparent', 'text-gray-600', 'hover:text-gray-900', 'hover:border-gray-300')
+      classes.push('border-transparent', 'text-gray-600', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-200', 'hover:border-gray-300', 'dark:hover:border-gray-600')
     }
   } else {
     classes.push('px-4', 'py-2', 'border-b-2', '-mb-px')
     if (isActive) {
-      classes.push('border-blue-500', 'text-blue-600')
+      classes.push('border-blue-500', 'dark:border-blue-400', 'text-blue-600', 'dark:text-blue-400')
     } else {
-      classes.push('border-transparent', 'text-gray-600', 'hover:text-gray-900', 'hover:border-gray-300')
+      classes.push('border-transparent', 'text-gray-600', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-200', 'hover:border-gray-300', 'dark:hover:border-gray-600')
     }
   }
 

@@ -3,7 +3,7 @@
     <!-- Logo -->
     <div class="h-24 flex flex-col items-start justify-center relative shrink-0 w-full">
       <div class="aspect-[180/108.614] relative shrink-0 w-full">
-        <div class="relative w-full h-full">
+        <div class="relative w-full h-full p-3 ml-1">
           <NuxtLink to="/"><EverestLogo class="w-16 ml-4 mt-8 object-cover bg-center bg-cover bg-no-repeat" /></NuxtLink>
         </div>
       </div>
@@ -213,9 +213,9 @@
     </div>
   </Transition>
 
-  <div class="w-12 h-12 bg-white rounded-full top-6.5 right-8 fixed z-20" @click="menuOpen=true">
+  <div class="w-14 h-14 bg-white rounded-full top-5 right-8 fixed z-20" @click="menuOpen=true">
     <div class="relative">
-      <img :src="userAvatar" alt="User Avatar" class="w-12 h-12 rounded-full" />
+      <img :src="userAvatar" alt="User Avatar" class="w-14 h-14 rounded-full" />
       <OnlineStatusBadge
         :is-online="currentUserOnline"
         size="sm"
@@ -228,7 +228,13 @@
 </template>
 
 <script setup lang="ts">
-import type {NavigationMenuItem} from "@nuxt/ui";
+// Define local navigation menu item type
+interface NavigationMenuItem {
+  label: string
+  to?: string
+  icon?: string
+  children?: NavigationMenuItem[]
+}
 
 // Reactive state
 const menuOpen = ref(false);
