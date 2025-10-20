@@ -8,7 +8,7 @@
         color="emerald"
       >
         <template #icon>
-          <DoorOpen class="w-7 h-7 mb-1 text-emerald-700" />
+          <Icon name="i-lucide-door-open" class="w-7 h-7 mb-1 text-emerald-700" />
         </template>
       </AreaCard>
 
@@ -19,7 +19,7 @@
         color="sky"
       >
         <template #icon>
-          <Building2 class="w-7 h-7 mb-1 text-sky-700" />
+          <Icon name="i-lucide-building-2" class="w-7 h-7 mb-1 text-sky-700" />
         </template>
       </AreaCard>
 
@@ -30,7 +30,7 @@
         color="sky"
       >
         <template #icon>
-          <Building class="w-7 h-7 mb-1 text-sky-700" />
+          <Icon name="i-lucide-building" class="w-7 h-7 mb-1 text-sky-700" />
         </template>
       </AreaCard>
 
@@ -41,7 +41,7 @@
         color="yellow"
       >
         <template #icon>
-          <Layers class="w-7 h-7 mb-1 text-yellow-700" />
+          <Icon name="i-lucide-layers" class="w-7 h-7 mb-1 text-yellow-700" />
         </template>
       </AreaCard>
 
@@ -52,7 +52,7 @@
         color="yellow"
       >
         <template #icon>
-          <Layout class="w-7 h-7 mb-1 text-yellow-700" />
+          <Icon name="i-lucide-layout" class="w-7 h-7 mb-1 text-yellow-700" />
         </template>
       </AreaCard>
     </div>
@@ -62,7 +62,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
-import { DoorOpen, Building2, Building, Layers, Layout } from 'lucide-vue-next';
 import AreaCard from './AreaCard.vue';
 
 const props = defineProps<{

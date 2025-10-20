@@ -1,40 +1,55 @@
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import axios from 'axios';
-
-// Generikus API service osztály.
+// Generikus API service osztály (axios nélkül, fetch-csel kompatibilis).
 export class ApiService {
-  private axiosInstance: AxiosInstance;
+  private baseHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
 
-  constructor() {
-    this.axiosInstance = axios.create({
+  private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
+    const res = await fetch(url, {
+      ...init,
       headers: {
-        'Content-Type': 'application/json',
+        ...this.baseHeaders,
+        ...(init.headers as HeadersInit | undefined),
       },
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Request failed ${res.status}: ${text}`);
+    }
+    // Try parse JSON, otherwise cast empty as T
+    try {
+      return (await res.json()) as T;
+    } catch {
+      return (undefined as unknown) as T;
+    }
   }
 
   // GET kérés általános típustámogatással
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.get(url, config);
-    return response.data;
+  async get<T>(url: string, config?: RequestInit): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'GET' });
   }
 
   // POST kérés általános típustámogatással
-  async post<T, U>(url: string, data: U, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.post(url, data, config);
-    return response.data;
+  async post<T, U>(url: string, data: U, config?: RequestInit): Promise<T> {
+    return this.request<T>(url, {
+      ...config,
+      method: 'POST',
+      body: data != null ? JSON.stringify(data) : undefined,
+    });
   }
 
   // PUT kérés általános típustámogatással
-  async put<T, U>(url: string, data: U, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.put(url, data, config);
-    return response.data;
+  async put<T, U>(url: string, data: U, config?: RequestInit): Promise<T> {
+    return this.request<T>(url, {
+      ...config,
+      method: 'PUT',
+      body: data != null ? JSON.stringify(data) : undefined,
+    });
   }
 
   // DELETE kérés általános típustámogatással
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.axiosInstance.delete(url, config);
-    return response.data;
+  async delete<T>(url: string, config?: RequestInit): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'DELETE' });
   }
 }
 

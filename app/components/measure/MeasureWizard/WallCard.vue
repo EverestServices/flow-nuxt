@@ -15,7 +15,7 @@
         v-else
         class="w-full h-full flex flex-col items-center justify-center text-center text-base-content/70 border-2 border-dashed border-base-content/30 cursor-pointer"
       >
-        <Camera class="w-10 h-10 opacity-40 mb-2" />
+        <Icon name="i-lucide-camera" class="w-10 h-10 opacity-40 mb-2" />
         <p class="text-sm">Tölts fel egy képet a falról!</p>
         <input
           type="file"
@@ -41,11 +41,11 @@
         }"
       >
         <span class="flex items-center gap-1">
-          <AlertTriangle v-if="wallStatus === 'error'" class="w-4 h-4" />
-          <Loader2 v-else-if="wallStatus === 'pending'" class="w-4 h-4 animate-spin" />
-          <RulerDimensionLine v-else-if="wallStatus === 'ready' && isMeasured" class="w-4 h-4" />
-          <CheckCircle v-else-if="wallStatus === 'ready'" class="w-4 h-4" />
-          <FilePlus v-else class="w-4 h-4" />
+          <Icon v-if="wallStatus === 'error'" name="i-lucide-alert-triangle" class="w-4 h-4" />
+          <Icon v-else-if="wallStatus === 'pending'" name="i-lucide-loader-2" class="w-4 h-4 animate-spin" />
+          <Icon v-else-if="wallStatus === 'ready' && isMeasured" name="i-lucide-ruler" class="w-4 h-4" />
+          <Icon v-else-if="wallStatus === 'ready'" name="i-lucide-check-circle" class="w-4 h-4" />
+          <Icon v-else name="i-lucide-file-plus" class="w-4 h-4" />
           {{ wallStatusText }}
         </span>
       </span>
@@ -55,26 +55,25 @@
         v-if="wall.images[0]?.uploadStatus"
         class="absolute bottom-2 left-2 text-sm flex items-center gap-2 bg-white/90 px-2 py-1 rounded shadow-lg"
       >
-        <span class="badge badge-xs capitalize" :class="statusColor(wall.images[0]?.uploadStatus)">
+        <UBadge :color="statusColor(wall.images[0]?.uploadStatus)" size="xs" class="capitalize">
           {{ wall.images[0]?.uploadStatus }}
-        </span>
+        </UBadge>
         <span class="opacity-70">
           {{ wall.images[0]?.message }}
         </span>
       </div>
 
       <!-- MÉRÉS gomb -->
-      <RouterLink
-        v-if="wall.images[0]?.uploadStatus === 'success'"
-        :to="{ name: 'wall-measure', params: { wallId: wall.id } }"
-        class="absolute top-2 right-2 btn btn-sm btn-secondary gap-1"
-        :class="{
-          'btn-secondary': isMeasured,
-          'btn-warning': !isMeasured,
-        }"
-      >
-        <Ruler class="w-4 h-4" /> Mérés
-      </RouterLink>
+      <div v-if="wall.images[0]?.uploadStatus === 'success'" class="absolute top-2 right-2">
+        <UButton
+          :to="`/energy/consultation/${String(route.params.clientId)}/measure/${wall.id}`"
+          :color="isMeasured ? 'neutral' : 'warning'"
+          size="sm"
+          class="gap-1"
+        >
+          <Icon name="i-lucide-ruler" class="w-4 h-4" /> Mérés
+        </UButton>
+      </div>
     </div>
 
     <!-- TARTALOM -->
@@ -82,7 +81,7 @@
       <!-- FEJLÉC -->
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2 font-medium text-base-content">
-          <BrickWall class="w-7 h-7" />
+          <Icon name="i-lucide-brick-wall" class="w-7 h-7" />
           <span class="text-lg font-bold">#{{ index + 1 }}</span>
 
           <span
@@ -91,26 +90,29 @@
             @click="startEditing"
           >
             <span class="pr-2 leading-none">{{ wall.name || 'Névtelen fal' }}</span>
-            <Pencil class="h-4 w-4 shrink-0" />
+            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0" />
           </span>
 
-          <input
+          <UInput
             v-else
             v-model="wall.name"
             type="text"
-            class="input input-sm input-bordered h-7"
+            size="sm"
+            class="h-7"
             @blur="stopEditing"
             @keyup.enter="stopEditing"
           />
         </div>
 
-        <button
+        <UButton
           v-if="canRemove"
-          class="btn btn-md btn-ghost bg-base-100 p-1"
+          variant="ghost"
+          color="error"
+          class="p-1"
           @click="$emit('remove', wall.id)"
         >
-          <Trash2 class="text-error w-7" />
-        </button>
+          <Icon name="i-lucide-trash-2" class="w-7" />
+        </UButton>
       </div>
 
       <!-- ÖSSZEGZÉS -->
@@ -118,10 +120,12 @@
         <WallSurfaceSummary :wallId="wall.id" />
       </div>
       <div v-if="!isMeasured">
-        <div class="flex justify-center items-center text-warning text-sm h-24 text-center">
-          <div role="alert" class="alert alert-warning">
-            <AlertTriangle class="w-4 h-4 mr-2" /> A fal még nem lett lemérve.
-          </div>
+        <div class="flex justify-center items-center text-sm h-24 text-center">
+          <UAlert color="warning" variant="soft">
+            <template #description>
+              <div class="flex items-center gap-2"><Icon name="i-lucide-alert-triangle" class="w-4 h-4" />A fal még nem lett lemérve.</div>
+            </template>
+          </UAlert>
         </div>
       </div>
     </div>
@@ -133,19 +137,7 @@ import { ref, computed, nextTick } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
 import type { Wall } from '@/model/Measure/ArucoWallSurface';
 import WallSurfaceSummary from '../Measure/WallSurfaceSummary.vue';
-import { RouterLink } from 'vue-router';
-import {
-  BrickWall,
-  Trash2,
-  AlertTriangle,
-  Ruler,
-  Camera,
-  Loader2,
-  CheckCircle,
-  FilePlus,
-  RulerDimensionLine,
-  Pencil,
-} from 'lucide-vue-next';
+import { RouterLink, useRoute } from 'vue-router';
 
 const props = defineProps<{
   wall: Wall;
@@ -157,6 +149,7 @@ const emit = defineEmits(['remove', 'add-image', 'remove-image', 'image-change']
 
 const store = useWallStore();
 const editingName = ref(false);
+const route = useRoute();
 
 function startEditing() {
   editingName.value = true;
@@ -172,13 +165,13 @@ function stopEditing() {
 const statusColor = (status: string) => {
   switch (status) {
     case 'pending':
-      return 'badge-info';
+      return 'info';
     case 'success':
-      return 'badge-success';
+      return 'success';
     case 'failed':
-      return 'badge-error';
+      return 'error';
     default:
-      return 'badge-ghost';
+      return 'neutral';
   }
 };
 

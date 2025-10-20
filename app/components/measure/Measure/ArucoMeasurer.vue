@@ -1,18 +1,19 @@
 <template>
   <div class="grid grid-cols-1 gap-4">
     <div class="max-w-md">
-      <div v-if="error" class="alert alert-error">
-        <span>Hiba történt!<br />{{ error }}</span>
-      </div>
+      <UAlert v-if="error" color="error" variant="soft">
+        <template #title>Hiba történt!</template>
+        <template #description>{{ error }}</template>
+      </UAlert>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" v-if="imageSrc">
     <div class="col-span-1">
       <div class="mb-3 pb-3 border-b-1 border-secondary/30">
-        <RouterLink to="/measure" class="btn btn-md btn-secondary">
-          <LayoutList class="h-5 w-5" />Vissza a falfelületek listára
-        </RouterLink>
+        <UButton :to="`/energy/consultation/${String(route.params.clientId)}/measure`" color="neutral">
+          <Icon name="i-lucide-layout-list" class="h-5 w-5" />Vissza a falfelületek listára
+        </UButton>
       </div>
       <PolygonList
         v-if="imageRef"
@@ -30,56 +31,56 @@
     </div>
     <div class="col-span-3">
       <div class="flex flex-wrap content-between gap-8 mb-2 w-full">
-        <button
+        <UButton
           @click="togglePolygonEditing"
-          class="btn"
+          :color="editingMode ? 'warning' : 'primary'"
           style="z-index: 10"
-          :class="editingMode ? 'btn-warning' : 'btn-primary'"
         >
           {{ editingMode ? 'Felületek hozzáadás befejezése' : 'Felületek hozzáadása' }}
-        </button>
+        </UButton>
 
         <div class="flex items-center gap-2 bg-secondary/20 rounded-lg">
-          <button class="btn btn-secondary p-2" @click="zoomBy(-0.1)">
-            <ZoomOut class="w-5.5" />
-          </button>
+          <UButton color="neutral" variant="soft" class="p-2" @click="zoomBy(-0.1)">
+            <Icon name="i-lucide-zoom-out" class="w-5.5" />
+          </UButton>
 
           <span class="cursor-default"> {{ (zoomScale * 100).toFixed(0) }}% </span>
 
-          <button class="btn btn-secondary p-2" @click="zoomBy(+0.1)">
-            <ZoomIn class="w-5.5" />
-          </button>
+          <UButton color="neutral" variant="soft" class="p-2" @click="zoomBy(+0.1)">
+            <Icon name="i-lucide-zoom-in" class="w-5.5" />
+          </UButton>
         </div>
 
-        <button
+        <UButton
           v-if="meterPerPixel != storedMeterPerPixel"
-          class="btn btn-primary"
+          color="primary"
           @click="restoreCalibration"
         >
           Kalibráció visszaállítása
-        </button>
-        <button class="btn btn-secondary" @click="toggleCalibration">
+        </UButton>
+        <UButton color="neutral" @click="toggleCalibration">
           {{ calibrationMode ? 'Kalibráció befejezése' : 'Kalibráció indítása' }}
-        </button>
+        </UButton>
 
         <div
           v-if="calibrationMode && calibrationStart && calibrationEnd"
           class="flex items-center gap-2"
         >
-          <input
+          <UInput
             type="number"
-            class="input input-sm input-bordered w-24"
-            v-model.number="calibrationLength"
+            v-model="calibrationLength"
             placeholder="hossz"
+            class="w-24"
+            size="sm"
           />
           <span class="text-sm">m</span>
-          <button class="btn btn-success btn-sm" type="button" @click="applyCalibration">
+          <UButton color="success" size="sm" type="button" @click="applyCalibration">
             Alkalmaz
-          </button>
+          </UButton>
         </div>
 
         <div v-if="calibrationMode && !calibrationStart && !calibrationEnd">
-          <span class="badge badge-info text-xs p-2"> Szakasz felvétele ... </span>
+          <UBadge color="info" size="xs" class="p-2">Szakasz felvétele ...</UBadge>
         </div>
       </div>
 
@@ -118,10 +119,10 @@
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface } from '@/model/Measure/ArucoWallSurface';
+import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
 import { useWallStore } from '@/stores/WallStore';
 import { useRoute } from 'vue-router';
-import { ZoomIn, ZoomOut, LayoutList } from 'lucide-vue-next';
 const store = useWallStore();
 const route = useRoute();
 const wallId = computed(() => String(route.params.wallId));
@@ -129,7 +130,9 @@ const wall = computed(() => store.walls[wallId.value]);
 const firstImage = computed(() => wall.value?.images?.[0] ?? null);
 
 const zoomScale = ref(1);
-const imageSrc = computed(() => wall.value?.images?.[0].processedImageUrl ?? null);
+const imageSrc = computed(
+  () => wall.value?.images?.[0].processedImageUrl || wall.value?.images?.[0].previewUrl || null,
+);
 const error = ref<string | null>(null);
 const meterPerPixel = ref<number>(firstImage.value?.meterPerPixel || 0);
 const storedMeterPerPixel = computed(() => firstImage.value?.meterPerPixel || 1);
@@ -283,6 +286,35 @@ const drawCircle = (
   ctx.stroke();
 };
 
+const getPolygonColors = (poly: PolygonSurface) => {
+  switch (poly.type) {
+    case SurfaceType.FACADE:
+      return {
+        strokeColor: '#3b82f6',
+        fillColor: 'rgba(59,130,246,0.2)',
+        pointColor: 'rgba(59,130,246,0.7)',
+      };
+    case SurfaceType.WINDOW_DOOR:
+      return {
+        strokeColor: '#10b981',
+        fillColor: 'rgba(16,185,129,0.2)',
+        pointColor: 'rgba(16,185,129,0.7)',
+      };
+    case SurfaceType.WALL_PLINTH:
+      return {
+        strokeColor: '#f59e0b',
+        fillColor: 'rgba(245,158,11,0.2)',
+        pointColor: 'rgba(245,158,11,0.7)',
+      };
+    default:
+      return {
+        strokeColor: '#4b5563',
+        fillColor: 'rgba(75,85,99,0.15)',
+        pointColor: 'rgba(75,85,99,0.7)',
+      };
+  }
+};
+
 const drawAllPolygons = () => {
   const pixelSize = meterPerPixel.value;
   const canvas = canvasRef.value;
@@ -307,6 +339,7 @@ const drawAllPolygons = () => {
     if (poly.visible === false) continue;
     const denormPoints = poly.points.map(denormalizePoint);
     if (denormPoints.length < 1) continue;
+    const { strokeColor, fillColor, pointColor } = getPolygonColors(poly);
 
     ctx.beginPath();
     ctx.moveTo(denormPoints[0].x, denormPoints[0].y);
@@ -319,10 +352,10 @@ const drawAllPolygons = () => {
     }
     if (poly.closed) {
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 0, 255, 0.2)';
+      ctx.fillStyle = fillColor;
       ctx.fill();
     }
-    ctx.strokeStyle = 'blue';
+    ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -332,7 +365,7 @@ const drawAllPolygons = () => {
         draggingPoint.value.polygonId === poly.id &&
         draggingPoint.value.index === idx;
 
-      drawCircle(ctx, p.x, p.y, isSelected ? 8 : 6, isSelected ? 'limegreen' : undefined);
+      drawCircle(ctx, p.x, p.y, isSelected ? 8 : 6, isSelected ? 'limegreen' : pointColor);
     });
 
     if (poly.closed && denormPoints.length >= 3) {

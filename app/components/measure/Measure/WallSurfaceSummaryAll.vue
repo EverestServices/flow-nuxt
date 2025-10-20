@@ -7,7 +7,7 @@
         class="stat flex bg-emerald-50 shadow-xl border border-emerald-200 rounded-xl p-4 gap-4"
       >
         <div class="flex items-center justify-center w-16 h-16 bg-emerald-200/50 rounded-full">
-          <DoorOpen class="w-8 h-8 text-emerald-800" />
+          <Icon name="i-lucide-door-open" class="w-8 h-8 text-emerald-800" />
         </div>
         <div>
           <div class="stat-title text-lg text-emerald-800 font-semibold">Nyílászárók területe</div>
@@ -23,7 +23,7 @@
         class="stat flex bg-sky-50 shadow-xl border border-sky-200 rounded-xl p-4 gap-4"
       >
         <div class="flex items-center justify-center w-16 h-16 bg-sky-200/50 rounded-full">
-          <Building2 class="w-8 h-8 text-sky-800" />
+          <Icon name="i-lucide-building-2" class="w-8 h-8 text-sky-800" />
         </div>
         <div>
           <div class="stat-title text-lg text-sky-800 font-semibold">Homlokzat – bruttó</div>
@@ -39,7 +39,7 @@
         class="stat flex bg-sky-50 shadow-xl border border-sky-200 rounded-xl p-4 gap-4"
       >
         <div class="flex items-center justify-center w-16 h-16 bg-sky-200/50 rounded-full">
-          <Building class="w-8 h-8 text-sky-800" />
+          <Icon name="i-lucide-building" class="w-8 h-8 text-sky-800" />
         </div>
         <div>
           <div class="stat-title text-lg text-sky-800 font-semibold">Homlokzat – nettó</div>
@@ -55,7 +55,7 @@
         class="stat flex bg-yellow-50 shadow-xl border border-yellow-200 rounded-xl p-4 gap-4"
       >
         <div class="flex items-center justify-center w-16 h-16 bg-yellow-200/50 rounded-full">
-          <Layers class="w-8 h-8 text-yellow-800" />
+          <Icon name="i-lucide-layers" class="w-8 h-8 text-yellow-800" />
         </div>
         <div>
           <div class="stat-title text-lg text-yellow-800 font-semibold">Lábazat – bruttó</div>
@@ -71,7 +71,7 @@
         class="stat flex bg-yellow-50 shadow-xl border border-yellow-200 rounded-xl p-4 gap-4"
       >
         <div class="flex items-center justify-center w-16 h-16 bg-yellow-200/50 rounded-full">
-          <Layout class="w-8 h-8 text-yellow-800" />
+          <Icon name="i-lucide-layout" class="w-8 h-8 text-yellow-800" />
         </div>
         <div>
           <div class="stat-title text-lg text-yellow-800 font-semibold">Lábazat – nettó</div>
@@ -87,7 +87,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
-import { DoorOpen, Building2, Building, Layers, Layout } from 'lucide-vue-next';
 
 const store = useWallStore();
 

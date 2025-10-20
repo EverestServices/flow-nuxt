@@ -7,29 +7,30 @@
     <WallProgressStepper class="mb-4" />
 
     <!-- A lépés tartalma -->
-    <RouterView :modelValue="wallList" />
+    <slot />
 
     <!-- Navigációs gombok -->
     <div v-if="!isInMeasure" class="mt-6 text-right">
-      <button class="btn btn-primary pl-3" :disabled="!isValidToProceed" @click="goToFirstMeasure">
-        <DraftingCompass />
+      <UButton color="primary" class="pl-3" :disabled="!isValidToProceed" @click="goToFirstMeasure">
+        <Icon name="i-lucide-drafting-compass" />
         Mérés indítása
-      </button>
+      </UButton>
     </div>
 
     <div v-else class="mt-6 flex justify-between items-center">
-      <button class="btn btn-secondary pl-2" @click="goToPrevWall">
-        <ChevronLeft />
+      <UButton color="neutral" class="pl-2" @click="goToPrevWall">
+        <Icon name="i-lucide-chevron-left" />
         Előző
-      </button>
-      <button
-        class="btn btn-primary ml-auto pr-2"
+      </UButton>
+      <UButton
+        color="primary"
+        class="ml-auto pr-2"
         :disabled="!isValidToProceed"
         @click="goToNextWall"
       >
         Következő
-        <ChevronRight />
-      </button>
+        <Icon name="i-lucide-chevron-right" />
+      </UButton>
     </div>
   </div>
 </template>
@@ -39,7 +40,7 @@ import { useWallStore } from '@/stores/WallStore';
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import WallProgressStepper from './WallProgressStepper.vue';
-import { ChevronRight, ChevronLeft, DraftingCompass } from 'lucide-vue-next';
+
 
 const router = useRouter();
 const route = useRoute();
@@ -63,11 +64,13 @@ const isValidToProceed = computed(() => {
   return wallList.value.length >= MIN_WALL_COUNT && allImagesReady.value;
 });
 
-const isInMeasure = computed(() => route.name === 'wall-measure');
+const isInMeasure = computed(() => Boolean(route.params.wallId));
 
 const goToFirstMeasure = () => {
   if (wallList.value.length > 0 && wallList.value[0]) {
-    void router.push({ name: 'wall-measure', params: { wallId: wallList.value[0].id } });
+    void router.push({
+      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(wallList.value[0].id)}`,
+    });
   }
 };
 
@@ -86,10 +89,14 @@ const goToNextWall = () => {
   const nextWallId = getNextWallId();
 
   if (nextWallId) {
-    void router.push({ name: 'wall-measure', params: { wallId: nextWallId } });
+    void router.push({
+      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(nextWallId)}`,
+    });
   } else {
     alert('Összes falfelület feldolgozva. Küldés vagy mentés következhet.');
-    void router.push({ name: 'wall-edit' });
+    void router.push({
+      path: `/energy/consultation/${String(route.params.clientId)}/measure`,
+    });
   }
 };
 
@@ -102,9 +109,13 @@ const getPrevWallId = (): string | undefined => {
 const goToPrevWall = () => {
   const prevWallId = getPrevWallId();
   if (prevWallId) {
-    void router.push({ name: 'wall-measure', params: { wallId: prevWallId } });
+    void router.push({
+      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(prevWallId)}`,
+    });
   } else {
-    void router.push({ name: 'wall-edit' });
+    void router.push({
+      path: `/energy/consultation/${String(route.params.clientId)}/measure`,
+    });
   }
 };
 </script>

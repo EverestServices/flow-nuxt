@@ -14,7 +14,7 @@
           class="absolute transform -translate-y-10 w-0 h-0 border-l-8 border-r-8 border-t-[8px] border-r-transparent border-l-transparent border-t-secondary/85"
         ></div>
         <RouterLink
-          :to="{ name: 'wall-measure', params: { wallId: wall.id } }"
+          :to="`/energy/consultation/${String(route.params.clientId)}/measure/${String(wall.id)}`"
           class="block text-center mt-2"
           :class="{
             'text-md': wallIsActive(wall),

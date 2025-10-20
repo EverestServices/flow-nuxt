@@ -13,16 +13,16 @@
         @image-change="handleImageChange"
       />
       <div class="w-full">
-        <button
-          class="w-full justify-center cursor-pointer items-center h-full rounded-lg py-25 border border-success/60 bg-success text-white flex flex-col"
+        <UButton
+          class="w-full h-full py-25 flex flex-col justify-center items-center"
+          color="success"
           @click="addWall"
-          style="box-shadow: inset 0 0px 15px rgba(0, 0, 0, 0.2)"
         >
           <span class="flex flex-row justify-center items-center">
-            <Plus class="w-30 h-30 mr-2" />
+            <Icon name="i-lucide-plus" class="w-30 h-30 mr-2" />
           </span>
           <span class="text-3xl tracking-wider"> Új falfelület </span>
-        </button>
+        </UButton>
       </div>
     </div>
 
@@ -37,7 +37,7 @@ import { useWallStore } from '@/stores/WallStore';
 import WallCard from './WallCard.vue';
 import WallSurfaceSummaryAll from '../Measure/WallSurfaceSummaryAll.vue';
 import { processFacadeImage } from '@/service/ArucoMeasurments/AlignFacadeService';
-import { Plus, BrickWall } from 'lucide-vue-next';
+ 
 
 const store = useWallStore();
 const walls = computed(() => Object.values(store.walls));

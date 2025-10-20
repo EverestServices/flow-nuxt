@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, reactive, ref, toRaw } from 'vue';
+import { computed, reactive, ref, toRaw, watch } from 'vue';
 import type { PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import {
@@ -12,10 +12,41 @@ export function clonePolygonData(polygons: PolygonSurface[]): PolygonSurface[] {
     points: toRaw(p.points),
   }));
 }
+const ssrSafeStorage = process.client
+  ? localStorage
+  : {
+      getItem: (_key: string) => null,
+      setItem: (_key: string, _value: string) => {},
+      removeItem: (_key: string) => {},
+    } as unknown as Storage;
 export const useWallStore = defineStore(
   'wallStore',
   () => {
     const walls = ref<Record<string, Wall>>(reactive({}));
+    const STORAGE_KEY = 'wallStore.v1.walls';
+
+    if (process.client) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Record<string, Wall>;
+          walls.value = parsed as Record<string, Wall>;
+        }
+      } catch (e) {
+        // ignore hydrate errors in mock/dev
+      }
+      watch(
+        walls,
+        (val) => {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toRaw(val)));
+          } catch (e) {
+            // ignore persist errors
+          }
+        },
+        { deep: true },
+      );
+    }
 
     function setWall(id: string, wall: Wall) {
       walls.value[id] = wall;
@@ -126,11 +157,5 @@ export const useWallStore = defineStore(
       getWallSurfaceAreas,
       hasPolygons,
     };
-  },
-  {
-    persist: {
-      paths: ['walls'],
-      storage: localStorage,
-    },
   },
 );

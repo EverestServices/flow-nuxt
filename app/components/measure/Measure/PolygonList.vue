@@ -8,7 +8,7 @@
         title="Nyílászáró"
       >
         <template #icon>
-          <DoorOpen class="w-7 h-7 text-emerald-700" />
+          <Icon name="i-lucide-door-open" class="w-7 h-7 text-emerald-700" />
         </template>
       </AreaCard>
       <AreaCard
@@ -18,12 +18,12 @@
         title="Bruttó homlokzat"
       >
         <template #icon>
-          <Building2 class="w-7 h-7 text-sky-700" />
+          <Icon name="i-lucide-building-2" class="w-7 h-7 text-sky-700" />
         </template>
       </AreaCard>
       <AreaCard v-if="facadeNetArea > 0" :value="facadeNetArea" color="sky" title="Nettó homlokzat">
         <template #icon>
-          <Building class="w-7 h-7 text-sky-700" />
+          <Icon name="i-lucide-building" class="w-7 h-7 text-sky-700" />
         </template>
       </AreaCard>
       <AreaCard
@@ -33,7 +33,7 @@
         title="Lábazat bruttó"
       >
         <template #icon>
-          <Layers class="w-7 h-7 text-yellow-700" />
+          <Icon name="i-lucide-layers" class="w-7 h-7 text-yellow-700" />
         </template>
       </AreaCard>
       <AreaCard
@@ -43,7 +43,7 @@
         title="Lábazat nettó"
       >
         <template #icon>
-          <Layout class="w-7 h-7 text-yellow-700" />
+          <Icon name="i-lucide-layout" class="w-7 h-7 text-yellow-700" />
         </template>
       </AreaCard>
     </div>
@@ -55,40 +55,45 @@
       :key="polygon.id"
       class="flex items-center flex-wrap justify-between gap-4 bg-base-100 p-3 border border-base-300 rounded-xl shadow-sm"
     >
-      <button
-        class="btn btn-sm btn-neutral aspect-square p-2"
+      <UButton
+        :color="polygon.visible === false ? 'neutral' : 'primary'"
+        variant="soft"
+        size="sm"
+        class="aspect-square p-2"
         @click="toggleVisibility(index)"
         :title="polygon.visible === false ? 'Megjelenítés' : 'Elrejtés'"
       >
-        <EyeOff v-if="polygon.visible === false" class="w-5 h-5" />
-        <Eye v-else class="w-5 h-5" />
-      </button>
-      <select
-        class="select select-sm select-bordered w-auto"
-        :value="polygon.type"
-        @change="(e) => updatePolygonType(polygon, e)"
-      >
-        <option v-for="option in surfaceTypeOptions" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
+        <Icon v-if="polygon.visible === false" name="i-lucide-eye-off" class="w-5 h-5" />
+        <Icon v-else name="i-lucide-eye" class="w-5 h-5" />
+      </UButton>
+      <USelectMenu
+        :options="surfaceTypeOptions"
+        v-model="polygon.type"
+        option-attribute="label"
+        value-attribute="value"
+        by="value"
+        size="sm"
+        class="w-40"
+      />
 
       <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
         {{ formatArea(polygon) }} m²
       </div>
 
-      <button
+      <UButton
         @click="deletePolygon(polygon)"
-        class="btn btn-ghost btn-sm text-error"
+        variant="ghost"
+        color="error"
+        size="sm"
         :title="`Törlés`"
       >
-        <Trash2 class="w-5 h-5" />
-      </button>
+        <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+      </UButton>
     </div>
     <div class="text-end" v-if="filteredPolygons.length > 0">
-      <button @click="emit('removeAllPoligon')" class="btn btn-error btn-sm tracking-wider">
-        <Eraser class="h-4 w-4" /> Felületek törlése
-      </button>
+      <UButton @click="confirmRemoveAll()" color="error" variant="soft" size="sm" class="tracking-wider">
+        <Icon name="i-lucide-eraser" class="h-4 w-4" /> Felületek törlése
+      </UButton>
     </div>
   </div>
 </template>
@@ -101,17 +106,6 @@ import {
   unionPolygonsArea,
 } from '@/service/Measurment/polygonDifference';
 import { computed, watch, ref, onMounted } from 'vue';
-import {
-  Eye,
-  EyeOff,
-  Trash2,
-  DoorOpen,
-  Building2,
-  Building,
-  Layers,
-  Layout,
-  Eraser,
-} from 'lucide-vue-next';
 import { clonePolygonData } from '@/stores/WallStore';
 import AreaCard from './AreaCard.vue';
 
@@ -217,13 +211,21 @@ const formatArea = (polygon: PolygonSurface): string => {
 
 const deletePolygon = (polygon: PolygonSurface) => emit('removePoligon', polygon.id);
 const toggleVisibility = (index: number) => {
-  const current = props.polygons[index].visible;
+  const item = props.polygons[index];
+  if (!item) return;
+  const current = item.visible;
   const visible = current === undefined ? false : !current;
   emit('updateVisibility', index, visible);
 };
-const updatePolygonType = (polygon: PolygonSurface, event: Event) => {
-  polygon.type = (event.target as HTMLSelectElement).value as SurfaceType;
-};
+// v-model on USelect directly updates polygon.type
+
+function confirmRemoveAll() {
+  if (typeof window !== 'undefined') {
+    if (window.confirm('Biztosan töröljük az összes felületet?')) emit('removeAllPoligon');
+  } else {
+    emit('removeAllPoligon');
+  }
+}
 
 function detectWindowDoorSurface(polygon: PolygonSurface): boolean {
   if (polygon.points.length < 3) return false;
