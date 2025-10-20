@@ -1,6 +1,6 @@
 <template>
   <div :class="['w-full', block ? '' : 'inline-block']">
-    <label v-if="label" :for="selectId" class="outfit font-medium text-sm text-gray-700 mb-1.5 block">
+    <label v-if="label" :for="selectId" class="outfit font-medium text-sm text-gray-700 dark:text-gray-300 mb-1.5 block">
       {{ label }}
       <span v-if="required" class="text-red-500 ml-1">*</span>
     </label>
@@ -26,7 +26,7 @@
         </option>
       </select>
 
-      <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+      <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 dark:text-gray-500">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>
@@ -34,7 +34,7 @@
     </div>
 
     <p v-if="error" class="outfit text-sm text-red-500 mt-1.5">{{ error }}</p>
-    <p v-else-if="hint" class="outfit text-sm text-gray-500 mt-1.5">{{ hint }}</p>
+    <p v-else-if="hint" class="outfit text-sm text-gray-500 dark:text-gray-400 mt-1.5">{{ hint }}</p>
   </div>
 </template>
 
@@ -143,7 +143,11 @@ const computedSelectClasses = computed(() => {
       'focus:ring-white'
     )
   } else {
-    classes.push('bg-white')
+    classes.push(
+      'bg-white',
+      'dark:bg-gray-800',
+      'dark:text-white'
+    )
   }
 
   // Error state
@@ -156,19 +160,24 @@ const computedSelectClasses = computed(() => {
   } else if (isFocused.value) {
     classes.push(
       'border-blue-500',
+      'dark:border-blue-400',
       'focus:ring-blue-500',
-      'focus:border-blue-500'
+      'dark:focus:ring-blue-400',
+      'focus:border-blue-500',
+      'dark:focus:border-blue-400'
     )
   } else {
     classes.push(
       'border-gray-300',
-      'hover:border-gray-400'
+      'dark:border-gray-600',
+      'hover:border-gray-400',
+      'dark:hover:border-gray-500'
     )
   }
 
   // Disabled state
   if (props.disabled) {
-    classes.push('opacity-60', 'cursor-not-allowed', 'bg-gray-100')
+    classes.push('opacity-60', 'cursor-not-allowed', 'bg-gray-100', 'dark:bg-gray-900')
   } else {
     classes.push('cursor-pointer')
   }

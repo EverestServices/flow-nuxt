@@ -178,6 +178,10 @@ const selectDay = (date: Date) => {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.dark .calendar-header {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .month-title {
   font-size: 24px;
   font-weight: 600;
@@ -185,10 +189,18 @@ const selectDay = (date: Date) => {
   margin: 0;
 }
 
+.dark .month-title {
+  color: white;
+}
+
 .days-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .days-header {
+  border-bottom-color: rgb(55, 65, 81);
 }
 
 .day-header {
@@ -200,6 +212,11 @@ const selectDay = (date: Date) => {
   background: #f9fafb;
 }
 
+.dark .day-header {
+  color: rgb(156, 163, 175);
+  background: rgb(31, 41, 55);
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -207,6 +224,11 @@ const selectDay = (date: Date) => {
   flex: 1;
   border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .calendar-grid {
+  border-right-color: rgb(55, 65, 81);
+  border-bottom-color: rgb(55, 65, 81);
 }
 
 .calendar-day {
@@ -220,8 +242,19 @@ const selectDay = (date: Date) => {
   overflow: hidden;
 }
 
+.dark .calendar-day {
+  background: rgb(17, 24, 39);
+  border-left-color: rgb(55, 65, 81);
+  border-top-color: rgb(55, 65, 81);
+  color: white;
+}
+
 .calendar-day:hover {
   background: #f9fafb;
+}
+
+.dark .calendar-day:hover {
+  background: rgb(31, 41, 55);
 }
 
 .calendar-day.other-month {
@@ -229,13 +262,27 @@ const selectDay = (date: Date) => {
   color: #9ca3af;
 }
 
+.dark .calendar-day.other-month {
+  background: rgb(31, 41, 55);
+  color: rgb(107, 114, 128);
+}
+
 .calendar-day.today {
   background: #eff6ff;
+}
+
+.dark .calendar-day.today {
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .calendar-day.selected {
   background: #dbeafe;
   border-color: #3b82f6;
+}
+
+.dark .calendar-day.selected {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgb(96, 165, 250);
 }
 
 .day-number {
@@ -323,5 +370,9 @@ const selectDay = (date: Date) => {
   font-size: 10px;
   margin-top: 2px;
   font-weight: 500;
+}
+
+.dark .more-events {
+  color: rgb(156, 163, 175);
 }
 </style>

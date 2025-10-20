@@ -18,7 +18,7 @@
 
     <!-- Events display -->
     <div class="">
-      <div v-if="selectedDayEvents.length === 0" class="no-events">
+      <div v-if="selectedDayEvents.length === 0" class="no-events text-gray-600 dark:text-gray-400">
         No events for {{ selectedDay.dayName }}, {{ selectedDay.dayNumber }}
       </div>
       <div v-else class="my-6 gap-y-3 flex flex-col">
@@ -31,7 +31,7 @@
           <div class="text-sm font-black outfit">{{ formatEventTime(event) }}</div>
           <div class="outfit text-sm font-normal">{{ event.title }}</div>
         </UIBox>
-        <div v-if="selectedDayEvents.length > 3" class="more-events">
+        <div v-if="selectedDayEvents.length > 3" class="more-events text-gray-600 dark:text-gray-400">
           +{{ selectedDayEvents.length - 3 }} more events
         </div>
       </div>
@@ -284,7 +284,6 @@ onMounted(() => {
 
 .no-events {
   text-align: center;
-  color: #6b7280;
   font-size: 12px;
   padding: 20px;
 }
@@ -358,7 +357,6 @@ onMounted(() => {
 }
 
 .more-events {
-  color: #6b7280;
   font-size: 10px;
   text-align: center;
   margin-top: 4px;

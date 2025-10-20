@@ -12,10 +12,10 @@
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
       <div class="flex items-center gap-3 p-3">
-        <USkeleton class="h-10 w-10 rounded-full" />
+        <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
         <div class="flex-1">
-          <USkeleton class="h-4 w-24 mb-1" />
-          <USkeleton class="h-3 w-16" />
+          <div class="h-4 w-24 mb-1 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div class="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
       </div>
     </div>
