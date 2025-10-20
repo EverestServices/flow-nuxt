@@ -25,7 +25,7 @@
         color="gray"
         variant="outline"
         size="sm"
-        disabled
+        :to="`/client/${survey.client?.id}?from=survey`"
       />
       <UButton
         icon="i-heroicons-bolt"
