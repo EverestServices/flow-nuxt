@@ -2,21 +2,21 @@
   <div class="space-y-6" key="news-list">
     <!-- Loading State -->
     <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <USkeleton
+      <div
         v-for="i in 6"
         :key="i"
-        class="h-64 w-full"
+        class="h-64 w-full bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"
       />
     </div>
 
     <!-- Error State -->
-    <UAlert
+    <UIAlert
       v-else-if="error"
-      color="red"
-      variant="soft"
-      title="Error loading news"
-      :description="error"
-    />
+      variant="danger"
+    >
+      <strong>Error loading news</strong><br />
+      {{ error }}
+    </UIAlert>
 
     <!-- Empty State -->
     <div
@@ -51,27 +51,40 @@
       v-if="showLoadMore && hasMore"
       class="flex justify-center pt-8"
     >
-      <UButton
+      <UIButtonEnhanced
         @click="$emit('load-more')"
         :loading="loadingMore"
         variant="outline"
         size="lg"
       >
         Load More Articles
-      </UButton>
+      </UIButtonEnhanced>
     </div>
 
     <!-- Pagination -->
     <div
       v-if="showPagination && totalPages > 1"
-      class="flex justify-center pt-8"
+      class="flex justify-center items-center gap-2 pt-8"
     >
-      <UPagination
-        :model-value="currentPage"
-        :page-count="pageSize"
-        :total="totalCount"
-        @update:model-value="$emit('page-change', $event)"
-      />
+      <UIButtonEnhanced
+        @click="$emit('page-change', currentPage - 1)"
+        :disabled="currentPage === 1"
+        variant="ghost"
+        size="sm"
+      >
+        Previous
+      </UIButtonEnhanced>
+      <span class="text-sm text-gray-600 dark:text-gray-400">
+        Page {{ currentPage }} of {{ totalPages }}
+      </span>
+      <UIButtonEnhanced
+        @click="$emit('page-change', currentPage + 1)"
+        :disabled="currentPage === totalPages"
+        variant="ghost"
+        size="sm"
+      >
+        Next
+      </UIButtonEnhanced>
     </div>
   </div>
 </template>

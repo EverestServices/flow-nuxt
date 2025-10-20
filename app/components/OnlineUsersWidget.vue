@@ -13,10 +13,10 @@
     <!-- Loading State -->
     <div v-if="loading" class="space-y-3">
       <div v-for="i in 3" :key="i" class="flex items-center gap-3">
-        <USkeleton class="h-8 w-8 rounded-full" />
+        <div class="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
         <div class="flex-1">
-          <USkeleton class="h-3 w-20 mb-1" />
-          <USkeleton class="h-2 w-12" />
+          <div class="h-3 w-20 mb-1 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div class="h-2 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
       </div>
     </div>

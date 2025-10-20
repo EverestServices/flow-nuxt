@@ -1,12 +1,12 @@
 <template>
   <div :class="['w-full', block ? '' : 'inline-block']">
-    <label v-if="label" :for="inputId" class="outfit font-medium text-sm text-gray-700 mb-1.5 block">
+    <label v-if="label" :for="inputId" class="outfit font-medium text-sm text-gray-700 dark:text-gray-300 mb-1.5 block">
       {{ label }}
       <span v-if="required" class="text-red-500 ml-1">*</span>
     </label>
 
     <div class="relative">
-      <div v-if="$slots.prefix" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+      <div v-if="$slots.prefix" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
         <slot name="prefix" />
       </div>
 
@@ -30,21 +30,21 @@
           v-if="clearable && internalValue"
           type="button"
           @click="handleClear"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
           aria-label="Clear input"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        <div v-if="$slots.suffix" class="text-gray-400">
+        <div v-if="$slots.suffix" class="text-gray-400 dark:text-gray-500">
           <slot name="suffix" />
         </div>
       </div>
     </div>
 
     <p v-if="error" class="outfit text-sm text-red-500 mt-1.5">{{ error }}</p>
-    <p v-else-if="hint" class="outfit text-sm text-gray-500 mt-1.5">{{ hint }}</p>
+    <p v-else-if="hint" class="outfit text-sm text-gray-500 dark:text-gray-400 mt-1.5">{{ hint }}</p>
   </div>
 </template>
 
@@ -152,7 +152,10 @@ const computedInputClasses = computed(() => {
   } else {
     classes.push(
       'bg-white',
-      'placeholder-gray-400'
+      'dark:bg-gray-800',
+      'dark:text-white',
+      'placeholder-gray-400',
+      'dark:placeholder-gray-500'
     )
   }
 
@@ -166,21 +169,26 @@ const computedInputClasses = computed(() => {
   } else if (isFocused.value) {
     classes.push(
       'border-blue-500',
+      'dark:border-blue-400',
       'focus:ring-blue-500',
-      'focus:border-blue-500'
+      'dark:focus:ring-blue-400',
+      'focus:border-blue-500',
+      'dark:focus:border-blue-400'
     )
   } else {
     classes.push(
       'border-gray-300',
-      'hover:border-gray-400'
+      'dark:border-gray-600',
+      'hover:border-gray-400',
+      'dark:hover:border-gray-500'
     )
   }
 
   // Disabled/readonly state
   if (props.disabled) {
-    classes.push('opacity-60', 'cursor-not-allowed', 'bg-gray-100')
+    classes.push('opacity-60', 'cursor-not-allowed', 'bg-gray-100', 'dark:bg-gray-900')
   } else if (props.readonly) {
-    classes.push('cursor-default', 'bg-gray-50')
+    classes.push('cursor-default', 'bg-gray-50', 'dark:bg-gray-900')
   }
 
   // Padding adjustments for prefix/suffix

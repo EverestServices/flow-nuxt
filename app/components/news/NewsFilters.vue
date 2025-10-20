@@ -1,118 +1,134 @@
 <template>
-  <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm space-y-6">
+  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-6">
     <!-- Search -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Search Articles
       </label>
-      <UInput
+      <UIInput
         :model-value="filters.search"
         @update:model-value="updateSearch"
-        icon="i-lucide-search"
         placeholder="Search by title, content, or tags..."
-        size="lg"
-        :debounce="300"
-      />
+      >
+        <template #prefix>
+          <Icon name="i-lucide-search" class="w-5 h-5" />
+        </template>
+      </UIInput>
     </div>
 
     <!-- Categories -->
     <div v-if="categories.length">
-      <label class="block text-sm font-medium text-gray-700 mb-3">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
         Categories
       </label>
       <div class="space-y-2 max-h-48 overflow-y-auto">
-        <UCheckbox
-          :checked="!filters.category"
-          @change="updateCategory(null)"
-          label="All Categories"
-          class="text-sm"
-        />
-        <UCheckbox
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+          <input
+            type="checkbox"
+            :checked="!filters.category"
+            @change="updateCategory(null)"
+            class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+          />
+          All Categories
+        </label>
+        <label
           v-for="category in categories"
           :key="category.id"
-          :checked="filters.category === category.id"
-          @change="updateCategory(category.id)"
-          :label="category.name"
-          class="text-sm"
-        />
+          class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+        >
+          <input
+            type="checkbox"
+            :checked="filters.category === category.id"
+            @change="updateCategory(category.id)"
+            class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+          />
+          {{ category.name }}
+        </label>
       </div>
     </div>
 
     <!-- News Type -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-3">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
         News Type
       </label>
-      <URadioGroup
-        :model-value="filters.newsType"
-        @update:model-value="updateNewsType"
-        :options="newsTypeOptions"
-        class="space-y-2"
-      />
+      <div class="space-y-2">
+        <label
+          v-for="option in newsTypeOptions"
+          :key="option.value"
+          class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"
+        >
+          <input
+            type="radio"
+            :value="option.value"
+            :checked="filters.newsType === option.value"
+            @change="updateNewsType(option.value)"
+            class="w-4 h-4 border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+          />
+          {{ option.label }}
+        </label>
+      </div>
     </div>
 
     <!-- Featured Filter -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-3">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
         Show Featured Only
       </label>
-      <UToggle
-        :model-value="filters.featured"
-        @update:model-value="updateFeatured"
-        :ui="{ wrapper: 'flex items-center space-x-2' }"
-      >
-        <span class="text-sm text-gray-600">Featured articles only</span>
-      </UToggle>
+      <div class="flex items-center gap-2">
+        <UISwitch
+          v-model="filters.featured"
+          @update:model-value="updateFeatured"
+        />
+        <span class="text-sm text-gray-600 dark:text-gray-400">Featured articles only</span>
+      </div>
     </div>
 
     <!-- Date Range -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-3">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
         Date Range
       </label>
-      <USelectMenu
-        :model-value="filters.dateRange"
-        @update:model-value="updateDateRange"
+      <UISelect
+        v-model="filters.dateRange"
         :options="dateRangeOptions"
-        placeholder="Select date range"
-        class="w-full"
+        @update:model-value="updateDateRange"
       />
     </div>
 
     <!-- Sort Options -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-3">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
         Sort By
       </label>
-      <USelectMenu
-        :model-value="filters.sortBy"
-        @update:model-value="updateSortBy"
+      <UISelect
+        v-model="filters.sortBy"
         :options="sortOptions"
-        placeholder="Sort articles by"
-        class="w-full"
+        @update:model-value="updateSortBy"
       />
     </div>
 
     <!-- Clear Filters -->
-    <div class="pt-4 border-t border-gray-200">
-      <UButton
+    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+      <UIButtonEnhanced
         @click="clearFilters"
         variant="outline"
-        color="gray"
-        block
         size="sm"
         :disabled="isFiltersEmpty"
+        class="w-full"
       >
-        <Icon name="i-lucide-x-circle" class="w-4 h-4 mr-2" />
+        <template #icon>
+          <Icon name="i-lucide-x-circle" class="w-4 h-4" />
+        </template>
         Clear All Filters
-      </UButton>
+      </UIButtonEnhanced>
     </div>
 
     <!-- Active Filters Count -->
     <div v-if="activeFiltersCount > 0" class="text-center">
-      <UBadge color="primary" variant="soft" size="sm">
+      <span class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs px-3 py-1 rounded-full font-medium">
         {{ activeFiltersCount }} filter{{ activeFiltersCount === 1 ? '' : 's' }} active
-      </UBadge>
+      </span>
     </div>
   </div>
 </template>
