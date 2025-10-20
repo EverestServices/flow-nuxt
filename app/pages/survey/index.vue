@@ -27,7 +27,7 @@
             label="Energy Consultation for new Client"
             color="primary"
             size="sm"
-            disabled
+            to="/survey/client-data"
           />
         </div>
       </div>

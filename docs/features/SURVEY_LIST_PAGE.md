@@ -25,8 +25,8 @@ Right side - Search & New Client:
 - **Search field** - Free text search with placeholder "Search clients..." (`survey.searchPlaceholder`)
   - Searches in: client name, email, phone, address, survey date
 - **New Client Button** - "Energy Consultation for new Client" (`survey.newClientConsultation`)
-  - Icon: Zap (lucide-vue-next)
-  - Action: Navigate to new client survey (inactive for now)
+  - Icon: Bolt (heroicons)
+  - Action: Navigate to `/survey/client-data` (new client form)
 
 ### Survey List
 Each survey item displays 3 rows:
@@ -45,10 +45,10 @@ Each survey item displays 3 rows:
 **Row 3 - Actions (right-aligned):**
 - **Client Profile Button:** "Client profile" (`survey.clientProfile`)
   - Style: Secondary/outline button
-  - Action: Navigate to client profile (inactive for now)
+  - Action: Navigate to `/client/[clientId]?from=survey`
 - **Start Consultation Button:** "Start Energy Consultation" (`survey.startConsultation`)
-  - Style: Primary button with Zap icon
-  - Action: Navigate to survey form (inactive for now)
+  - Style: Primary button with Bolt icon
+  - Action: Navigate to survey form (disabled - to be implemented)
 
 ## Data Structure
 
@@ -188,9 +188,18 @@ const { data: surveys } = await supabase
 - Advanced filters (by client type, status, etc.)
 
 ## Related Files
-- Migration: `supabase/migrations/003_create_survey_system.sql`
-- Composable: `app/composables/useSurveys.ts`
-- Types: `app/types/survey-new.ts`
+
+### Migrations
+- `supabase/migrations/003_create_survey_system.sql` - Survey system schema
+- `supabase/migrations/999_seed_clients_and_surveys.sql` - Test data seeding
+
+### Composables & Types
+- `app/composables/useSurveys.ts` - Survey data management
+- `app/types/survey-new.ts` - TypeScript types
+
+### Related Pages
+- `app/pages/client/[clientId].vue` - Client profile page (see [CLIENT_PROFILE_PAGE.md](./CLIENT_PROFILE_PAGE.md))
+- `app/pages/survey/client-data.vue` - New client form (see [NEW_CLIENT_FORM_PAGE.md](./NEW_CLIENT_FORM_PAGE.md))
 
 ## Implementation Status
 - [x] Create page component
@@ -203,6 +212,9 @@ const { data: surveys } = await supabase
 - [x] Add empty states
 - [x] Add loading states
 - [x] Update menu navigation
+- [x] Link to client profile page
+- [x] Link to new client form
+- [x] Display survey times (not just dates)
 
 ---
 
