@@ -529,19 +529,3 @@ GRANT ALL ON public.survey_answers TO authenticated;
 GRANT ALL ON public.document_categories TO authenticated;
 GRANT ALL ON public.investment_document_categories TO authenticated;
 GRANT ALL ON public.documents TO authenticated;
-
--- ============================================================================
--- 9. INSERT SAMPLE DATA (OPTIONAL)
--- ============================================================================
-
--- Insert sample investments
-INSERT INTO public.investments (name, icon, position) VALUES
-    ('Solar Panel', 'i-lucide-sun', '{"top": 50, "right": 50}'::jsonb),
-    ('Heat Pump', 'i-lucide-thermometer', '{"top": 100, "right": 100}'::jsonb),
-    ('Facade Insulation', 'i-lucide-home', '{"top": 150, "right": 150}'::jsonb);
-
--- Insert sample heavy consumers
-INSERT INTO public.heavy_consumers (name) VALUES
-    ('Pool Pump'),
-    ('Electric Heating'),
-    ('Industrial Equipment');

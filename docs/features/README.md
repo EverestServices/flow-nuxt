@@ -17,6 +17,18 @@ This directory contains detailed documentation for all implemented features in t
   - New client creation button
   - Survey date/time display
 
+#### [Survey Page (Energy Consultation)](./SURVEY_PAGE.md)
+- **Route:** `/survey/[surveyId]`
+- **Status:** 🔄 Partial (Structure complete)
+- **Description:** Multi-step energy consultation interface with tabbed workflow for conducting comprehensive property assessments and generating offers.
+- **Key Features:**
+  - 5-tab workflow (Property Assessment, Consultation, Offer/Contract, Contract Data, Summary)
+  - Conditional header/footer buttons per tab
+  - View mode toggle (Photos/Data/All)
+  - Marker mode for annotations
+  - Missing items tracking
+  - Progress validation
+
 #### [New Client Form Page](./NEW_CLIENT_FORM_PAGE.md)
 - **Route:** `/survey/client-data`
 - **Status:** ✅ Implemented
@@ -48,6 +60,7 @@ This directory contains detailed documentation for all implemented features in t
 | Feature | Route | Status | Components |
 |---------|-------|--------|------------|
 | Survey List | `/survey` | ✅ Complete | 3 components |
+| Survey Page | `/survey/[surveyId]` | 🔄 Partial | 4 components |
 | New Client Form | `/survey/client-data` | ✅ Complete | 2 components |
 | Client Profile | `/client/[clientId]` | 🔄 Partial | 5 components |
 
@@ -63,11 +76,16 @@ This directory contains detailed documentation for all implemented features in t
 ```
 app/pages/survey/
 ├── index.vue                    # Survey list page
+├── [surveyId].vue              # Survey page (energy consultation)
 └── client-data.vue              # New client form
 
 app/components/Survey/
-├── SurveyListItem.vue          # Individual survey item
-└── SurveyDateFilterButtonGroup.vue  # Date filter buttons
+├── SurveyListItem.vue                  # Individual survey item
+├── SurveyDateFilterButtonGroup.vue     # Date filter buttons
+├── SurveyHeader.vue                    # Survey page header
+├── SurveyNavigation.vue                # Survey tab navigation
+├── SurveyFooter.vue                    # Survey page footer
+└── SurveyPropertyAssessment.vue        # Property assessment tab
 ```
 
 ### Client Module

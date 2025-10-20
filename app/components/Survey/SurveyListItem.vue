@@ -32,7 +32,7 @@
         label="Start Energy Consultation"
         color="primary"
         size="sm"
-        disabled
+        :to="`/survey/${survey.id}`"
       />
     </div>
   </div>
