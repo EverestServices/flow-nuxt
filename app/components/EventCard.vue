@@ -232,17 +232,14 @@ const meetingProgress = computed(() => {
 })
 
 const timeClasses = computed(() => {
-  return 'bg-[#2050e3]'
   return props.type === 'primary'
       ? 'bg-[#2050e3]'
       : 'bg-[rgba(148,178,29,0.5)]'
 })
 
 const timeTextColor = computed(() => {
-  return 'text-white'
   return props.type === 'primary' ? 'text-white' : 'text-[#373737]'
 })
-
 
 // Update progress every minute
 const updateCurrentTime = () => {
