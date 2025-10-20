@@ -1,8 +1,9 @@
 <template>
   <div
-    class="cursor-pointer bg-center bg-cover bg-no-repeat box-border relative rounded-full shrink-0 w-full border border-white overflow-hidden"
-    style="background: linear-gradient(0deg, rgba(180, 192, 219, 0.45) 0%, rgba(180, 192, 219, 0.45) 100%), linear-gradient(90deg, rgba(249, 249, 249, 0.70) 7.65%, rgba(239, 255, 174, 0.70) 92.18%);"
+    class="cursor-pointer bg-center bg-cover bg-no-repeat box-border relative rounded-full shrink-0 w-full border-2 border-white dark:border-black/30 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-blue-400 dark:hover:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/50 dark:focus:ring-blue-400/50"
+    :style="eventBackgroundStyle"
     @click="emit('click')"
+    tabindex="0"
   >
     <!-- Progress overlay -->
     <div
@@ -11,10 +12,9 @@
       :style="{ zIndex: 0 }"
     >
       <div
-        class="h-full rounded-full bg-gradient-to-r from-[#f7f7f7] to-[#efffae]/50"
+        class="h-full rounded-full bg-gradient-to-r from-[#f7f7f7] to-[#efffae]/50 dark:from-gray-700 dark:to-gray-600"
         :style="{
           width: `${meetingProgress}%`,
-          //background: 'linear-gradient(to right, rgba(34, 197, 94, 0.4), rgba(56, 178, 172, 0.4))',
         }"
       ></div>
     </div>
@@ -23,16 +23,16 @@
     <div class="relative z-10 flex gap-[10px] items-center p-[10px]">
     <div
         class="rounded-full flex items-center justify-center w-12 h-12
-         bg-white/30
+         bg-white/30 dark:bg-black/30
          backdrop-blur-md
-         border border-white
+         border border-white dark:border-black/50
          text-white font-medium
          shadow-lg
-         hover:bg-white/30
+         hover:bg-white/30 dark:hover:bg-black/40
          transition">
-      <Icon :name="getMeetingIcon(meetingType)" class="w-5 h-5 text-gray-700" />
+      <Icon :name="getMeetingIcon(meetingType)" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
     </div>
-    <div class="basis-0 flex flex-col grow items-start leading-[0] min-h-px min-w-px relative shrink-0 text-black">
+    <div class="basis-0 flex flex-col grow items-start leading-[0] min-h-px min-w-px relative shrink-0 text-black dark:text-white">
       <div class="flex flex-col font-bold justify-center relative shrink-0 text-[14px] w-full font-outfit">
         <p class="leading-normal">{{ title }}</p>
       </div>
@@ -52,12 +52,12 @@
           <img
             :src="colleague.avatar_url || defaultAvatar"
             :alt="colleague.first_name || colleague.email"
-            class="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm hover:z-10 transition-transform hover:scale-110"
+            class="w-11 h-11 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm hover:z-10 transition-transform hover:scale-110"
             @error="handleImageError"
           />
           <!-- Online status indicator -->
           <div
-            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-700"
             :class="isColleagueOnline(colleague) ? 'bg-green-500' : 'bg-gray-400'"
             :title="isColleagueOnline(colleague) ? `${getColleagueName(colleague)} is online` : `${getColleagueName(colleague)} is offline`"
           ></div>
@@ -65,7 +65,7 @@
         <!-- Show more indicator if there are more than 3 attendees -->
         <div
           v-if="attendeeColleagues.length > 3"
-          class="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white shadow-sm"
+          class="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-200 border-2 border-white dark:border-gray-800 shadow-sm"
           :title="`+${attendeeColleagues.length - 3} more attendees`"
         >
           +{{ attendeeColleagues.length - 3 }}
@@ -197,6 +197,32 @@ const getMeetingIcon = (meetingType) => {
   return iconMap[meetingType] || iconMap['meeting']
 }
 
+// Reactive dark mode detection
+const isDarkMode = ref(false)
+
+// Event background style with dark mode support
+const eventBackgroundStyle = computed(() => {
+  if (isDarkMode.value) {
+    // Dark mode gradient
+    return {
+      background: 'linear-gradient(0deg, rgba(30, 41, 59, 0.45) 0%, rgba(30, 41, 59, 0.45) 100%), linear-gradient(90deg, rgba(51, 65, 85, 0.70) 7.65%, rgba(71, 85, 105, 0.70) 92.18%)'
+    }
+  } else {
+    // Light mode gradient (original)
+    return {
+      background: 'linear-gradient(0deg, rgba(180, 192, 219, 0.45) 0%, rgba(180, 192, 219, 0.45) 100%), linear-gradient(90deg, rgba(249, 249, 249, 0.70) 7.65%, rgba(239, 255, 174, 0.70) 92.18%)'
+    }
+  }
+})
+
+// Watch for dark mode changes
+const updateDarkMode = () => {
+  isDarkMode.value = document.documentElement.classList.contains('dark')
+}
+
+// Observer for dark mode changes
+let darkModeObserver = null
+
 // Reactive time reference for real-time updates
 const currentTime = ref(new Date())
 let timeInterval = null
@@ -232,17 +258,12 @@ const meetingProgress = computed(() => {
 })
 
 const timeClasses = computed(() => {
-  return 'bg-[#2050e3]'
-  return props.type === 'primary'
-      ? 'bg-[#2050e3]'
-      : 'bg-[rgba(148,178,29,0.5)]'
+  return 'bg-[#2050e3] dark:bg-blue-600'
 })
 
 const timeTextColor = computed(() => {
-  return 'text-white'
-  return props.type === 'primary' ? 'text-white' : 'text-[#373737]'
+  return 'text-white dark:text-gray-100'
 })
-
 
 // Update progress every minute
 const updateCurrentTime = () => {
@@ -272,12 +293,28 @@ onMounted(() => {
   if (props.attendees && props.attendees.length > 0) {
     fetchColleagues()
   }
+
+  // Initialize dark mode detection
+  updateDarkMode()
+
+  // Watch for dark mode changes using MutationObserver
+  darkModeObserver = new MutationObserver(() => {
+    updateDarkMode()
+  })
+
+  darkModeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  })
 })
 
 // Cleanup interval when component unmounts
 onUnmounted(() => {
   if (timeInterval) {
     clearInterval(timeInterval)
+  }
+  if (darkModeObserver) {
+    darkModeObserver.disconnect()
   }
 })
 </script>

@@ -22,10 +22,10 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   rounded: 'rounded-4xl',
   shadow: 'shadow-lg',
-  background: 'bg-white/30',
+  background: 'bg-white/30 dark:bg-black/20',
   textColor: '',
-  border: 'border border-white',
-  hover: 'hover:bg-white/30',
+  border: 'border border-white dark:border-black/50',
+  hover: 'hover:bg-white/30 dark:hover:bg-black/30',
   transition: true,
   blur: 'backdrop-blur-md',
   width: '',

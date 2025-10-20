@@ -5,7 +5,7 @@
 
   <button
     @click="showQuickActions = true"
-    class="cursor-pointer px-4 py-3 flex justify-between items-center border border-white text-sm font-bold rounded-full fixed top-7 left-1/2 transform -translate-x-1/2 z-30 gap-x-4 hover:scale-105 transition-transform"
+    class="cursor-pointer px-4 py-3 flex justify-between items-center border border-white text-sm font-bold rounded-full fixed top-6 left-1/2 transform -translate-x-1/2 z-30 gap-x-4 hover:scale-105 transition-transform text-black backdrop-blur-sm"
     style="background: linear-gradient(0deg, rgba(180, 192, 219, 0.45) 0%, rgba(180, 192, 219, 0.45) 100%), linear-gradient(90deg, rgba(249, 249, 249, 0.70) 7.65%, rgba(239, 255, 174, 0.70) 92.18%);"
   >
     <span>Quick Actions</span>
@@ -14,7 +14,7 @@
 
   <div class="flex flex-col space-y-8">
     <!-- welcome and upcoming events -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 min-h-96">
+    <div class="grid grid-cols-1 lg:grid-cols-2 min-h-96 text-black dark:text-white">
       <div class="basis-0 flex flex-col items-start justify-center">
         <div class="text-5xl font-thin outfit">Welcome <strong class="font-black">{{ userName }}</strong>, these things<br />are waiting for you <strong class="font-black">today</strong></div>
         <div class="text-2xl outfit font-thin">Today is {{ currentDay }}</div>
@@ -24,7 +24,7 @@
         <div v-if="upcomingEvents.length === 0" class="text-gray-500 text-sm">
           No events scheduled for today
         </div>
-        <div v-else class="text-xs text-gray-400 mb-2">Click on events to view details</div>
+        <div v-else class="flex flex-col basis-0 items-start justify-center gap-2 w-full">
         <EventCard
           v-for="(event, index) in upcomingEvents"
           :key="event.id || index"
@@ -41,6 +41,8 @@
           :meeting-type="event.meetingType"
           @click="openEventDetail(event)"
         />
+          <div class="text-xs text-gray-400 mb-2 text-center  w-full">Click on events to view details</div>
+          </div>
       </div>
     </div>
 
