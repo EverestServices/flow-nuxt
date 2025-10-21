@@ -9,7 +9,8 @@ import {
 export function clonePolygonData(polygons: PolygonSurface[]): PolygonSurface[] {
   return polygons.map((p) => ({
     ...toRaw(p),
-    points: toRaw(p.points),
+    // deep copy point coordinates to avoid mutating snapshots
+    points: toRaw(p.points).map((pt) => ({ x: pt.x, y: pt.y })),
   }));
 }
 const ssrSafeStorage = process.client

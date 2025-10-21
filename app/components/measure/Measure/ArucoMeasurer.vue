@@ -121,8 +121,11 @@
               <Icon name="i-lucide-zoom-in" class="w-5 h-5" />
             </UButton>
             <UBadge color="neutral" size="sm">{{ pixelPerMeterLabel }}</UBadge>
-            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="undoLastPoint">
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleUndo">
               <Icon name="i-lucide-undo-2" class="w-5 h-5" />
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleRedo">
+              <Icon name="i-lucide-redo-2" class="w-5 h-5" />
             </UButton>
             <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="resetCurrentEdit">
               <Icon name="i-lucide-rotate-ccw" class="w-5 h-5" />
@@ -175,7 +178,7 @@ import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
-import { useWallStore } from '@/stores/WallStore';
+import { useWallStore, clonePolygonData } from '@/stores/WallStore';
 import { useRoute } from 'vue-router';
 const store = useWallStore();
 const route = useRoute();
@@ -230,6 +233,48 @@ const calibrationEnd = ref<Point | null>(null);
 const calibrationLength = ref<number | null>(null);
 const calibrationMode = ref<boolean>(false);
 
+type HistoryEntry = {
+  polygons: PolygonSurface[];
+  current: PolygonSurface | null;
+};
+const undoStack = ref<HistoryEntry[]>([]);
+const redoStack = ref<HistoryEntry[]>([]);
+
+const snapshot = (): HistoryEntry => {
+  const polyClone = clonePolygonData(polygons.value as PolygonSurface[]);
+  const currentClone = currentPolygon.value
+    ? clonePolygonData([currentPolygon.value as PolygonSurface])[0]
+    : null;
+  return { polygons: polyClone, current: currentClone } as HistoryEntry;
+};
+const applySnapshot = (s: HistoryEntry) => {
+  polygons.value = clonePolygonData(s.polygons);
+  currentPolygon.value = s.current
+    ? (clonePolygonData([s.current as PolygonSurface])[0] as PolygonSurface) ?? null
+    : null;
+  drawAllPolygons();
+};
+const pushHistory = () => {
+  undoStack.value.push(snapshot());
+  redoStack.value = [];
+};
+const undo = () => {
+  if (undoStack.value.length === 0) return;
+  const prev = undoStack.value.pop()!;
+  const cur = snapshot();
+  redoStack.value.push(cur);
+  applySnapshot(prev);
+};
+const redo = () => {
+  if (redoStack.value.length === 0) return;
+  const next = redoStack.value.pop()!;
+  const cur = snapshot();
+  undoStack.value.push(cur);
+  applySnapshot(next);
+};
+const handleUndo = () => undo();
+const handleRedo = () => redo();
+
 const onUpdateVisibility = (index: number, value: boolean) => {
   const list = polygons.value as PolygonSurface[];
   const item = list[index];
@@ -271,6 +316,23 @@ const denormalizePoint = (norm: Point): Point => {
     x: norm.x * rect.width,
     y: norm.y * rect.height,
   };
+};
+
+const pointSegmentDistance = (p: Point, a: Point, b: Point): { dist: number; t: number } => {
+  const ax = a.x, ay = a.y;
+  const bx = b.x, by = b.y;
+  const abx = bx - ax;
+  const aby = by - ay;
+  const apx = p.x - ax;
+  const apy = p.y - ay;
+  const ab2 = abx * abx + aby * aby;
+  const dot = ab2 === 0 ? 0 : (apx * abx + apy * aby) / ab2;
+  const t = Math.max(0, Math.min(1, dot));
+  const projx = ax + t * abx;
+  const projy = ay + t * aby;
+  const dx = p.x - projx;
+  const dy = p.y - projy;
+  return { dist: Math.hypot(dx, dy), t };
 };
 
 const isPointInPolygon = (pt: Point, points: Point[]): boolean => {
@@ -668,6 +730,44 @@ const handleCanvasClick = (event: MouseEvent) => {
 
     return;
   }
+  if (editPointsMode.value) {
+    const clickPoint = normalizePoint(getCanvasCoords(event));
+    const list = polygons.value as PolygonSurface[];
+    let target: PolygonSurface | null = null;
+    if (selectedPolygonId.value) {
+      target = list.find((p) => p.id === selectedPolygonId.value) ?? null;
+    }
+    if (!target) {
+      for (let idx = list.length - 1; idx >= 0; idx--) {
+        const p = list[idx];
+        if (!p) continue;
+        if (p.visible === false || !p.closed || p.points.length < 3) continue;
+        if (isPointInPolygon(clickPoint, p.points)) {
+          target = p;
+          break;
+        }
+      }
+    }
+    if (!target || !target.closed || target.points.length < 2) return;
+    let best = { dist: Number.POSITIVE_INFINITY, seg: -1, t: 0 } as { dist: number; seg: number; t: number };
+    for (let i = 0; i < target.points.length; i++) {
+      const j = (i + 1) % target.points.length;
+      const a = target.points[i]!;
+      const b = target.points[j]!;
+      const d = pointSegmentDistance(clickPoint, a, b);
+      if (d.dist < best.dist) best = { dist: d.dist, seg: i, t: d.t };
+    }
+    if (best.seg >= 0 && best.dist < 0.03) {
+      pushHistory();
+      const a = target.points[best.seg]!;
+      const b = target.points[(best.seg + 1) % target.points.length]!;
+      const newP: Point = { x: a.x + best.t * (b.x - a.x), y: a.y + best.t * (b.y - a.y) };
+      target.points.splice(best.seg + 1, 0, newP);
+      selectedPolygonId.value = target.id;
+      drawAllPolygons();
+    }
+    return;
+  }
   if (!editingMode.value) {
     const clickPoint = normalizePoint(getCanvasCoords(event));
     // Legfelül lévő találat preferálása
@@ -686,6 +786,7 @@ const handleCanvasClick = (event: MouseEvent) => {
     return;
   }
   const clickPoint = normalizePoint(getCanvasCoords(event));
+  pushHistory();
   if (!currentPolygon.value || currentPolygon.value.closed) {
     currentPolygon.value = {
       id: crypto.randomUUID(),
@@ -694,7 +795,7 @@ const handleCanvasClick = (event: MouseEvent) => {
     };
   }
   const existingPoints = currentPolygon.value.points;
-  if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0])) {
+  if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
     currentPolygon.value.closed = true;
     polygons.value.push(currentPolygon.value);
     currentPolygon.value = null;
@@ -741,7 +842,9 @@ const handleMouseDown = (event: MouseEvent | TouchEvent) => {
 
   for (const polygon of polygons.value) {
     for (let i = 0; i < polygon.points.length; i++) {
-      if (isNearPoint(click, polygon.points[i])) {
+      const pi = polygon.points[i] as Point | undefined;
+      if (pi && isNearPoint(click, pi)) {
+        pushHistory();
         draggingPoint.value = { polygonId: polygon.id, index: i, type: 'polygon' };
         return;
       }
@@ -761,10 +864,12 @@ const handleMouseMove = (event: MouseEvent) => {
     const polygon = polygons.value.find((p) => p.id === polygonId);
     if (polygon) polygon.points[index] = mousePos.value;
   } else if (draggingPoint.value.type === 'calibration') {
-    if (draggingPoint.value.index === 0 && calibrationStart.value)
-      calibrationStart.value = mousePos.value;
-    else if (draggingPoint.value.index === 1 && calibrationEnd.value)
-      calibrationEnd.value = mousePos.value;
+    if (mousePos.value) {
+      if (draggingPoint.value.index === 0 && calibrationStart.value)
+        calibrationStart.value = mousePos.value;
+      else if (draggingPoint.value.index === 1 && calibrationEnd.value)
+        calibrationEnd.value = mousePos.value;
+    }
   }
 
   drawAllPolygons();
@@ -775,13 +880,11 @@ const handleMouseUp = () => {
 };
 
 const undoLastPoint = () => {
-  if (currentPolygon.value && !currentPolygon.value.closed) {
-    currentPolygon.value.points.pop();
-    drawAllPolygons();
-  }
+  undo();
 };
 const resetCurrentEdit = () => {
   if (currentPolygon.value && !currentPolygon.value.closed) {
+    pushHistory();
     currentPolygon.value = null;
     drawAllPolygons();
   }
@@ -805,15 +908,16 @@ const onImageLoad = () => {
   zoomScale.value = Math.min(scaleX, scaleY);
 
   // ⬇️ Itt update-eljük a store-ban az image-et is
-  if (wall.value && wall.value.images.length > 0) {
-    const img = wall.value.images[0];
-    img.processedImageWidth = imageWidth.value;
-    img.processedImageHeight = imageHeight.value;
-
-    store.setWall(wall.value.id, {
-      ...wall.value,
-      images: [...wall.value.images],
-    });
+  if (wall.value && wall.value.images && wall.value.images.length > 0) {
+    const imgMeta = wall.value.images?.[0];
+    if (imgMeta) {
+      imgMeta.processedImageWidth = imageWidth.value;
+      imgMeta.processedImageHeight = imageHeight.value;
+      store.setWall(wall.value.id, {
+        ...wall.value,
+        images: [...wall.value.images],
+      });
+    }
   }
 
   void nextTick(() => {
@@ -838,6 +942,7 @@ onBeforeUnmount(() => {
 });
 
 const removePoligonsById = (id: string) => {
+  pushHistory();
   polygons.value = polygons.value.filter((polygon: PolygonSurface) => polygon.id !== id);
   if (selectedPolygonId.value === id) selectedPolygonId.value = null;
   drawAllPolygons();
@@ -863,6 +968,7 @@ const restoreCalibration = () => {
   meterPerPixel.value = storedMeterPerPixel.value;
 };
 const removeAllPoligon = () => {
+  pushHistory();
   polygons.value = [];
   selectedPolygonId.value = null;
   drawAllPolygons();
