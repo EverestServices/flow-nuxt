@@ -39,17 +39,7 @@
           {{ editingMode ? 'Felületek hozzáadás befejezése' : 'Felületek hozzáadása' }}
         </UButton>
 
-        <div class="flex items-center gap-2 bg-secondary/20 rounded-lg">
-          <UButton color="neutral" variant="soft" class="p-2" @click="zoomBy(-0.1)">
-            <Icon name="i-lucide-zoom-out" class="w-5.5" />
-          </UButton>
-
-          <span class="cursor-default"> {{ (zoomScale * 100).toFixed(0) }}% </span>
-
-          <UButton color="neutral" variant="soft" class="p-2" @click="zoomBy(+0.1)">
-            <Icon name="i-lucide-zoom-in" class="w-5.5" />
-          </UButton>
-        </div>
+        
 
         <UButton
           v-if="meterPerPixel != storedMeterPerPixel"
@@ -84,31 +74,93 @@
         </div>
       </div>
 
-      <div ref="zoomContainerRef" class="overflow-auto border rounded" style="height: 70vh">
-        <div
-          class="relative inline-block"
-          ref="zoomWrapperRef"
-          :style="{
-            width: `${imageWidth * zoomScale}px`,
-            height: `${imageHeight * zoomScale}px`,
-          }"
-        >
-          <img
-            :src="imageSrc"
-            ref="imageRef"
-            @load="onImageLoad"
-            class="select-none pointer-events-none w-full h-full"
-          />
-          <canvas
-            ref="canvasRef"
-            class="absolute top-0 left-0 cursor-crosshair"
-            :style="{ zIndex: 5 }"
-            @click="handleCanvasClick"
-            @mousedown="handleMouseDown"
-            @mousemove="handleMouseMove"
-            @mouseup="handleMouseUp"
-            @touchstart="handleCanvasTouch"
-          ></canvas>
+      <div class="relative">
+        <div ref="zoomContainerRef" class="overflow-auto border rounded" style="height: 70vh">
+          <div
+            class="relative inline-block"
+            ref="zoomWrapperRef"
+            :style="{
+              width: `${imageWidth * zoomScale}px`,
+              height: `${imageHeight * zoomScale}px`,
+            }"
+          >
+            <img
+              :src="imageSrc"
+              ref="imageRef"
+              @load="onImageLoad"
+              class="select-none pointer-events-none w-full h-full"
+            />
+            <canvas
+              ref="canvasRef"
+              :class="[
+                'absolute top-0 left-0',
+                (editingMode || calibrationMode) ? 'cursor-crosshair' : (editPointsMode ? 'cursor-grab' : 'cursor-default')
+              ]"
+              :style="{ zIndex: 5 }"
+              @click="handleCanvasClick"
+              @mousedown="handleMouseDown"
+              @mousemove="handleMouseMove"
+              @mouseup="handleMouseUp"
+              @touchstart="handleCanvasTouch"
+            ></canvas>
+          </div>
+        </div>
+        <!-- Absolute overlays pinned to outer wrapper (not scrolling with content) -->
+        <div class="pointer-events-none absolute inset-0 z-20">
+          <div class="pointer-events-auto absolute right-2 top-2 flex items-center gap-2">
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="zoomBy(-0.1)">
+              <Icon name="i-lucide-zoom-out" class="w-5 h-5" />
+            </UButton>
+            <UBadge color="neutral" size="sm">{{ (zoomScale * 100).toFixed(0) }}%</UBadge>
+            <UButton size="md" color="neutral" variant="soft" class="px-3 py-2 rounded-full" @click="() => gotoZoom(1)">
+              100%
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="zoomBy(+0.1)">
+              <Icon name="i-lucide-zoom-in" class="w-5 h-5" />
+            </UButton>
+            <UBadge color="neutral" size="sm">{{ pixelPerMeterLabel }}</UBadge>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="undoLastPoint">
+              <Icon name="i-lucide-undo-2" class="w-5 h-5" />
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="resetCurrentEdit">
+              <Icon name="i-lucide-rotate-ccw" class="w-5 h-5" />
+            </UButton>
+          </div>
+
+          <div class="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-2 bg-base-100/80 backdrop-blur rounded-full shadow px-2 py-1 flex items-center gap-1">
+            <UButton
+              size="md"
+              :color="!editingMode && !calibrationMode && !editPointsMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('view')"
+            >
+              View
+            </UButton>
+            <UButton
+              size="md"
+              :color="editingMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('draw')"
+            >
+              Draw Surface
+            </UButton>
+            <UButton
+              size="md"
+              :color="editPointsMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('edit')"
+            >
+              Edit
+            </UButton>
+            <UButton
+              size="md"
+              :color="calibrationMode ? 'warning' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('calibrate')"
+            >
+              Setup Reference
+            </UButton>
+          </div>
         </div>
       </div>
     </div>
@@ -116,9 +168,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, unref } from 'vue';
 import PolygonList from './PolygonList.vue';
-import type { Point, PolygonSurface } from '@/model/Measure/ArucoWallSurface';
+import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
 import { useWallStore } from '@/stores/WallStore';
@@ -126,7 +178,12 @@ import { useRoute } from 'vue-router';
 const store = useWallStore();
 const route = useRoute();
 const wallId = computed(() => String(route.params.wallId));
-const wall = computed(() => store.walls[wallId.value]);
+const wall = computed<Wall>(() => {
+  const mapRaw = unref(store.walls) as Record<string, Wall> | undefined;
+  const map: Record<string, Wall> = mapRaw ?? {};
+  const w = map[wallId.value] as Wall | undefined;
+  return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
+});
 const firstImage = computed(() => wall.value?.images?.[0] ?? null);
 
 const zoomScale = ref(1);
@@ -136,6 +193,12 @@ const imageSrc = computed(
 const error = ref<string | null>(null);
 const meterPerPixel = ref<number>(firstImage.value?.meterPerPixel || 0);
 const storedMeterPerPixel = computed(() => firstImage.value?.meterPerPixel || 1);
+const pixelPerMeterLabel = computed(() => {
+  const mpp = meterPerPixel.value || 0;
+  if (!mpp) return '— px/m';
+  const val = 1 / mpp;
+  return `${val.toFixed(1)} px/m`;
+});
 const imageRef = ref<HTMLImageElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const zoomContainerRef = ref<HTMLDivElement | null>(null);
@@ -154,6 +217,7 @@ const polygons = computed({
 
 const currentPolygon = ref<PolygonSurface | null>(null);
 const editingMode = ref<boolean>(false);
+const editPointsMode = ref<boolean>(false);
 const draggingPoint = ref<{
   polygonId?: string;
   index: number;
@@ -232,6 +296,7 @@ const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 };
 
 const handleCanvasTouch = (event: TouchEvent) => {
+  if (!editPointsMode.value) return; // csak szerkesztés módban kezeljük a pontmozgatást érintéssel
   const touch = event.touches[0];
   const rect = canvasRef.value!.getBoundingClientRect();
   const touchPoint: Point = normalizePoint({
@@ -275,14 +340,15 @@ const drawCircle = (
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  radius = 6,
-  fillColor = 'rgba(0,0,255, 0.7)',
+  radius = 7,
+  strokeColor = '#f59e0b',
 ) => {
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, 3 * Math.PI);
-  ctx.fillStyle = fillColor;
+  ctx.arc(x, y, radius, 0, 2 * Math.PI);
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255, 0.5)';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = strokeColor;
   ctx.stroke();
 };
 
@@ -290,9 +356,9 @@ const getPolygonColors = (poly: PolygonSurface) => {
   switch (poly.type) {
     case SurfaceType.FACADE:
       return {
-        strokeColor: '#3b82f6',
-        fillColor: 'rgba(59,130,246,0.2)',
-        pointColor: 'rgba(59,130,246,0.7)',
+        strokeColor: '#f59e0b',
+        fillColor: 'rgba(245,158,11,0.15)',
+        pointColor: '#f59e0b',
       };
     case SurfaceType.WINDOW_DOOR:
       return {
@@ -313,6 +379,49 @@ const getPolygonColors = (poly: PolygonSurface) => {
         pointColor: 'rgba(75,85,99,0.7)',
       };
   }
+};
+
+const roundRect = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) => {
+  const min = Math.min(w, h) / 2;
+  const radius = Math.min(r, min);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+};
+
+const drawLabel = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number) => {
+  ctx.save();
+  ctx.font = 'bold 12px sans-serif';
+  const metrics = ctx.measureText(text);
+  const paddingX = 8;
+  const paddingY = 4;
+  const width = metrics.width + paddingX * 2;
+  const height = 20;
+  const rectX = x;
+  const rectY = y - height + 4;
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = '#111827';
+  roundRect(ctx, rectX, rectY, width, height, 6);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, rectX + paddingX, rectY + height - 6);
+  ctx.restore();
 };
 
 const drawAllPolygons = () => {
@@ -341,14 +450,29 @@ const drawAllPolygons = () => {
     if (denormPoints.length < 1) continue;
     const { strokeColor, fillColor, pointColor } = getPolygonColors(poly);
 
+    // Draw solid segments for existing points
     ctx.beginPath();
+    ctx.setLineDash([]);
     ctx.moveTo(denormPoints[0].x, denormPoints[0].y);
     for (let i = 1; i < denormPoints.length; i++) {
       ctx.lineTo(denormPoints[i].x, denormPoints[i].y);
     }
-    if (!poly.closed && currentPolygon.value && mousePos.value) {
-      const mouse = denormalizePoint(mousePos.value);
-      ctx.lineTo(mouse.x, mouse.y);
+    // Provisional dashed segment to cursor while drawing
+    if (!poly.closed && currentPolygon.value && mousePos.value && denormPoints.length > 0) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const lastIndex = denormPoints.length - 1;
+      if (lastIndex >= 0) {
+        const last: Point = denormPoints[lastIndex]!;
+        const mouse = denormalizePoint(mousePos.value);
+        ctx.beginPath();
+        ctx.setLineDash([6, 6]);
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(mouse.x, mouse.y);
+        ctx.stroke();
+      }
     }
     if (poly.closed) {
       ctx.closePath();
@@ -359,14 +483,16 @@ const drawAllPolygons = () => {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    denormPoints.forEach((p, idx) => {
-      const isSelected =
-        draggingPoint.value?.type === 'polygon' &&
-        draggingPoint.value.polygonId === poly.id &&
-        draggingPoint.value.index === idx;
+    if (editingMode.value || editPointsMode.value) {
+      denormPoints.forEach((p, idx) => {
+        const isSelected =
+          draggingPoint.value?.type === 'polygon' &&
+          draggingPoint.value.polygonId === poly.id &&
+          draggingPoint.value.index === idx;
 
-      drawCircle(ctx, p.x, p.y, isSelected ? 8 : 6, isSelected ? 'limegreen' : pointColor);
-    });
+        drawCircle(ctx, p.x, p.y, isSelected ? 9 : 7, isSelected ? '#22c55e' : pointColor);
+      });
+    }
 
     if (poly.closed && denormPoints.length >= 3) {
       for (let i = 0; i < denormPoints.length; i++) {
@@ -379,11 +505,11 @@ const drawAllPolygons = () => {
         const length = (pxDist / rect.width) * img.naturalWidth * pixelSize;
         const midX = (p1.x + p2.x) / 2;
         const midY = (p1.y + p2.y) / 2;
-        drawText(ctx, `${length.toFixed(2)} m`, midX + 5, midY - 5);
+        drawLabel(ctx, `${length.toFixed(2)} m`, midX - 22, midY - 8);
       }
       const area = calculatePolygonArea(poly.points, pixelSize, img);
       const center = getPolygonCenter(denormPoints);
-      drawText(ctx, `${area.toFixed(2)} m²`, center.x, center.y);
+      drawLabel(ctx, `${area.toFixed(2)} m²`, center.x - 18, center.y - 8);
     }
   }
   if (calibrationMode.value && calibrationStart.value) {
@@ -409,10 +535,11 @@ const drawAllPolygons = () => {
       const midX = (p1.x + p2.x) / 2;
       const midY = (p1.y + p2.y) / 2;
 
-      drawText(ctx, 'Kalibráció', midX + 5, midY - 5);
+      drawLabel(ctx, 'Kalibráció', midX - 20, midY - 8);
     }
   }
 };
+
 const applyCalibration = () => {
   if (
     !calibrationStart.value ||
@@ -435,10 +562,62 @@ const applyCalibration = () => {
   meterPerPixel.value = calibrationLength.value / pixelDist;
 };
 
+const gotoZoom = (targetScale: number) => {
+  const container = zoomContainerRef.value;
+  if (!container) return;
+  const imageW = imageWidth.value;
+  const imageH = imageHeight.value;
+  const prevScale = zoomScale.value;
+  const prevW = imageW * prevScale;
+  const prevH = imageH * prevScale;
+  const centerX = container.scrollLeft + container.clientWidth / 2;
+  const centerY = container.scrollTop + container.clientHeight / 2;
+  const relX = prevW > 0 ? centerX / prevW : 0.5;
+  const relY = prevH > 0 ? centerY / prevH : 0.5;
+  zoomScale.value = Math.min(3, Math.max(0.2, targetScale));
+  void nextTick(() => {
+    const newW = imageW * zoomScale.value;
+    const newH = imageH * zoomScale.value;
+    const newCenterX = relX * newW;
+    const newCenterY = relY * newH;
+    container.scrollLeft = newCenterX - container.clientWidth / 2;
+    container.scrollTop = newCenterY - container.clientHeight / 2;
+  });
+};
+
+type Mode = 'view' | 'draw' | 'edit' | 'calibrate';
+const setMode = (mode: Mode) => {
+  // Finish/cleanup current operations
+  // Stop dragging
+  draggingPoint.value = null;
+  // End unfinished drawing
+  if (currentPolygon.value && !currentPolygon.value.closed) {
+    currentPolygon.value = null;
+  }
+  // Reset calibration draft line if leaving calibrate
+  if (mode !== 'calibrate') {
+    calibrationStart.value = null;
+    calibrationEnd.value = null;
+  }
+
+  // Exclusive modes
+  editingMode.value = mode === 'draw';
+  editPointsMode.value = mode === 'edit';
+  calibrationMode.value = mode === 'calibrate';
+
+  void nextTick(() => {
+    drawAllPolygons();
+  });
+};
+
 const toggleCalibration = () => {
-  editingMode.value = false;
-  calibrationMode.value = !calibrationMode.value;
-  drawAllPolygons();
+  if (calibrationMode.value) setMode('view');
+  else setMode('calibrate');
+};
+
+const togglePolygonEditing = () => {
+  if (editingMode.value) setMode('view');
+  else setMode('draw');
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
@@ -494,7 +673,9 @@ const getCanvasCoordsFromEvent = (event: MouseEvent | TouchEvent): Point => {
     y: clientY - rect.top,
   };
 };
+
 const handleMouseDown = (event: MouseEvent | TouchEvent) => {
+  if (!(editPointsMode.value || calibrationMode.value)) return;
   const click = normalizePoint(getCanvasCoordsFromEvent(event));
   // Kalibrációs pontok kezelése
   if (calibrationMode.value) {
@@ -543,15 +724,17 @@ const handleMouseUp = () => {
   draggingPoint.value = null;
 };
 
-const togglePolygonEditing = () => {
-  calibrationMode.value = false;
-  editingMode.value = !editingMode.value;
-  if (!editingMode.value) {
-    currentPolygon.value = null;
-  }
-  void nextTick(() => {
+const undoLastPoint = () => {
+  if (currentPolygon.value && !currentPolygon.value.closed) {
+    currentPolygon.value.points.pop();
     drawAllPolygons();
-  });
+  }
+};
+const resetCurrentEdit = () => {
+  if (currentPolygon.value && !currentPolygon.value.closed) {
+    currentPolygon.value = null;
+    drawAllPolygons();
+  }
 };
 const imageWidth = ref(0);
 const imageHeight = ref(0);
@@ -650,8 +833,8 @@ const zoomBy = (delta: number) => {
   const centerY = container.scrollTop + container.clientHeight / 2;
 
   // A wrapperen belül, relatív hely arány a képhez képest
-  const relX = centerX / prevW;
-  const relY = centerY / prevH;
+  const relX = prevW > 0 ? centerX / prevW : 0.5;
+  const relY = prevH > 0 ? centerY / prevH : 0.5;
 
   // Új scale beállítás
   zoomScale.value = nextScale;
