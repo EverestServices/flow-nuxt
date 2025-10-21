@@ -9,20 +9,28 @@
             'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
             modelValue === tab.id
               ? 'bg-primary-500 text-white'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : tab.status === 'warning'
+                ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           ]"
           @click="$emit('update:modelValue', tab.id)"
         >
-          <!-- Tab Number -->
+          <!-- Tab Number/Icon -->
           <span
             :class="[
               'flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold',
               modelValue === tab.id
                 ? 'bg-white/20 text-white'
-                : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                : tab.status === 'completed'
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                  : tab.status === 'warning'
+                    ? 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
             ]"
           >
-            {{ tab.number }}
+            <UIcon v-if="tab.status === 'completed'" name="i-lucide-check" class="w-4 h-4" />
+            <UIcon v-else-if="tab.status === 'warning'" name="i-lucide-alert-triangle" class="w-4 h-4" />
+            <span v-else>{{ tab.number }}</span>
           </span>
 
           <!-- Tab Label -->
@@ -38,6 +46,7 @@ interface Tab {
   id: string
   label: string
   number: number
+  status?: 'pending' | 'warning' | 'completed'
 }
 
 interface Props {

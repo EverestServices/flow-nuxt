@@ -2,7 +2,7 @@
   <UDashboardPage>
     <UDashboardPanel grow>
       <UDashboardNavbar
-        title="New Client - Energy Consultation"
+        :title="isEditMode ? 'Edit Client - Energy Consultation' : 'New Client - Energy Consultation'"
       >
         <template #right>
           <UButton
@@ -26,7 +26,7 @@
               </div>
               <div class="flex-1">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ progressPercentage < 100 ? 'Creating New Client' : 'All Data Filled!' }}
+                  {{ progressPercentage < 100 ? (isEditMode ? 'Editing Client' : 'Creating New Client') : 'All Data Filled!' }}
                 </h2>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
                   {{ progressPercentage < 100 ? `${Math.round(progressPercentage)}% completed - fill in required fields` : 'Ready to save' }}
@@ -178,7 +178,7 @@
                 icon="i-heroicons-bolt"
                 :disabled="!isFormValid"
               >
-                Save and Start Consultation
+                {{ isEditMode ? 'Save and Continue Consultation' : 'Save and Start Consultation' }}
               </UButton>
             </div>
           </form>
@@ -194,11 +194,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const supabase = useSupabaseClient()
+
+// Check if we're editing from a survey
+const surveyId = computed(() => route.query.surveyId as string | undefined)
+const isEditMode = computed(() => !!surveyId.value)
 
 const form = ref({
   name: '',
@@ -209,6 +214,8 @@ const form = ref({
   street: '',
   houseNumber: ''
 })
+
+const clientId = ref<string | null>(null)
 
 // Calculate progress based on required fields
 const progressPercentage = computed(() => {
@@ -240,8 +247,55 @@ const fullAddress = computed(() => {
   return parts.join(' ')
 })
 
+// Load client data if editing from survey
+onMounted(async () => {
+  if (surveyId.value) {
+    try {
+      // Get survey with client data
+      const { data: survey, error } = await supabase
+        .from('surveys')
+        .select(`
+          client_id,
+          client:clients (
+            id,
+            name,
+            email,
+            phone,
+            postal_code,
+            city,
+            street,
+            house_number
+          )
+        `)
+        .eq('id', surveyId.value)
+        .single()
+
+      if (error) throw error
+
+      if (survey?.client) {
+        clientId.value = survey.client.id
+        form.value = {
+          name: survey.client.name || '',
+          email: survey.client.email || '',
+          phone: survey.client.phone || '',
+          postalCode: survey.client.postal_code || '',
+          city: survey.client.city || '',
+          street: survey.client.street || '',
+          houseNumber: survey.client.house_number || ''
+        }
+      }
+    } catch (error) {
+      console.error('Error loading client data:', error)
+    }
+  }
+})
+
 const handleCancel = () => {
-  router.push('/survey')
+  if (surveyId.value) {
+    router.push(`/survey/${surveyId.value}`)
+  } else {
+    router.push('/survey')
+  }
 }
 
 const handleSaveAndStart = async () => {
@@ -250,43 +304,64 @@ const handleSaveAndStart = async () => {
   }
 
   try {
-    // Get company_id from user profile
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id')
-      .single()
+    if (isEditMode.value && clientId.value) {
+      // Update existing client
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: form.value.name.trim(),
+          email: form.value.email.trim() || null,
+          phone: form.value.phone.trim() || null,
+          postal_code: form.value.postalCode.trim(),
+          city: form.value.city.trim(),
+          street: form.value.street.trim(),
+          house_number: form.value.houseNumber.trim()
+        })
+        .eq('id', clientId.value)
 
-    if (!profile?.company_id) {
-      console.error('No company_id found')
-      return
+      if (error) throw error
+
+      // Navigate back to survey
+      router.push(`/survey/${surveyId.value}`)
+    } else {
+      // Get company_id from user profile
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .single()
+
+      if (!profile?.company_id) {
+        console.error('No company_id found')
+        return
+      }
+
+      // Create new client
+      const { data: newClient, error } = await supabase
+        .from('clients')
+        .insert({
+          company_id: profile.company_id,
+          name: form.value.name.trim(),
+          email: form.value.email.trim() || null,
+          phone: form.value.phone.trim() || null,
+          postal_code: form.value.postalCode.trim(),
+          city: form.value.city.trim(),
+          street: form.value.street.trim(),
+          house_number: form.value.houseNumber.trim(),
+          status: 'active'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // TODO: Navigate to survey page with new client
+      console.log('New client created:', newClient)
+
+      // For now, navigate back to survey list
+      router.push('/survey')
     }
-
-    // Create new client
-    const { data: newClient, error } = await supabase
-      .from('clients')
-      .insert({
-        company_id: profile.company_id,
-        name: form.value.name.trim(),
-        email: form.value.email.trim() || null,
-        phone: form.value.phone.trim() || null,
-        postal_code: form.value.postalCode.trim(),
-        city: form.value.city.trim(),
-        street: form.value.street.trim(),
-        house_number: form.value.houseNumber.trim(),
-        status: 'active'
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    // TODO: Navigate to survey page with new client
-    console.log('New client created:', newClient)
-
-    // For now, navigate back to survey list
-    router.push('/survey')
   } catch (error) {
-    console.error('Error creating client:', error)
+    console.error('Error saving client:', error)
   }
 }
 </script>

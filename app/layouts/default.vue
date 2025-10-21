@@ -3,7 +3,7 @@
   <div class="bg-[#e7eae9]">
     <SideMenu />
 
-    <div class="min-h-screen w-screen pl-28 pr-8 pb-12">
+    <div class="min-h-screen w-screen pl-28">
       <slot></slot>
     </div>
   </div>

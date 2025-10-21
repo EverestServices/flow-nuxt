@@ -50,7 +50,7 @@
           <!-- Marker Mode Toggle -->
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600 dark:text-gray-300">Marker Mode</span>
-            <UToggle
+            <USwitch
               v-model="markerModeEnabled"
               @update:model-value="$emit('toggle-marker-mode', $event)"
             />
@@ -59,7 +59,7 @@
           <!-- Missing Items Warning -->
           <UButton
             :label="`Missing Items (${missingItemsCount})`"
-            icon="i-heroicons-exclamation-triangle"
+            :icon="missingItemsCount > 0 ? 'i-heroicons-exclamation-triangle' : undefined"
             color="orange"
             variant="outline"
             size="md"
