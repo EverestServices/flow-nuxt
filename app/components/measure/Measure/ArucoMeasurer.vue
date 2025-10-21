@@ -34,24 +34,11 @@
     <div class="col-span-3">
       <div class="flex flex-wrap content-between gap-8 mb-2 w-full">
         <UButton
-          @click="togglePolygonEditing"
-          :color="editingMode ? 'warning' : 'primary'"
-          style="z-index: 10"
-        >
-          {{ editingMode ? 'Felületek hozzáadás befejezése' : 'Felületek hozzáadása' }}
-        </UButton>
-
-        
-
-        <UButton
           v-if="meterPerPixel != storedMeterPerPixel"
           color="primary"
           @click="restoreCalibration"
         >
           Kalibráció visszaállítása
-        </UButton>
-        <UButton color="neutral" @click="toggleCalibration">
-          {{ calibrationMode ? 'Kalibráció befejezése' : 'Kalibráció indítása' }}
         </UButton>
 
         <div
