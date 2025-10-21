@@ -53,14 +53,16 @@
     <div
       v-for="(polygon, index) in polygons"
       :key="polygon.id"
-      class="flex items-center flex-wrap justify-between gap-4 bg-base-100 p-3 border border-base-300 rounded-xl shadow-sm"
+      class="flex items-center flex-wrap justify-between gap-4 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
+      :class="polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300'"
+      @click="emit('select', polygon.id)"
     >
       <UButton
         :color="polygon.visible === false ? 'neutral' : 'primary'"
         variant="soft"
         size="sm"
         class="aspect-square p-2"
-        @click="toggleVisibility(index)"
+        @click.stop="toggleVisibility(index)"
         :title="polygon.visible === false ? 'Megjelenítés' : 'Elrejtés'"
       >
         <Icon v-if="polygon.visible === false" name="i-lucide-eye-off" class="w-5 h-5" />
@@ -74,6 +76,7 @@
         by="value"
         size="sm"
         class="w-40"
+        @click.stop
       />
 
       <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
@@ -81,7 +84,7 @@
       </div>
 
       <UButton
-        @click="deletePolygon(polygon)"
+        @click.stop="deletePolygon(polygon)"
         variant="ghost"
         color="error"
         size="sm"
@@ -121,11 +124,13 @@ const props = defineProps<{
   imageNaturalWidth: number;
   imageNaturalHeight: number;
   wallId: string;
+  selectedId?: string;
 }>();
 const emit = defineEmits<{
   (e: 'removePoligon', id: string): void;
   (e: 'removeAllPoligon'): void;
   (e: 'updateVisibility', index: number, value: boolean): void;
+  (e: 'select', id: string): void;
 }>();
 
 const windowDoorArea = ref(0);

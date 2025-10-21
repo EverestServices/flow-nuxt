@@ -22,9 +22,11 @@
         :meterPerPixel="meterPerPixel"
         :image-natural-height="imageRef.naturalHeight"
         :image-natural-width="imageRef.naturalWidth"
+        :selected-id="selectedPolygonId ?? ''"
         @removePoligon="removePoligonsById"
         @removeAllPoligon="removeAllPoligon"
-        @updateVisibility="(index, val) => (wall.polygons[index].visible = val)"
+        @updateVisibility="onUpdateVisibility"
+        @select="onListSelect"
       />
 
       <ExtraItemIcoList />
@@ -187,9 +189,7 @@ const wall = computed<Wall>(() => {
 const firstImage = computed(() => wall.value?.images?.[0] ?? null);
 
 const zoomScale = ref(1);
-const imageSrc = computed(
-  () => wall.value?.images?.[0].processedImageUrl || wall.value?.images?.[0].previewUrl || null,
-);
+const imageSrc = computed(() => firstImage.value?.processedImageUrl || firstImage.value?.previewUrl || null);
 const error = ref<string | null>(null);
 const meterPerPixel = ref<number>(firstImage.value?.meterPerPixel || 0);
 const storedMeterPerPixel = computed(() => firstImage.value?.meterPerPixel || 1);
@@ -218,6 +218,7 @@ const polygons = computed({
 const currentPolygon = ref<PolygonSurface | null>(null);
 const editingMode = ref<boolean>(false);
 const editPointsMode = ref<boolean>(false);
+const selectedPolygonId = ref<string | null>(null);
 const draggingPoint = ref<{
   polygonId?: string;
   index: number;
@@ -228,6 +229,19 @@ const calibrationStart = ref<Point | null>(null);
 const calibrationEnd = ref<Point | null>(null);
 const calibrationLength = ref<number | null>(null);
 const calibrationMode = ref<boolean>(false);
+
+const onUpdateVisibility = (index: number, value: boolean) => {
+  const list = polygons.value as PolygonSurface[];
+  const item = list[index];
+  if (!item) return;
+  item.visible = value;
+  drawAllPolygons();
+};
+
+const onListSelect = (id: string) => {
+  selectedPolygonId.value = id || null;
+  drawAllPolygons();
+};
 
 const isNearPoint = (p1: Point, p2: Point): boolean => {
   const dx = p1.x - p2.x;
@@ -257,6 +271,17 @@ const denormalizePoint = (norm: Point): Point => {
     x: norm.x * rect.width,
     y: norm.y * rect.height,
   };
+};
+
+const isPointInPolygon = (pt: Point, points: Point[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i].x, yi = points[i].y;
+    const xj = points[j].x, yj = points[j].y;
+    const intersect = (yi > pt.y) !== (yj > pt.y) && pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
 };
 
 const calculatePolygonArea = (
@@ -449,6 +474,7 @@ const drawAllPolygons = () => {
     const denormPoints = poly.points.map(denormalizePoint);
     if (denormPoints.length < 1) continue;
     const { strokeColor, fillColor, pointColor } = getPolygonColors(poly);
+    const isSelectedPoly = selectedPolygonId.value === poly.id;
 
     // Draw solid segments for existing points
     ctx.beginPath();
@@ -480,10 +506,18 @@ const drawAllPolygons = () => {
       ctx.fill();
     }
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.lineWidth = isSelectedPoly ? 3.5 : 2;
+    if (isSelectedPoly) {
+      ctx.save();
+      ctx.shadowColor = strokeColor;
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.stroke();
+    }
 
-    if (editingMode.value || editPointsMode.value) {
+    if (editingMode.value || editPointsMode.value || isSelectedPoly) {
       denormPoints.forEach((p, idx) => {
         const isSelected =
           draggingPoint.value?.type === 'polygon' &&
@@ -634,7 +668,23 @@ const handleCanvasClick = (event: MouseEvent) => {
 
     return;
   }
-  if (!editingMode.value) return;
+  if (!editingMode.value) {
+    const clickPoint = normalizePoint(getCanvasCoords(event));
+    // Legfelül lévő találat preferálása
+    for (let idx = polygons.value.length - 1; idx >= 0; idx--) {
+      const p = polygons.value[idx] as PolygonSurface | undefined;
+      if (!p) continue;
+      if (p.visible === false || p.points.length < 3) continue;
+      if (isPointInPolygon(clickPoint, p.points)) {
+        selectedPolygonId.value = p.id;
+        drawAllPolygons();
+        return;
+      }
+    }
+    selectedPolygonId.value = null;
+    drawAllPolygons();
+    return;
+  }
   const clickPoint = normalizePoint(getCanvasCoords(event));
   if (!currentPolygon.value || currentPolygon.value.closed) {
     currentPolygon.value = {
@@ -788,7 +838,9 @@ onBeforeUnmount(() => {
 });
 
 const removePoligonsById = (id: string) => {
-  polygons.value = polygons.value.filter((polygon: PolygonSurface) => polygon.id != id);
+  polygons.value = polygons.value.filter((polygon: PolygonSurface) => polygon.id !== id);
+  if (selectedPolygonId.value === id) selectedPolygonId.value = null;
+  drawAllPolygons();
 };
 watch(
   polygons,
@@ -812,6 +864,8 @@ const restoreCalibration = () => {
 };
 const removeAllPoligon = () => {
   polygons.value = [];
+  selectedPolygonId.value = null;
+  drawAllPolygons();
 };
 const zoomBy = (delta: number) => {
   const container = zoomContainerRef.value;
