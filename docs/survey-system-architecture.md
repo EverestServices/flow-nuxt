@@ -1,8 +1,9 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Version:** 1.0.0
-**Migration:** `003_create_survey_system.sql`
+**Last Updated:** 2025-10-21
+**Version:** 2.0.0
+**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`
 
 ---
 
@@ -28,6 +29,9 @@ A complete survey management system for handling client property assessments, in
 - ✅ Survey answers with dynamic questions
 - ✅ Scenario and contract generation
 - ✅ Electric car and heavy consumer tracking
+- ✅ **Main components catalog system** (NEW)
+- ✅ **AI-powered scenario generation** (NEW)
+- ✅ **Component-based system design** (NEW)
 
 ---
 
@@ -126,10 +130,14 @@ Different investment scenarios for surveys.
 | created_at | TIMESTAMPTZ | Creation timestamp |
 | updated_at | TIMESTAMPTZ | Last update timestamp |
 | survey_id | UUID | FK → surveys |
+| **name** | TEXT | Scenario name |
+| **sequence** | INTEGER | Display order |
+| **description** | TEXT | Scenario description |
 
 **Relations:**
 - 1 Survey → Many Scenarios
 - Many-to-Many with Investments (via `scenario_investments`)
+- 1 Scenario → Many Main Components (via `scenario_main_components`)
 - Links to Extra Costs (via `extra_cost_relations`)
 
 #### **contracts**
@@ -276,6 +284,82 @@ Uploaded documents/photos.
 - 1 Survey → Many Documents
 - 1 Category → Many Documents
 
+#### **main_component_categories**
+Categories for main components (e.g., Solar Panels, Inverters).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| persist_name | TEXT | Internal name (e.g., 'panel', 'inverter') |
+| sequence | INTEGER | Display order |
+
+**Examples:** panel, inverter, mounting, battery, heatpump
+
+**Relations:**
+- 1 Category → Many Main Components
+- Many-to-Many with Investments (via `main_component_category_investments`)
+
+#### **main_components**
+Catalog of available components for scenarios.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| name | TEXT | Component name |
+| persist_name | TEXT | Internal identifier |
+| unit | TEXT | Unit (pcs, set, m²) |
+| price | NUMERIC | Component price |
+| main_component_category_id | UUID | FK → main_component_categories |
+| manufacturer | TEXT | Manufacturer name |
+| details | TEXT | Additional details |
+| power | NUMERIC | Power rating (W/kW) |
+| capacity | NUMERIC | Capacity (kWh) |
+| efficiency | NUMERIC | Efficiency (%) |
+| u_value | NUMERIC | U-value (W/m²K) |
+| thickness | NUMERIC | Thickness (mm) |
+| cop | NUMERIC | COP value |
+| energy_class | TEXT | Energy class (A++, etc.) |
+| sequence | INTEGER | Display/quality order |
+
+**Relations:**
+- 1 Category → Many Components
+- Many Components → Many Scenarios (via `scenario_main_components`)
+
+#### **scenario_main_components**
+Components selected for each scenario with quantities.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| scenario_id | UUID | FK → scenarios |
+| main_component_id | UUID | FK → main_components |
+| quantity | INTEGER | Quantity needed |
+| price_snapshot | NUMERIC | Price at selection time |
+
+**Constraints:**
+- UNIQUE (scenario_id, main_component_id)
+
+**Relations:**
+- 1 Scenario → Many Components
+- 1 Main Component → Many Scenario Components
+
+#### **main_component_category_investments**
+Links categories to applicable investments.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| main_component_category_id | UUID | FK → main_component_categories |
+| investment_id | UUID | FK → investments |
+| sequence | INTEGER | Display order |
+
+**Purpose:** Determines which component categories are relevant for each investment type.
+
 ---
 
 ## Entity Relationships
@@ -390,9 +474,11 @@ Uploaded documents/photos.
 | `survey_investments` | Survey ↔ Investment | - |
 | `survey_heavy_consumers` | Survey ↔ Heavy Consumer | `status` (enum) |
 | `scenario_investments` | Scenario ↔ Investment | - |
+| `scenario_main_components` | Scenario ↔ Main Component | `quantity`, `price_snapshot` |
 | `contract_investments` | Contract ↔ Investment | - |
 | `extra_cost_relations` | (Scenario OR Contract) ↔ Extra Cost | `snapshot_price`, `quantity` |
 | `investment_document_categories` | Investment ↔ Document Category | `position` (integer) |
+| `main_component_category_investments` | Main Component Category ↔ Investment | `sequence` |
 | `survey_survey_pages` | Survey ↔ Survey Page | `position` (integer) |
 
 ---
@@ -471,6 +557,52 @@ ContractFormData extends InsertContract {
   extra_costs: { id: string; quantity: number; snapshot_price: number }[]
 }
 ```
+
+---
+
+## State Management
+
+### Scenarios Store
+
+**Location:** `/app/stores/scenarios.ts`
+
+**Purpose:** Centralized state management for scenarios, main components, and system design.
+
+```typescript
+const scenariosStore = useScenariosStore()
+
+// State
+scenariosStore.scenarios                  // Scenario[]
+scenariosStore.activeScenarioId           // string | null
+scenariosStore.scenarioInvestments        // Record<string, string[]>
+scenariosStore.scenarioComponents         // Record<string, ScenarioMainComponent[]>
+scenariosStore.mainComponents             // MainComponent[]
+scenariosStore.mainComponentCategories    // MainComponentCategory[]
+scenariosStore.categoryInvestments        // Record<string, string[]>
+scenariosStore.loading                    // boolean
+
+// Getters
+scenariosStore.activeScenario
+scenariosStore.activeScenarioComponents
+scenariosStore.getComponentsByCategoryId(categoryId)
+scenariosStore.getCategoriesForInvestment(investmentId)
+scenariosStore.getScenarioComponentForCategory(categoryId)
+
+// Actions
+await scenariosStore.loadScenarios(surveyId)
+await scenariosStore.loadMainComponentsData()
+scenariosStore.setActiveScenario(scenarioId)
+await scenariosStore.addScenarioComponent(mainComponentId, quantity)
+await scenariosStore.updateScenarioComponent(componentId, mainComponentId, quantity?)
+await scenariosStore.updateComponentQuantity(componentId, quantity)
+await scenariosStore.removeScenarioComponent(componentId)
+```
+
+**Key Features:**
+- Reactive state for real-time UI updates
+- Optimistic updates with local state sync
+- Price snapshot management
+- Category-based component filtering
 
 ---
 
@@ -588,7 +720,7 @@ const {
 
 ### useScenarios()
 
-**Purpose:** Scenario management
+**Purpose:** Scenario management (Legacy - use `useScenariosStore()` for new code)
 
 ```typescript
 const {
@@ -610,6 +742,38 @@ const {
 **Key Features:**
 - Links investments and extra costs
 - Snapshot pricing for extra costs
+
+### useScenarioCreation()
+
+**Purpose:** AI-powered scenario generation
+
+**Location:** `/app/composables/useScenarioCreation.ts`
+
+```typescript
+const { createAIScenarios } = useScenarioCreation()
+
+const result = await createAIScenarios(surveyId, selectedInvestmentIds)
+// Returns: { success: boolean, scenarios?: Scenario[], error?: string }
+```
+
+**Features:**
+- Automatically creates 3 scenario types (Optimum, Minimum, Premium)
+- Smart component selection based on quality level
+- Automatic quantity calculation with multipliers
+- Preferred brand filtering for premium scenarios
+- Price snapshot at creation time
+
+**Scenario Types:**
+- **Optimum:** Medium quality, 1.0x quantity multiplier
+- **Minimum:** Low quality, 0.8x quantity multiplier, budget-focused
+- **Premium:** High quality, 1.2x quantity multiplier, premium brands
+
+**Component Selection Logic:**
+```typescript
+// High quality: First component (highest sequence = best quality)
+// Medium quality: Middle component
+// Low quality: Last component (lowest price)
+```
 
 ### useContracts()
 
@@ -637,6 +801,55 @@ const {
 - Full client details
 - Optional survey linkage
 - Investment and extra cost management
+
+---
+
+## UI Components
+
+### Consultation Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveyConsultation.vue
+Main consultation page with three-column layout:
+- **System Design** (left, collapsible) - Scenario components and configuration
+- **System Visualization** (center) - Visual house representation
+- **Consultation** (right, collapsible) - Communication panel
+
+**Features:**
+- View mode toggle (Scenarios / Independent Investments)
+- AI Scenarios and New Scenario buttons
+- Panel state persistence in database
+- Smooth collapse/expand transitions
+
+#### SurveyScenarioInvestments.vue
+Displays investments for active scenario in accordion format.
+
+**Features:**
+- Dynamic investment accordions
+- Investment-specific icons
+- Categories and components per investment
+
+#### SurveyScenarioCategories.vue
+Component category management with CRUD operations.
+
+**Features:**
+- Add components (auto-selects next available)
+- Edit component selection via dropdown
+- Quantity management
+- Delete components
+- Duplicate prevention
+- Loading states
+
+#### UISelect.vue
+Custom HTML select component for dropdowns.
+
+**Features:**
+- Native `<select>` and `<option>` elements
+- Flexible value/label mapping
+- Size variants (sm, md, lg)
+- Dark mode support
+- Disabled state
 
 ---
 
@@ -744,6 +957,93 @@ await createContract({
 })
 ```
 
+### Example 7: Create AI Scenarios
+
+```typescript
+const { createAIScenarios } = useScenarioCreation()
+
+// User selects investments: Solar Panel, Heat Pump
+const result = await createAIScenarios(surveyId, [
+  'uuid-investment-solar',
+  'uuid-investment-heatpump'
+])
+
+if (result.success) {
+  // 3 scenarios created:
+  // 1. "Scenario 1 - Optimum" (medium quality, 1.0x quantity)
+  // 2. "Scenario 2 - Minimum" (low quality, 0.8x quantity)
+  // 3. "Scenario 3 - Premium" (high quality, 1.2x quantity, premium brands)
+
+  console.log(result.scenarios)
+}
+```
+
+### Example 8: Manage Scenario Components
+
+```typescript
+const scenariosStore = useScenariosStore()
+
+// Load scenarios for a survey
+await scenariosStore.loadScenarios('uuid-survey-123')
+
+// Set active scenario
+scenariosStore.setActiveScenario('uuid-scenario-1')
+
+// Add a component
+await scenariosStore.addScenarioComponent('uuid-component-panel-500w', 12)
+
+// Update component
+await scenariosStore.updateScenarioComponent(
+  'uuid-scenario-component-1',
+  'uuid-component-panel-600w',
+  10
+)
+
+// Update quantity only
+await scenariosStore.updateComponentQuantity('uuid-scenario-component-1', 15)
+
+// Remove component
+await scenariosStore.removeScenarioComponent('uuid-scenario-component-1')
+
+// Get components by category
+const panels = scenariosStore.getComponentsByCategoryId('uuid-category-panel')
+
+// Get categories for investment
+const categories = scenariosStore.getCategoriesForInvestment('uuid-investment-solar')
+```
+
+### Example 9: Component Selection in UI
+
+```vue
+<template>
+  <UISelect
+    v-model="selectedComponentId"
+    :options="componentOptions"
+    value-attribute="value"
+    label-attribute="label"
+    size="sm"
+    @update:model-value="handleComponentChange"
+  />
+</template>
+
+<script setup>
+const componentOptions = computed(() => {
+  const components = scenariosStore.getComponentsByCategoryId(categoryId)
+  return components.map(c => ({
+    value: c.id,
+    label: c.name
+  }))
+})
+
+const handleComponentChange = async (componentId) => {
+  await scenariosStore.updateScenarioComponent(
+    scenarioComponentId,
+    componentId
+  )
+}
+</script>
+```
+
 ---
 
 ## RLS Policies
@@ -817,6 +1117,15 @@ If migrating from previous survey implementation:
 - [ ] Email notifications
 - [ ] Revision history
 - [ ] Approval workflows
+- [x] **AI scenario generation** ✅
+- [x] **Component catalog system** ✅
+- [x] **Consultation page UI** ✅
+- [ ] Price calculation engine
+- [ ] Scenario comparison view
+- [ ] Component recommendations
+- [ ] Toast notifications for operations
+- [ ] Category info modals
+- [ ] Bulk component operations
 
 ---
 
@@ -828,4 +1137,11 @@ If migrating from previous survey implementation:
 **Documentation:** `/docs/`
 
 **Created by:** Claude Code
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-21
+
+---
+
+## Related Documentation
+
+- [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
+- [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation

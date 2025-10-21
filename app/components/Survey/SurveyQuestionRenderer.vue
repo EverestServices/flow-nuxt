@@ -38,7 +38,7 @@
         :model-value="modelValue || question.default_value"
         :placeholder="question.placeholder_value"
         :required="question.is_required"
-        rows="4"
+        :rows="4"
         class="w-full"
         @update:model-value="$emit('update:modelValue', $event)"
       />
