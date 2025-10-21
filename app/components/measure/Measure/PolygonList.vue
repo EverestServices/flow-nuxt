@@ -69,13 +69,15 @@
         <Icon v-else name="i-lucide-eye" class="w-5 h-5" />
       </UButton>
       <select
-        v-model="polygon.type"
-        class="w-40 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+        :value="getSelectValue(polygon)"
+        @change="onTypeOrSubChange(polygon, ($event.target as HTMLSelectElement).value)"
+        class="w-48 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
         @click.stop
       >
-        <option :value="SurfaceType.WALL_PLINTH">Lábazat</option>
-        <option :value="SurfaceType.FACADE">Homlokzat bruttó</option>
-        <option :value="SurfaceType.WINDOW_DOOR">Nyílászáró</option>
+        <option :value="`type:${SurfaceType.WALL_PLINTH}`">Lábazat</option>
+        <option :value="`type:${SurfaceType.FACADE}`">Homlokzat</option>
+        <option value="sub:door">Ajtó</option>
+        <option value="sub:window">Ablak</option>
       </select>
 
       <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
@@ -102,7 +104,7 @@
 
 <script lang="ts" setup>
 import type { Point, PolygonSurface } from '@/model/Measure/ArucoWallSurface';
-import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
+import { SurfaceType, WindowSubType } from '@/model/Measure/ArucoWallSurface';
 import {
   subtractPolygonGroupsArea,
   unionPolygonsArea,
@@ -139,6 +141,32 @@ const wallPlinthArea = ref(0);
 const wallPlinthNetArea = ref(0);
 
 const filteredPolygons = computed(() => props.polygons.filter((p) => p.closed));
+
+function getSelectValue(polygon: PolygonSurface): string {
+  if (polygon.type === SurfaceType.WINDOW_DOOR) {
+    return polygon.subType === WindowSubType.DOOR ? 'sub:door' : 'sub:window';
+  }
+  if (polygon.type === SurfaceType.WALL_PLINTH) return `type:${SurfaceType.WALL_PLINTH}`;
+  if (polygon.type === SurfaceType.FACADE) return `type:${SurfaceType.FACADE}`;
+  return '';
+}
+
+function onTypeOrSubChange(polygon: PolygonSurface, value: string) {
+  if (value.startsWith('type:')) {
+    const t = value.slice(5);
+    if (t === SurfaceType.WALL_PLINTH) {
+      polygon.type = SurfaceType.WALL_PLINTH;
+      polygon.subType = undefined;
+    } else if (t === SurfaceType.FACADE) {
+      polygon.type = SurfaceType.FACADE;
+      polygon.subType = undefined;
+    }
+  } else if (value.startsWith('sub:')) {
+    const s = value.slice(4);
+    polygon.type = SurfaceType.WINDOW_DOOR;
+    polygon.subType = s === 'door' ? WindowSubType.DOOR : WindowSubType.WINDOW;
+  }
+}
 
 const recalculate = () => {
   const getPolygonByType = (type: SurfaceType): PolygonSurface[] =>
@@ -255,6 +283,27 @@ function detectWindowDoorSurface(polygon: PolygonSurface): boolean {
   return aspectRatio < 5 && aspectRatio > 0.2; // Ne legyen túl lapos vagy túl vékony
 }
 
+function detectWindowDoorSubType(polygon: PolygonSurface): WindowSubType {
+  // Bounding box alapú egyszerű becslés
+  const denormPoints = polygon.points.map((p) => ({
+    x: p.x * props.imageNaturalWidth,
+    y: p.y * props.imageNaturalHeight,
+  }));
+  const minX = Math.min(...denormPoints.map((p) => p.x));
+  const maxX = Math.max(...denormPoints.map((p) => p.x));
+  const minY = Math.min(...denormPoints.map((p) => p.y));
+  const maxY = Math.max(...denormPoints.map((p) => p.y));
+  const widthM = (maxX - minX) * props.meterPerPixel;
+  const heightM = (maxY - minY) * props.meterPerPixel;
+  const ratio = heightM / Math.max(widthM, 1e-6);
+
+  // Heurisztikák:
+  // - Ajtó: magas, keskenyebb (ratio >= 1.6) ÉS tipikusan > 1.6 m magas
+  // - Ablak: egyéb eset
+  if (ratio >= 1.6 && heightM >= 1.6) return WindowSubType.DOOR;
+  return WindowSubType.WINDOW;
+}
+
 function detectWallPlinthSurface(polygon: PolygonSurface): boolean {
   const points = polygon.points;
   if (points.length < 3) return false;
@@ -307,9 +356,18 @@ watch(
           polygon.type = SurfaceType.WALL_PLINTH;
         } else if (detectFacadeSurface(polygon)) {
           polygon.type = SurfaceType.FACADE;
-        } /* if (detectWindowDoorSurface(polygon)) */ else {
+        } else {
+          // default: nyílászáró
           polygon.type = SurfaceType.WINDOW_DOOR;
+          polygon.subType = detectWindowDoorSubType(polygon);
         }
+      } else if (
+        polygon.type === SurfaceType.WINDOW_DOOR &&
+        polygon.closed &&
+        polygon.points.length >= 3
+      ) {
+        // Frissítsük az altípust változáskor
+        polygon.subType = detectWindowDoorSubType(polygon);
       }
     }
   },

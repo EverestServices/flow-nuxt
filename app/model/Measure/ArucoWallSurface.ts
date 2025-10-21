@@ -28,6 +28,11 @@ export enum DimensionType {
 export class DimensionPoints {
   public start: Point;
   public end: Point;
+
+  constructor(start: Point = { x: 0, y: 0 }, end: Point = { x: 0, y: 0 }) {
+    this.start = start;
+    this.end = end;
+  }
 }
 export class ArucoWallSurface {
   private readonly _uniqueId: string;
@@ -53,11 +58,17 @@ export enum SurfaceType {
   FACADE = 'facade',
   WINDOW_DOOR = 'windowDoor',
 }
+export enum WindowSubType {
+  DOOR = 'door',
+  WINDOW = 'window',
+}
 export interface PolygonSurface {
   id: string;
   points: Point[];
   closed: boolean;
   visible?: boolean;
   type?: SurfaceType;
+  // Only applicable when type === SurfaceType.WINDOW_DOOR
+  subType?: WindowSubType;
   name?: string;
 }
