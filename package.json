@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "seed:survey": "tsx scripts/seed-survey-data.ts"
     "lint": "eslint . --ext .js,.ts,.vue --max-warnings=0",
     "lint:fix": "npm run lint -- --fix"
   },

@@ -443,7 +443,7 @@ const items: NavigationMenuItem[] = [
       },
       {
         label : 'Energy Consultation',
-        to : '/ascent/energyconsultation'
+        to : '/survey'
       },
       {
         label : 'Offer/Contract Wizard',
