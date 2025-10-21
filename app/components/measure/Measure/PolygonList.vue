@@ -68,16 +68,15 @@
         <Icon v-if="polygon.visible === false" name="i-lucide-eye-off" class="w-5 h-5" />
         <Icon v-else name="i-lucide-eye" class="w-5 h-5" />
       </UButton>
-      <USelectMenu
-        :options="surfaceTypeOptions"
+      <select
         v-model="polygon.type"
-        option-attribute="label"
-        value-attribute="value"
-        by="value"
-        size="sm"
-        class="w-40"
+        class="w-40 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
         @click.stop
-      />
+      >
+        <option :value="SurfaceType.WALL_PLINTH">Lábazat</option>
+        <option :value="SurfaceType.FACADE">Homlokzat bruttó</option>
+        <option :value="SurfaceType.WINDOW_DOOR">Nyílászáró</option>
+      </select>
 
       <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
         {{ formatArea(polygon) }} m²
