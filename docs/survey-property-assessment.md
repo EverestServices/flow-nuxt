@@ -889,6 +889,411 @@ const handleToggleVisualization = (show: boolean) => {
 
 ---
 
+## Survey Pages sequence (sorrend)
+
+### Áttekintés
+A SurveyPage-ek megjelenítési sorrendje a `sequence` oszlop alapján történik, amely az egyes investment-ekhez tartozó oldalak helyes sorrendjét biztosítja.
+
+### 1. Adatbázis módosítások
+
+#### Migration 1: Sequence oszlop hozzáadása
+**Fájl:** `/supabase/migrations/036_5_add_sequence_to_survey_pages_table.sql`
+
+```sql
+ALTER TABLE public.survey_pages
+ADD COLUMN IF NOT EXISTS sequence INTEGER;
+```
+
+#### Migration 2: Sequence értékek feltöltése
+**Fájl:** `/supabase/migrations/037_add_sequence_to_survey_pages.sql`
+
+A migration feltölti minden investment SurveyPage-einek sequence értékeit a FlowFrontend fixtures alapján.
+
+**Példa - Solar Panel:**
+```sql
+UPDATE public.survey_pages
+SET sequence = 1
+WHERE type = 'general' AND investment_id = (SELECT id FROM public.investments WHERE name = 'Solar Panel');
+
+UPDATE public.survey_pages
+SET sequence = 2
+WHERE type = 'solar_panel' AND investment_id = (SELECT id FROM public.investments WHERE name = 'Solar Panel');
+```
+
+**Sorrendek investment-enként:**
+
+- **Solar Panel:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Tető
+- **Solar Panel + Battery:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Akkumulátor, 5. Tető
+- **Heat Pump:** 1. Általános adatok, 2. Helyiségek, 3. Nyílászárók, 4. Fűtés alapadatok, 5. Radiátorok, 6. Igényelt konstrukció, 7. Egyéb kérdések
+- **Facade Insulation:** 1. Általános adatok, 2. Falak, 3. Tető
+- **Battery:** 1. Akkumulátor
+- **Car Charger:** 1. Elektromos autó adatok, 2. Helyszín adatok, 3. Teljesítménybővítés
+- **Air Conditioner:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Tető
+- **Roof Insulation:** 1. Általános adatok, 2. Falak, 3. Tető, 4. Nyílászárók
+- **Windows:** 1. Általános adatok, 2. Falak, 3. Tető, 4. Nyílászárók
+
+### 2. TypeScript Interface frissítése
+
+**Fájl:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+export interface SurveyPage {
+  id: string
+  investment_id: string
+  name: string
+  type: string
+  position: { top: number; right: number }
+  sequence: number  // Új mező
+  allow_multiple: boolean
+  allow_delete_first: boolean
+  item_name_template?: string
+}
+```
+
+### 3. Store lekérdezés módosítása
+
+**Előtte:**
+```typescript
+.order('position')
+```
+
+**Utána:**
+```typescript
+.order('sequence')
+```
+
+**Teljes kód:**
+```typescript
+const { data: pages, error: pagesError } = await supabase
+  .from('survey_pages')
+  .select('*')
+  .in('investment_id', investmentIds)
+  .order('sequence')  // Sequence alapján rendezi
+```
+
+### Érintett fájlok
+- `/supabase/migrations/036_5_add_sequence_to_survey_pages_table.sql` (új)
+- `/supabase/migrations/037_add_sequence_to_survey_pages.sql` (új)
+- `/app/stores/surveyInvestments.ts`
+
+### Előnyök
+- Egyértelmű és konfigurálható sorrend
+- Függetlenség a position JSONB értékektől
+- Könnyű módosíthatóság (sequence érték változtatásával)
+- FlowFrontend kompatibilitás
+
+---
+
+## Allow Multiple pages és példánykezelés
+
+### Áttekintés
+Bizonyos SurveyPage-ek lehetővé teszik több példány hozzáadását (pl. több tető, több nyílászáró). Ez az `allow_multiple` flag segítségével valósul meg.
+
+### 1. Adatbázis séma
+
+A `survey_pages` táblában:
+- `allow_multiple`: BOOLEAN - engedélyezi-e több példány létrehozását
+- `allow_delete_first`: BOOLEAN - törölhető-e az utolsó példány is
+- `item_name_template`: VARCHAR(255) - példány elnevezési sablon (pl. `{index}. tető`)
+
+### 2. Store implementáció
+
+**Fájl:** `/app/stores/surveyInvestments.ts`
+
+#### PageInstanceData interface
+```typescript
+export interface PageInstanceData {
+  instances: Record<string, any>[]
+}
+```
+
+#### State bővítése
+```typescript
+state: () => ({
+  // ...
+  pageInstances: {} as Record<string, Record<string, PageInstanceData>>,
+  activeInstanceIndex: {} as Record<string, number>,
+})
+```
+
+**Adatstruktúra:**
+```
+pageInstances: {
+  [investmentId]: {
+    [pageId]: {
+      instances: [
+        { roof_type: 'Sátortető', roof_width: '10', ... },
+        { roof_type: 'Nyeregtető', roof_width: '8', ... }
+      ]
+    }
+  }
+}
+```
+
+#### Példánykezelő függvények
+
+**Példányok lekérdezése:**
+```typescript
+getPageInstances(pageId: string): Record<string, any>[] {
+  if (!this.activeInvestmentId) return []
+
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  return this.pageInstances[this.activeInvestmentId][pageId].instances
+}
+```
+
+**Új példány hozzáadása:**
+```typescript
+addPageInstance(pageId: string) {
+  if (!this.activeInvestmentId) return
+
+  // Initialize if doesn't exist
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  // Add new instance
+  this.pageInstances[this.activeInvestmentId][pageId].instances.push({})
+
+  // Set as active
+  const newIndex = this.pageInstances[this.activeInvestmentId][pageId].instances.length - 1
+  this.activeInstanceIndex[pageId] = newIndex
+}
+```
+
+**Példány törlése:**
+```typescript
+removePageInstance(pageId: string, index: number, allowDeleteLast: boolean = false) {
+  if (!this.activeInvestmentId) return
+
+  const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
+  if (!instances || instances.length === 0) return
+
+  // Remove the instance
+  instances.splice(index, 1)
+
+  // Ensure at least one instance exists (unless allowDeleteLast is true)
+  if (instances.length === 0 && !allowDeleteLast) {
+    instances.push({})
+  }
+
+  // Adjust active index if needed
+  const currentActive = this.activeInstanceIndex[pageId] || 0
+  if (instances.length > 0 && currentActive >= instances.length) {
+    this.activeInstanceIndex[pageId] = instances.length - 1
+  } else if (instances.length === 0) {
+    this.activeInstanceIndex[pageId] = 0
+  }
+}
+```
+
+**Példány adatok mentése:**
+```typescript
+saveInstanceResponse(pageId: string, instanceIndex: number, questionName: string, value: any) {
+  if (!this.activeInvestmentId || !this.currentSurveyId) return
+
+  // Initialize if doesn't exist
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  const instances = this.pageInstances[this.activeInvestmentId][pageId].instances
+
+  // Ensure instance exists
+  while (instances.length <= instanceIndex) {
+    instances.push({})
+  }
+
+  // Save the value
+  instances[instanceIndex][questionName] = value
+}
+```
+
+### 3. UI Implementáció
+
+**Fájl:** `/app/components/Survey/SurveyPropertyAssessment.vue`
+
+#### Accordion-alapú megjelenítés
+
+```vue
+<div v-if="page.allow_multiple" class="space-y-3">
+  <!-- Empty state message -->
+  <div v-if="getPageInstances(page.id).length === 0" class="text-center">
+    <p class="text-sm">Nincs még hozzáadott elem.</p>
+    <p class="text-xs mt-1">Kattints az alábbi gombra új hozzáadásához.</p>
+  </div>
+
+  <!-- Accordions for each instance -->
+  <UAccordion
+    v-for="(instance, index) in getPageInstances(page.id)"
+    :key="index"
+    :items="[{
+      label: getInstanceName(page, index),
+      slot: `instance-${page.id}-${index}`,
+      defaultOpen: index === 0
+    }]"
+  >
+    <template #default="{ item, open }">
+      <div class="flex items-center justify-between w-full">
+        <span>{{ getInstanceName(page, index) }}</span>
+        <!-- Delete button -->
+        <button
+          v-if="canDeleteInstance(page, index)"
+          @click.stop="deleteInstance(page, index)"
+        >
+          <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+        </button>
+      </div>
+    </template>
+
+    <template #[`instance-${page.id}-${index}`]>
+      <div class="p-4 space-y-6">
+        <!-- Normal Questions -->
+        <div v-for="question in getNormalQuestions(page.id)" :key="question.id">
+          <SurveyQuestionRenderer
+            :question="question"
+            :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+            @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+          />
+        </div>
+
+        <!-- Special Questions Accordion -->
+        <div v-if="getSpecialQuestions(page.id).length > 0">
+          <UAccordion :items="[{
+            label: 'Egyéb kérdések',
+            slot: `special-${page.id}-${index}`,
+            defaultOpen: false
+          }]">
+            <!-- Special questions content -->
+          </UAccordion>
+        </div>
+      </div>
+    </template>
+  </UAccordion>
+
+  <!-- Add Instance Button -->
+  <div class="flex justify-center pt-2">
+    <UButton
+      :label="`${page.name} hozzáadása`"
+      icon="i-lucide-plus"
+      @click="addInstance(page.id)"
+    />
+  </div>
+</div>
+```
+
+#### Helper függvények
+
+```typescript
+const getInstanceName = (page: SurveyPage, index: number) => {
+  if (!page.item_name_template) {
+    return `${page.name} ${index + 1}`
+  }
+  return page.item_name_template.replace('{index}', (index + 1).toString())
+}
+
+const canDeleteInstance = (page: SurveyPage, index: number) => {
+  const instances = store.getPageInstances(page.id)
+
+  if (page.allow_delete_first) {
+    return true  // Can delete any instance, even the last one
+  }
+
+  return index > 0  // Can only delete non-first instances
+}
+
+const deleteInstance = (page: SurveyPage, index: number) => {
+  store.removePageInstance(page.id, index, page.allow_delete_first || false)
+}
+```
+
+### 4. Speciális kérdések kezelése
+
+**Normal vs Special kérdések szétválasztása:**
+
+```typescript
+const getNormalQuestions = (pageId: string) => {
+  const questions = store.surveyQuestions[pageId] || []
+  return questions.filter(q => !q.is_special)
+}
+
+const getSpecialQuestions = (pageId: string) => {
+  const questions = store.surveyQuestions[pageId] || []
+  return questions.filter(q => q.is_special === true)
+}
+```
+
+**Becsuk gomb az Egyéb kérdések accordion-ban:**
+
+```vue
+<UButton
+  label="Becsuk"
+  color="gray"
+  variant="outline"
+  size="sm"
+  @click="closeAccordion"
+/>
+```
+
+```typescript
+const closeAccordion = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  let current = target.parentElement
+
+  while (current) {
+    const buttons = current.querySelectorAll('button')
+    for (const button of Array.from(buttons)) {
+      if (button.textContent?.includes('Egyéb kérdések')) {
+        button.click()
+        return
+      }
+    }
+    current = current.parentElement
+  }
+}
+```
+
+### Érintett fájlok
+- `/app/stores/surveyInvestments.ts`
+- `/app/components/Survey/SurveyPropertyAssessment.vue`
+- `/supabase/migrations/036_set_special_questions.sql`
+
+### Példák
+
+**Tető példányok (Solar Panel):**
+- allow_multiple: true
+- allow_delete_first: false
+- item_name_template: "{index}. tető"
+- Eredmény: "1. tető", "2. tető", "3. tető"
+
+**Nyílászárók (Heat Pump):**
+- allow_multiple: true
+- allow_delete_first: true
+- item_name_template: "{index}. nyílászáró"
+- Eredmény: Minden példány törölhető, akár az utolsó is
+
+### UI Működés
+1. Minden példány egy accordion elemben jelenik meg
+2. Az első példány alapértelmezetten nyitva van
+3. Törlés gomb csak akkor jelenik meg, ha engedélyezett
+4. "+ Hozzáadás" gomb mindig elérhető
+5. Speciális kérdések külön nested accordion-ban
+
+---
+
 ## Következő lépések
 
 1. ✅ DocumentCategory gombok renderelése
