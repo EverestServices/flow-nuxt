@@ -1,81 +1,140 @@
 <template>
-  <div class="">
-    <heading>ToDo</heading>
-    <p>Organize and track your daily tasks efficiently.</p>
+  <div class="flex h-24 items-center justify-between">
+    <div>
+      <div class="text-2xl font-light outfit">Todo</div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize and track your daily tasks efficiently</p>
+    </div>
     <Modals-Todo-Create @created="handleTodoCreated" @updated="handleTodoUpdated" />
   </div>
 
-  <div>
-    <p>Total: {{ todos?.length || 0 }}</p>
-    <p>Pending: {{ pendingTodos?.length || 0 }}</p>
-    <p>Completed: {{ completedTodos?.length || 0 }}</p>
-
-    <!-- Filter buttons -->
-    <div class="flex">
-      <UIBox class="px-4 py-2"
-        @click="setFilter('all')"
-        :style="{ backgroundColor: currentFilter === 'all' ? '#007bff' : '#f8f9fa', color: currentFilter === 'all' ? 'white' : 'black' }"
-      >
-        All
-      </UIBox>
-      <UIBox class="px-4 py-2"
-        @click="setFilter('pending')"
-        :style="{ backgroundColor: currentFilter === 'pending' ? '#007bff' : '#f8f9fa', color: currentFilter === 'pending' ? 'white' : 'black', marginLeft: '10px' }"
-      >
-        Pending
-      </UIBox>
-      <UIBox class="px-4 py-2"
-        @click="setFilter('completed')"
-        :style="{ backgroundColor: currentFilter === 'completed' ? '#007bff' : '#f8f9fa', color: currentFilter === 'completed' ? 'white' : 'black', marginLeft: '10px' }"
-      >
-        Completed
-      </UIBox>
-    </div>
-
-    <div v-if="loading">Loading...</div>
-    <div v-else-if="error">Error: {{ error }}</div>
-    <div v-else-if="!filteredTodos || filteredTodos.length === 0">No todos found</div>
-
-    <UIBox class="p-8" v-else>
-      <!--<div>Debug: Found {{ todos.length }} total todos, showing {{ filteredTodos.length }} filtered</div>-->
-
-      <div class="flex flex-col gap-y-4">
-
-        <TodoItem
-            v-for="(todo, index) in filteredTodos"
-            :key="todo?.id || index"
-            :todo="todo"
-            @toggle="toggleTodoStatus"
-            @edit="editTodo"
-            @delete="confirmDeleteTodo"
-        />
+  <!-- Statistics Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <UIBox padding="p-6" class="hover:scale-105 transition-transform">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Total Tasks</p>
+          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ todos?.length || 0 }}</h3>
+        </div>
+        <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
+          <Icon name="i-lucide-list-todo" class="w-8 h-8 text-blue-500" />
+        </div>
       </div>
     </UIBox>
 
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black/20 z-40" @click="showDeleteModal = false"></div>
-    <div v-if="showDeleteModal" class="fixed inset-0 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-md w-full">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Delete Todo</h3>
-        <p class="text-gray-600 mb-1">Are you sure you want to delete this todo?</p>
-        <p class="text-gray-900 font-medium mb-6">"{{ todoToDelete?.title }}"</p>
-        <div class="flex justify-end gap-3">
-          <button
-            @click="showDeleteModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleDeleteTodo"
-            class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
-            Delete
-          </button>
+    <UIBox padding="p-6" class="hover:scale-105 transition-transform">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Pending</p>
+          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ pendingTodos?.length || 0 }}</h3>
+        </div>
+        <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
+          <Icon name="i-lucide-clock" class="w-8 h-8 text-yellow-600" />
         </div>
       </div>
-    </div>
+    </UIBox>
+
+    <UIBox padding="p-6" class="hover:scale-105 transition-transform">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Completed</p>
+          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ completedTodos?.length || 0 }}</h3>
+        </div>
+        <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+          <Icon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
+        </div>
+      </div>
+    </UIBox>
   </div>
+
+  <!-- Filter Tabs -->
+  <div class="mb-6">
+    <UITabs
+      :tabs="['All Tasks', 'Pending', 'Completed']"
+      v-model="currentFilterIndex"
+      variant="pills"
+      @change="handleFilterChange"
+    />
+  </div>
+
+  <!-- Loading State -->
+  <div v-if="loading" class="flex items-center justify-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+
+  <!-- Error State -->
+  <UIAlert v-else-if="error" variant="danger" :title="'Error Loading Tasks'" dismissible @dismiss="error = null">
+    {{ error }}
+  </UIAlert>
+
+  <!-- Empty State -->
+  <UIBox v-else-if="!filteredTodos || filteredTodos.length === 0" padding="p-12">
+    <div class="flex flex-col items-center justify-center text-center">
+      <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+        <Icon name="i-lucide-inbox" class="w-12 h-12 text-gray-400" />
+      </div>
+      <UIH2 class="mb-2">No tasks found</UIH2>
+      <p class="text-gray-600 dark:text-gray-400 mb-6">
+        {{ currentFilter === 'all' ? 'Get started by creating your first task' : `No ${currentFilter} tasks` }}
+      </p>
+      <UIButtonEnhanced variant="primary" @click="openCreateModal">
+        <template #icon>
+          <Icon name="i-lucide-plus" class="w-5 h-5" />
+        </template>
+        Create Task
+      </UIButtonEnhanced>
+    </div>
+  </UIBox>
+
+  <!-- Todo List -->
+  <UIBox padding="p-6" v-else>
+    <div class="flex items-center justify-between mb-6">
+      <UIH2>{{ filterTitle }} ({{ filteredTodos.length }})</UIH2>
+      <div class="flex gap-2 items-center">
+        <UIBadge :variant="currentFilter === 'all' ? 'primary' : 'gray'" size="md">
+          {{ filteredTodos.length }} {{ filteredTodos.length === 1 ? 'task' : 'tasks' }}
+        </UIBadge>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-y-4 min-h-128">
+      <TodoItem
+        v-for="(todo, index) in filteredTodos"
+        :key="todo?.id || index"
+        :todo="todo"
+        @toggle="toggleTodoStatus"
+        @edit="editTodo"
+        @delete="confirmDeleteTodo"
+      />
+    </div>
+  </UIBox>
+
+  <!-- Delete Confirmation Modal -->
+  <UIModal
+    v-model="showDeleteModal"
+    title="Delete Task"
+    size="sm"
+  >
+    <UIAlert variant="warning" title="Warning" :hide-icon="false">
+      Are you sure you want to delete this task? This action cannot be undone.
+    </UIAlert>
+
+    <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Task:</p>
+      <p class="font-medium text-black dark:text-white">{{ todoToDelete?.title }}</p>
+    </div>
+
+    <template #footer>
+      <UIButtonEnhanced variant="ghost" @click="showDeleteModal = false">
+        Cancel
+      </UIButtonEnhanced>
+      <UIButtonEnhanced variant="danger" @click="handleDeleteTodo">
+        <template #icon>
+          <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+        </template>
+        Delete Task
+      </UIButtonEnhanced>
+    </template>
+  </UIModal>
 
   <!-- Todo Edit Modal -->
   <TodoEditModal
@@ -89,16 +148,35 @@
 <script setup lang="ts">
 import type { Todo } from '~/composables/useTodos'
 import TodoEditModal from '~/components/modals/TodoEditModal.vue'
+import UIBox from '~/components/UI/Box.vue'
+import UIH2 from '~/components/UI/H2.vue'
+import UIButtonEnhanced from '~/components/UI/ButtonEnhanced.vue'
+import UIBadge from '~/components/UI/Badge.vue'
+import UIAlert from '~/components/UI/Alert.vue'
+import UIModal from '~/components/UI/Modal.vue'
+import UITabs from '~/components/UI/Tabs.vue'
 
-// Try without the composable first to test Supabase connection
+// Page metadata
+useHead({
+  title: 'Task Management | EverestFlow'
+})
+
+// Supabase client
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 
-// Simple state
+// State
 const todos = ref([])
 const loading = ref(false)
 const error = ref(null)
 const currentFilter = ref('all')
+const currentFilterIndex = ref(0)
+
+// Modal state
+const editingTodo = ref<Todo | null>(null)
+const showEditModal = ref(false)
+const showDeleteModal = ref(false)
+const todoToDelete = ref<Todo | null>(null)
 
 // Computed
 const pendingTodos = computed(() => todos.value.filter(todo => !todo.completed))
@@ -115,30 +193,36 @@ const filteredTodos = computed(() => {
   }
 })
 
-// Remove toast for now
+const filterTitle = computed(() => {
+  switch (currentFilter.value) {
+    case 'pending':
+      return 'Pending Tasks'
+    case 'completed':
+      return 'Completed Tasks'
+    default:
+      return 'All Tasks'
+  }
+})
 
-// State
-const editingTodo = ref<Todo | null>(null)
-const showEditModal = ref(false)
-const showDeleteModal = ref(false)
-const todoToDelete = ref<Todo | null>(null)
-
-// Filter methods
-const setFilter = (filter: string) => {
-  currentFilter.value = filter
+// Methods
+const handleFilterChange = (index: number) => {
+  const filters = ['all', 'pending', 'completed']
+  currentFilter.value = filters[index]
 }
 
-// Simple methods for testing
+const openCreateModal = () => {
+  // Trigger the create modal (it's already in the header)
+  // You can emit an event or call a method if needed
+}
+
 const toggleTodoStatus = async (id: number) => {
   try {
-    // Find the todo in our local array
     const todoIndex = todos.value.findIndex(todo => todo.id === id)
     if (todoIndex === -1) return
 
     const todo = todos.value[todoIndex]
     const newCompleted = !todo.completed
 
-    // Update in Supabase
     const { error: updateError } = await client
       .from('todos')
       .update({ completed: newCompleted })
@@ -146,14 +230,14 @@ const toggleTodoStatus = async (id: number) => {
 
     if (updateError) {
       console.error('Error updating todo:', updateError)
+      error.value = 'Failed to update task'
       return
     }
 
-    // Update local state
     todos.value[todoIndex].completed = newCompleted
-    console.log('Todo toggled successfully')
   } catch (err) {
     console.error('Error toggling todo:', err)
+    error.value = 'Failed to update task'
   }
 }
 
@@ -176,47 +260,41 @@ const handleDeleteTodo = async () => {
   if (!todoToDelete.value) return
 
   try {
-    // Delete from Supabase
-    const { error } = await client
+    const { error: deleteError } = await client
       .from('todos')
       .delete()
       .eq('id', todoToDelete.value.id)
 
-    if (error) {
-      console.error('Error deleting todo:', error)
+    if (deleteError) {
+      console.error('Error deleting todo:', deleteError)
+      error.value = 'Failed to delete task'
       return
     }
 
-    // Refresh the todo list
     await fetchTodos()
   } catch (err) {
     console.error('Error deleting todo:', err)
+    error.value = 'Failed to delete task'
   } finally {
-    // Close the modal
     showDeleteModal.value = false
     todoToDelete.value = null
   }
 }
 
 const handleTodoCreated = async () => {
-  // Refresh the todo list
   await fetchTodos()
 }
 
 const handleTodoUpdated = async () => {
-  // Refresh the todo list and close edit modal
   closeEditModal()
   await fetchTodos()
 }
 
-// Fetch todos function
 const fetchTodos = async () => {
   try {
     loading.value = true
-    console.log('Fetching todos...')
-    console.log('User:', user.value)
+    error.value = null
 
-    // Fetch all todos (RLS will filter by company automatically)
     const { data, error: supabaseError } = await client
       .from('todos')
       .select('*')
@@ -224,16 +302,14 @@ const fetchTodos = async () => {
 
     if (supabaseError) {
       console.error('Supabase error:', supabaseError)
-      error.value = 'Failed to fetch todos: ' + supabaseError.message
+      error.value = 'Failed to fetch tasks: ' + supabaseError.message
       return
     }
 
-    console.log('Fetched todos:', data)
     todos.value = data || []
-    error.value = null
   } catch (err) {
     console.error('Error:', err)
-    error.value = 'Failed to fetch todos: ' + err
+    error.value = 'Failed to fetch tasks'
   } finally {
     loading.value = false
   }
@@ -244,3 +320,9 @@ onMounted(async () => {
   await fetchTodos()
 })
 </script>
+
+<style scoped>
+.outfit {
+  font-family: 'Outfit', sans-serif;
+}
+</style>

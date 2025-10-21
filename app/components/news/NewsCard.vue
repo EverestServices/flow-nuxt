@@ -1,9 +1,5 @@
 <template>
-  <UIBox class="overflow-hidden">
-    <UCard
-    class=""
-    @click="navigateToArticle"
-  >
+  <UIBox class="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300" @click="navigateToArticle">
     <!-- Featured Image -->
     <div v-if="article.featured_image_url" class="relative aspect-video mb-4 overflow-hidden rounded-xl">
       <img
@@ -23,13 +19,13 @@
     <div class="space-y-3">
       <!-- Category Badge -->
       <div v-if="article.category" class="flex items-center gap-2">
-        <UBadge
+        <span
           :style="{ backgroundColor: article.category.color }"
-          class="text-white text-xs px-2 py-1"
+          class="text-white text-xs px-2 py-1 rounded-full font-medium"
         >
           {{ article.category.name }}
-        </UBadge>
-        <span v-if="article.is_global" class="text-xs text-gray-500 font-medium">
+        </span>
+        <span v-if="article.is_global" class="text-xs text-gray-500 dark:text-gray-400 font-medium">
           Global
         </span>
       </div>
@@ -46,23 +42,19 @@
 
       <!-- Tags -->
       <div v-if="article.tags && article.tags.length" class="flex flex-wrap gap-1">
-        <UBadge
+        <span
           v-for="tag in article.tags.slice(0, 3)"
           :key="tag"
-          color="gray"
-          variant="soft"
-          size="xs"
+          class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium"
         >
           {{ tag }}
-        </UBadge>
-        <UBadge
+        </span>
+        <span
           v-if="article.tags.length > 3"
-          color="gray"
-          variant="soft"
-          size="xs"
+          class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium"
         >
           +{{ article.tags.length - 3 }}
-        </UBadge>
+        </span>
       </div>
 
       <!-- Meta Information -->
@@ -79,7 +71,6 @@
         </div>
       </div>
     </div>
-  </UCard>
   </UIBox>
 </template>
 

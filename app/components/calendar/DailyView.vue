@@ -1,5 +1,4 @@
 <template>
-  <UIBox>
   <div class="daily-calendar">
     <!-- Day Header -->
     <div class="calendar-header">
@@ -67,7 +66,7 @@
         </div>
       </div>
     </div>
-  </div></UIBox>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -212,11 +211,20 @@ onMounted(() => {
   background: white;
 }
 
+.dark .calendar-header {
+  background: rgb(17, 24, 39);
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .day-title {
   font-size: 28px;
   font-weight: 700;
   color: #1f2937;
   margin: 0;
+}
+
+.dark .day-title {
+  color: white;
 }
 
 .day-subtitle {
@@ -225,10 +233,19 @@ onMounted(() => {
   margin-top: 4px;
 }
 
+.dark .day-subtitle {
+  color: rgb(156, 163, 175);
+}
+
 .all-day-section {
   padding: 16px 20px;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
+}
+
+.dark .all-day-section {
+  background: rgb(31, 41, 55);
+  border-bottom-color: rgb(55, 65, 81);
 }
 
 .all-day-title {
@@ -238,6 +255,10 @@ onMounted(() => {
   margin: 0 0 12px 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.dark .all-day-title {
+  color: rgb(156, 163, 175);
 }
 
 .all-day-events {
@@ -275,6 +296,10 @@ onMounted(() => {
   position: relative;
 }
 
+.dark .hour-block {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .time-label {
   width: 80px;
   padding-right: 16px;
@@ -284,6 +309,10 @@ onMounted(() => {
   text-align: right;
   padding-top: 4px;
   flex-shrink: 0;
+}
+
+.dark .time-label {
+  color: rgb(156, 163, 175);
 }
 
 .hour-content {
@@ -297,6 +326,10 @@ onMounted(() => {
 
 .hour-content:hover {
   background: #f9fafb;
+}
+
+.dark .hour-content:hover {
+  background: rgb(31, 41, 55);
 }
 
 .event-block {

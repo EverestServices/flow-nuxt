@@ -16,35 +16,29 @@
         </UIBox>
       </div>
 
-      <UIBox class="flex px-4 py-2 gap-2">
+      <UIBox class="flex px-4 py-3 gap-2">
         <UIBox
           v-for="view in viewOptions"
           :key="view.value"
           @click="setView(view.value)"
           :class="['view-button', { active: currentView === view.value }]"
           class="text-sm"
-          background="bg-black/30"
+          background="dark:!bg-black/30"
         >
           {{ view.label }}
         </UIBox>
 
-        <select v-model="currentTypeFilter" @change="refreshEvents" class="filter-select">
-          <option value="all">All Types</option>
-          <option value="meeting">Meetings</option>
-          <option value="training">Training</option>
-          <option value="on-site-consultation">On-site Consultation</option>
-          <option value="online-consultation">Online Consultation</option>
-          <option value="personal">Personal</option>
-          <option value="holiday">Holiday</option>
-          <option value="other">Other</option>
-        </select>
+        <UISelect
+          v-model="currentTypeFilter"
+          :options="typeFilterOptions"
+          size="sm"
+        />
 
-        <select v-model="currentVisibilityFilter" @change="refreshEvents" class="filter-select">
-          <option value="all">All Visibility</option>
-          <option value="public">Public</option>
-          <option value="private">Private</option>
-          <option value="confidential">Confidential</option>
-        </select>
+        <UISelect
+          v-model="currentVisibilityFilter"
+          :options="visibilityFilterOptions"
+          size="sm"
+        />
 
       </UIBox>
 
@@ -59,46 +53,52 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" style="text-align: center; padding: 40px;">
+    <div v-if="loading" class="text-center py-10 text-gray-600 dark:text-gray-400 outfit">
       Loading events...
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" style="color: red; padding: 20px; background: #ffebee; border-radius: 4px; margin: 20px;">
+    <UIAlert v-else-if="error" variant="danger" class="my-5">
       Error: {{ error }}
-      <button @click="refreshEvents" style="margin-left: 16px; padding: 8px 16px;">Try Again</button>
-    </div>
+      <UIButtonEnhanced variant="danger" size="sm" @click="refreshEvents" class="ml-4">
+        Try Again
+      </UIButtonEnhanced>
+    </UIAlert>
 
     <!-- Calendar Views -->
-    <UIBox v-else class="calendar-container overflow-hidden">
+    <!--<UIBox v-else class="calendar-container overflow-hidden">-->
+    <div>
       <!-- Monthly View -->
-      <CalendarMonthlyView
-        v-if="currentView === 'monthly'"
-        :current-date="currentDate"
-        :events="filteredEvents"
-        :selected-date="selectedDate"
-        @day-click="selectDate"
-        @event-click="viewEvent"
-        @create-event="createEventAt"
-      />
+      <UIBox class="calendar-container overflow-hidden" v-if="currentView === 'monthly'">
+        <CalendarMonthlyView
+          :current-date="currentDate"
+          :events="filteredEvents"
+          :selected-date="selectedDate"
+          @day-click="selectDate"
+          @event-click="viewEvent"
+          @create-event="createEventAt"
+        />
+      </UIBox>
 
       <!-- Weekly View -->
-      <CalendarWeeklyView
-        v-if="currentView === 'weekly'"
-        :current-date="currentDate"
-        :events="filteredEvents"
-        @event-click="viewEvent"
-        @create-event="createEventAt"
-      />
+      <UIBox class="calendar-container overflow-hidden" v-if="currentView === 'weekly'">
+        <CalendarWeeklyView
+          :current-date="currentDate"
+          :events="filteredEvents"
+          @event-click="viewEvent"
+          @create-event="createEventAt"
+        />
+      </UIBox>
 
       <!-- Daily View -->
-      <CalendarDailyView
-        v-if="currentView === 'daily'"
-        :current-date="currentDate"
-        :events="filteredEvents"
-        @event-click="viewEvent"
-        @create-event="createEventAt"
-      />
+      <UIBox class="calendar-container overflow-hidden" v-if="currentView === 'daily'" >
+        <CalendarDailyView
+          :current-date="currentDate"
+          :events="filteredEvents"
+          @event-click="viewEvent"
+          @create-event="createEventAt"
+        />
+      </UIBox>
 
       <!-- Map View -->
       <CalendarMapView
@@ -107,7 +107,8 @@
         :events="filteredEvents"
         @event-click="viewEvent"
       />
-    </UIBox>
+    </div>
+    <!--</UIBox>-->
 
     <!-- Event Detail Modal -->
     <ModalsEventDetail
@@ -164,6 +165,26 @@ const viewOptions = [
   { label: 'Week', value: 'weekly' as CalendarView },
   { label: 'Day', value: 'daily' as CalendarView },
   { label: 'Map', value: 'map' as CalendarView }
+]
+
+// Type filter options
+const typeFilterOptions = [
+  { label: 'All Types', value: 'all' },
+  { label: 'Meetings', value: 'meeting' },
+  { label: 'Training', value: 'training' },
+  { label: 'On-site Consultation', value: 'on-site-consultation' },
+  { label: 'Online Consultation', value: 'online-consultation' },
+  { label: 'Personal', value: 'personal' },
+  { label: 'Holiday', value: 'holiday' },
+  { label: 'Other', value: 'other' }
+]
+
+// Visibility filter options
+const visibilityFilterOptions = [
+  { label: 'All Visibility', value: 'all' },
+  { label: 'Public', value: 'public' },
+  { label: 'Private', value: 'private' },
+  { label: 'Confidential', value: 'confidential' }
 ]
 
 // Computed
@@ -385,17 +406,28 @@ watch([currentView, currentDate], () => {
 
 .filter-select {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
   background: white;
   cursor: pointer;
   font-size: 14px;
+  transition: all 0.2s;
+}
+
+.dark .filter-select {
+  background: rgb(31, 41, 55);
+  border-color: rgb(75, 85, 99);
+  color: white;
 }
 
 .filter-select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.dark .filter-select:focus {
+  border-color: rgb(96, 165, 250);
 }
 
 .calendar-container {

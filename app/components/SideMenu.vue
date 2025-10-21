@@ -3,8 +3,8 @@
     <!-- Logo -->
     <div class="h-24 flex flex-col items-start justify-center relative shrink-0 w-full">
       <div class="aspect-[180/108.614] relative shrink-0 w-full">
-        <div class="relative w-full h-full">
-          <EverestLogo class="w-full h-full object-cover bg-center bg-cover bg-no-repeat" />
+        <div class="relative w-full h-full p-3 ml-1">
+          <NuxtLink to="/"><EverestLogo class="w-16 ml-4 mt-8 object-cover bg-center bg-cover bg-no-repeat" /></NuxtLink>
         </div>
       </div>
     </div>
@@ -12,126 +12,153 @@
       <!-- Dashboard -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-         bg-black/30
-         backdrop-blur-md
+         backdrop-blur-sm
          border border-white
-         text-white font-medium
+         text-black font-medium
          shadow-lg
-         hover:bg-white/30
-         transition"
+         dark:bg-black/30
+         dark:border-black/70
+         hover:bg-[#FAE696]/30 hover:text-white
+         transition
+          cursor-pointer"
           @click="openMenuSection('Dashboard')"
-          style="background: linear-gradient(0deg, rgba(180, 192, 219, 0.45) 0%, rgba(180, 192, 219, 0.45) 100%), linear-gradient(90deg, rgba(249, 249, 249, 0.70) 7.65%, rgba(239, 255, 174, 0.70) 92.18%);"
       >
-        <IconDashboard class="w-6 h-6 text-green-800" />
+        <IconDashboard class="w-6 h-6 text-black dark:text-white" />
       </button>
 
       <!-- Summit -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-         bg-white/30
-         backdrop-blur-md
+         backdrop-blur-sm
          border border-white
+         text-black
          font-medium
          shadow-lg
          hover:bg-[#FAE696]/30
          hover:text-white
          cursor-pointer
+         dark:bg-black/30 dark:border-black/70
          transition"
           @click="openMenuSection('Summit')"
       >
-        <IconSummit class="w-6 h-6" />
+        <IconSummit class="w-6 h-6 text-black dark:text-white" />
       </button>
 
       <!-- Ascent (Active) -->
       <button class="rounded-full flex items-center justify-center w-14 h-14
-         bg-white/30
+
          backdrop-blur-md
          border border-white
          font-medium
          shadow-lg
          hover:bg-[#FAE696]/30
+         dark:bg-black/30 dark:border-black/70
          hover:text-white
          cursor-pointer
          transition"
          @click="openMenuSection('Ascent')"
       >
-        <IconAscent class="w-6 h-6 text-black" />
+        <IconAscent class="w-6 h-6 text-black dark:text-white" />
       </button>
 
       <!-- Academy -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-         bg-white/30
-         backdrop-blur-md
+         backdrop-blur-sm
          border border-white
          font-medium
          shadow-lg
          hover:bg-[#FAE696]/30
+         dark:bg-black/30 dark:border-black/70
          hover:text-white
          cursor-pointer
          transition"
           @click="openMenuSection('Academy')"
       >
-        <IconAcademy class="w-6 h-6 text-black" />
+        <IconAcademy class="w-6 h-6 text-black dark:text-white" />
       </button>
 
       <!-- Share Location -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-         bg-white/30
-         backdrop-blur-md
+
+         backdrop-blur-sm
          border border-white
          text-white font-medium
          shadow-lg
          hover:bg-[#FAE696]/30
+         dark:bg-black/30 dark:border-black/70
          hover:text-white
          cursor-pointer
          transition"
           @click="openMenuSection('Location')"
       >
-        <IconLocation class="w-6 h-6 text-black" />
+        <IconLocation class="w-6 h-6 text-black dark:text-white" />
       </button>
 
       <!-- Settings -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-         bg-white/30
-         backdrop-blur-md
+         backdrop-blur-sm
          border border-white
          text-white font-medium
          shadow-lg
          hover:bg-[#FAE696]/30
          hover:text-white
          cursor-pointer
+         dark:bg-black/30 dark:border-black/70
          transition"
           @click="openMenuSection('Settings')"
       >
-        <IconSettings class="w-6 h-6 text-black" />
+        <IconSettings class="w-6 h-6 text-black dark:text-white" />
       </button>
     </div>
     <div class="h-24">
       <!-- Dark Mode Toggle -->
       <button
-          class="bg-black/30 box-border cursor-pointer flex flex-col gap-[10px] items-center justify-center overflow-visible p-[12px] relative rounded-[28px] shrink-0 w-[56px] h-[56px] hover:bg-[rgba(255,255,255,0.4)] transition-colors"
-          @click="toggleDarkMode"
+          class="rounded-full flex items-center justify-center w-14 h-14
+         backdrop-blur-sm
+         border border-white
+         text-white font-medium
+         shadow-lg
+         hover:bg-[#FAE696]/30
+         hover:text-white
+         cursor-pointer
+         dark:bg-black/30 dark:border-black/70
+         transition"          @click="toggleDarkMode"
       >
-        <IconDarkMode class="w-6 h-6 text-black" />
+        <IconDarkMode class="w-6 h-6 text-black dark:text-white" />
       </button>
     </div>
   </div>
+
+  <!-- Backdrop overlay -->
+  <Transition name="fade">
+    <div
+      v-if="menuOpen"
+      class="fixed inset-0 backdrop-blur-sm z-30"
+      @click="closeMenu"
+    />
+  </Transition>
 
   <!-- first level menu -->
   <Transition name="slide-menu">
     <div
       v-if="menuOpen"
       key="main-menu"
-      class="bottom-2 left-2 top-2 fixed  dark:bg-slate-800/20 backdrop-blur-xl w-96 p-4 border border-white/60 dark:border-slate-700/30 rounded-2xl flex flex-col gap-4 divide-y divide-white/10 dark:divide-slate-700/30 shadow-2xl z-40"
+      class="bottom-2 left-2 top-2 fixed dark:bg-slate-800/20 backdrop-blur-xl w-96 p-4 border border-white/60 dark:border-slate-700/30 rounded-2xl flex flex-col gap-4 divide-y divide-white/10 dark:divide-slate-700/30 shadow-2xl z-40"
     >
       <div class="flex items-center justify-between w-full pb-4 h-full">
         <div class="basis-0 flex flex-col gap-4 grow items-start justify-center min-h-px min-w-px relative shrink-0">
-          <div v-for="menu in items" :key="menu.label" class="flex items-center">
+          <div
+            v-for="menu in items"
+            :key="menu.label"
+            class="flex items-center hover:bg-white/30 dark:hover:bg-white/10 w-full transition transition-all rounded-4xl px-4 py-2 cursor-pointer"
+            @mouseenter="menu.children ? showSubmenu(menu.label) : null"
+            @mouseleave="menu.children ? scheduleHideSubmenu() : null"
+          >
             <button
-                class="border border-white bg-color-white bg-white/30 w-14 h-14 rounded-full flex items-center justify-center mr-4"
+                class="border border-white dark:border-black/50 bg-white/40 dark:bg-black/30 backdrop-blur-sm w-14 h-14 rounded-full flex items-center justify-center mr-4 text-black dark:text-white"
                 @click="handleMenuItemClick(menu)"
             >
               <IconDashboard class="w-6 h-6" v-if="menu.label === 'Dashboard'" />
@@ -142,17 +169,11 @@
               <IconSettings class="w-6 h-6" v-else-if="menu.label === 'Settings'" />
             </button>
 
-            <div v-if="menu.children" class="outfit  font-medium text-xl">
-              <div
-                  @click="toggleSubmenu(menu.label)"
-                  @mouseenter="showSubmenu(menu.label)"
-                  @mouseleave="scheduleHideSubmenu"
-              >
-                {{ menu.label }}
-              </div>
+            <div v-if="menu.children" class="outfit font-medium text-xl text-black dark:text-white cursor-pointer">
+              {{ menu.label }}
             </div>
-            <div class="outfit  font-medium text-xl" v-else>
-              <NuxtLink :to="menu.to"  @click="closeMenu" class="">{{ menu.label }}</NuxtLink>
+            <div class="outfit font-medium text-xl text-black dark:text-white" v-else>
+              <NuxtLink :to="menu.to" @click="closeMenu" class="">{{ menu.label }}</NuxtLink>
             </div>
           </div>
         </div>
@@ -165,32 +186,36 @@
     <div
         v-if="activeSubmenu && currentSubmenuItems.length > 0"
         key="submenu"
-        class="bottom-2 left-100 top-2 fixed bg-black/30 dark:bg-black/40 backdrop-blur-2xl backdrop-saturate-180 w-80 p-4 border border-white/10 dark:border-white/5 rounded-2xl flex flex-col gap-2 shadow-2xl z-50"
+        class="bottom-2 left-100 top-2 fixed dark:bg-slate-800/20 backdrop-blur-xl w-96 p-4 border border-white/60 dark:border-slate-700/30 rounded-2xl flex flex-col gap-4 divide-y divide-white/10 dark:divide-slate-700/30 shadow-2xl z-50"
         @mouseenter="cancelHideSubmenu"
         @mouseleave="scheduleHideSubmenu"
-        style="backdrop-filter: blur(20px) saturate(180%);"
     >
-      <div class="pb-3 mb-3 border-b border-white/10 dark:border-white/5">
-        <h3 class="text-white font-semibold text-lg drop-shadow-sm">{{ activeSubmenu }}</h3>
-      </div>
+      <div class="flex items-center justify-between w-full pb-4 h-full">
+        <div class="basis-0 flex flex-col gap-4 grow items-start justify-center min-h-px min-w-px relative shrink-0">
+          <div v-for="submenu in currentSubmenuItems" :key="submenu.to" class="flex items-center hover:bg-white/30 dark:hover:bg-white/10 w-full transition transition-all rounded-4xl px-4 py-2">
+            <NuxtLink :to="submenu.to" @click="closeMenu" class="flex items-center w-full">
+              <button
+                  class="border border-white dark:border-black/50 bg-white/40 dark:bg-black/30 backdrop-blur-sm w-14 h-14 rounded-full flex items-center justify-center mr-4 text-black dark:text-white"
+              >
+                <!-- Generic icon for submenu items -->
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
 
-      <div class="flex-grow space-y-1">
-        <NuxtLink
-            v-for="submenu in currentSubmenuItems"
-            :key="submenu.to"
-            :to="submenu.to"
-            @click="closeMenu"
-            class="block hover:bg-white/15 dark:hover:bg-white/10 w-full px-4 py-3 rounded-lg text-white/90 hover:text-white transition-all duration-200 hover:translate-x-1 backdrop-blur-sm"
-        >
-          {{ submenu.label }}
-        </NuxtLink>
+              <div class="outfit font-medium text-xl text-black dark:text-white cursor-pointer">
+                {{ submenu.label }}
+              </div>
+            </NuxtLink>
+          </div>
+        </div>
       </div>
     </div>
   </Transition>
 
-  <div class="w-12 h-12 bg-white rounded-full top-6.5 right-8 fixed z-20" @click="menuOpen=true">
+  <div class="w-14 h-14 bg-white rounded-full top-5 right-8 fixed z-20" @click="menuOpen=true">
     <div class="relative">
-      <img :src="userAvatar" alt="User Avatar" class="w-12 h-12 rounded-full" />
+      <img :src="userAvatar" alt="User Avatar" class="w-14 h-14 rounded-full" />
       <OnlineStatusBadge
         :is-online="currentUserOnline"
         size="sm"
@@ -203,7 +228,13 @@
 </template>
 
 <script setup lang="ts">
-import type {NavigationMenuItem} from "@nuxt/ui";
+// Define local navigation menu item type
+interface NavigationMenuItem {
+  label: string
+  to?: string
+  icon?: string
+  children?: NavigationMenuItem[]
+}
 
 // Reactive state
 const menuOpen = ref(false);
@@ -294,12 +325,18 @@ const handleLogout = async () => {
 
 // Function to open menu with specific section
 const openMenuSection = (sectionLabel: string) => {
+  // Special handling for Location - request geolocation
+  if (sectionLabel === 'Location') {
+    shareLocation();
+    return;
+  }
+
   const menuItem = items.find(item => item.label === sectionLabel);
 
-  // If the menu item has children, open the slide panel and show submenu
+  // If the menu item has children, only open the first level menu (not submenu)
   if (menuItem?.children && menuItem.children.length > 0) {
     menuOpen.value = true;
-    activeSubmenu.value = sectionLabel;
+    activeSubmenu.value = null; // Don't auto-show submenu, user must hover
   } else if (menuItem?.to) {
     // If no children but has a direct route, navigate there
     navigateTo(menuItem.to);
@@ -312,13 +349,12 @@ const openMenuSection = (sectionLabel: string) => {
 
 // Handle menu item click in slide panel
 const handleMenuItemClick = (menu: any) => {
-  if (menu.children && menu.children.length > 0) {
-    toggleSubmenu(menu.label);
-  } else {
+  if (!menu.children || menu.children.length === 0) {
     // If no children, navigate directly and close menu
     navigateTo(menu.to);
     closeMenu();
   }
+  // If menu has children, do nothing on click (hover handles submenu)
 };
 
 // Share location function
@@ -327,20 +363,56 @@ const shareLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // You can implement sharing logic here
-        console.log('Current location:', { latitude, longitude });
-        // For now, just open the menu section
-        openMenuSection('Location');
+        console.log('✅ Location access granted:', { latitude, longitude });
+
+        // Store location in localStorage or state if needed
+        localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude, timestamp: new Date().toISOString() }));
+
+        // Navigate to location page
+        const menuItem = items.find(item => item.label === 'Location');
+        if (menuItem?.to) {
+          navigateTo(menuItem.to);
+        }
       },
       (error) => {
-        console.error('Error getting location:', error);
-        // Fallback to just opening the menu
-        openMenuSection('Location');
+        console.error('❌ Error getting location:', error);
+
+        // Show user-friendly error message based on error code
+        let errorMessage = 'Unable to get your location.';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information is unavailable.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out.';
+            break;
+        }
+
+        alert(errorMessage);
+
+        // Still navigate to location page even if permission denied
+        const menuItem = items.find(item => item.label === 'Location');
+        if (menuItem?.to) {
+          navigateTo(menuItem.to);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   } else {
-    console.log('Geolocation is not supported');
-    openMenuSection('Location');
+    alert('Geolocation is not supported by your browser.');
+
+    // Navigate to location page anyway
+    const menuItem = items.find(item => item.label === 'Location');
+    if (menuItem?.to) {
+      navigateTo(menuItem.to);
+    }
   }
 };
 

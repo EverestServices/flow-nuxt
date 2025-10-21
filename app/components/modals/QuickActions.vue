@@ -16,7 +16,7 @@
         <!-- Header -->
         <div class="p-6 pb-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
-            <h3 class="text-gray-900 font-semibold text-xl">Quick Actions</h3>
+            <h3 class="text-black font-semibold text-xl">Quick Actions</h3>
             <button
               @click="closeModal"
               class="text-gray-400 hover:text-gray-600 transition-colors p-1"

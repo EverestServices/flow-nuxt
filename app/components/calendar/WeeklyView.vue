@@ -219,11 +219,19 @@ onMounted(() => {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.dark .calendar-header {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .week-title {
   font-size: 24px;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.dark .week-title {
+  color: white;
 }
 
 .week-header {
@@ -232,9 +240,18 @@ onMounted(() => {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.dark .week-header {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .time-column-header {
   border-right: 1px solid #e5e7eb;
   background: #f9fafb;
+}
+
+.dark .time-column-header {
+  border-right-color: rgb(55, 65, 81);
+  background: rgb(31, 41, 55);
 }
 
 .day-column-header {
@@ -244,6 +261,11 @@ onMounted(() => {
   border-right: 1px solid #e5e7eb;
 }
 
+.dark .day-column-header {
+  background: rgb(31, 41, 55);
+  border-right-color: rgb(55, 65, 81);
+}
+
 .day-name {
   font-size: 12px;
   font-weight: 600;
@@ -251,11 +273,19 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
+.dark .day-name {
+  color: rgb(156, 163, 175);
+}
+
 .day-number {
   font-size: 24px;
   font-weight: 600;
   color: #1f2937;
   margin-top: 4px;
+}
+
+.dark .day-number {
+  color: white;
 }
 
 .day-number.today {
@@ -282,10 +312,19 @@ onMounted(() => {
   background: #f9fafb;
 }
 
+.dark .time-column {
+  border-right-color: rgb(55, 65, 81);
+  background: rgb(31, 41, 55);
+}
+
 .time-slot {
   height: 60px;
   border-bottom: 1px solid #e5e7eb;
   position: relative;
+}
+
+.dark .time-slot {
+  border-bottom-color: rgb(55, 65, 81);
 }
 
 .time-label {
@@ -297,9 +336,17 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.dark .time-label {
+  color: rgb(156, 163, 175);
+}
+
 .day-column {
   border-right: 1px solid #e5e7eb;
   position: relative;
+}
+
+.dark .day-column {
+  border-right-color: rgb(55, 65, 81);
 }
 
 .hour-slot {
@@ -310,8 +357,16 @@ onMounted(() => {
   transition: background-color 0.2s;
 }
 
+.dark .hour-slot {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .hour-slot:hover {
   background: #f9fafb;
+}
+
+.dark .hour-slot:hover {
+  background: rgb(31, 41, 55);
 }
 
 .event-block {
