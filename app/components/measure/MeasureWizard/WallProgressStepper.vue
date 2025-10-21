@@ -1,31 +1,28 @@
 <template>
   <div class="w-full overflow-x-auto px-5 py-4">
-    <ul class="steps steps-horizontal w-full">
-      <li
-        v-for="(wall, index) in walls"
-        :key="wall.id"
-        class="step"
-        :data-content="index + 1"
-        :class="getStepClass(wall)"
-      >
-        <!-- Lefelé mutató háromszög, ha aktív -->
-        <div
-          v-if="wallIsActive(wall)"
-          class="absolute transform -translate-y-10 w-0 h-0 border-l-8 border-r-8 border-t-[8px] border-r-transparent border-l-transparent border-t-secondary/85"
-        ></div>
-        <RouterLink
+    <div class="flex items-center gap-3 min-w-max">
+      <template v-for="(wall, index) in walls" :key="wall.id">
+        <Icon v-if="index > 0" name="i-lucide-chevron-right" class="text-secondary/50" />
+        <UButton
           :to="`/energy/consultation/${String(route.params.clientId)}/measure/${String(wall.id)}`"
-          class="block text-center mt-2"
-          :class="{
-            'text-md': wallIsActive(wall),
-            'font-bold': wallIsActive(wall),
-            'text-sm': !wallIsActive(wall),
-          }"
+          :color="getStepClass(wall)"
+          :variant="wallIsActive(wall) ? 'solid' : 'soft'"
+          class="rounded-full"
         >
-          {{ wall.name || `Falfelület #${index + 1}` }}
-        </RouterLink>
-      </li>
-    </ul>
+          <span
+            class="mr-2 inline-flex items-center justify-center rounded-full bg-white/20 text-white w-6 h-6 text-xs font-semibold"
+          >
+            {{ index + 1 }}
+          </span>
+          <span class="truncate max-w-[12rem]">
+            {{ wall.name || `Falfelület #${index + 1}` }}
+          </span>
+          <UBadge :color="getStepClass(wall)" variant="subtle" size="xs" class="ml-2 !text-white">
+            {{ getStatusLabel(wall) }}
+          </UBadge>
+        </UButton>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -40,24 +37,23 @@ const route = useRoute();
 
 const walls = computed(() => Object.values(store.walls));
 
-const activeWallId = computed(() => {
-  if (route.name === 'wall-measure' && route.params.wallId) {
-    return String(route.params.wallId);
-  }
-  return null;
-});
+const activeWallId = computed(() => (route.params.wallId ? String(route.params.wallId) : null));
 
 const getStepClass = (wall: Wall) => {
-  const isActive = wall.id === activeWallId.value;
-
   if (store.hasPolygons(wall.id)) {
-    return isActive ? 'step-success text-secondary' : 'step-success';
+    return 'success';
   } else if (wall.images.some((img) => img.uploadStatus === 'success')) {
-    return isActive ? 'step-primary text-secondary' : 'step-primary';
+    return 'primary';
   } else {
-    return isActive ? 'step-neutral text-secondary' : 'step-neutral';
+    return 'neutral';
   }
 };
 
 const wallIsActive = (wall: Wall): boolean => wall.id === activeWallId.value;
+
+const getStatusLabel = (wall: Wall): string => {
+  if (store.hasPolygons(wall.id)) return 'Kész';
+  if (wall.images.some((img) => img.uploadStatus === 'success')) return 'Kép kész';
+  return 'Nincs kép';
+};
 </script>
