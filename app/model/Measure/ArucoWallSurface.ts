@@ -12,6 +12,10 @@ export type WallImage = {
   meterPerPixel?: number | null;
   processedImageWidth?: number;
   processedImageHeight?: number;
+  // Optional stored calibration reference (normalized to [0..1])
+  referenceStart?: Point | null;
+  referenceEnd?: Point | null;
+  referenceLengthCm?: number | null;
 };
 
 export type Wall = {

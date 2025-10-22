@@ -2,9 +2,21 @@
   <div class="card bg-base-100 w-full shadow-md border border-base-300 overflow-hidden">
     <!-- KÉP -->
     <div class="relative w-full aspect-video bg-base-200">
-      <!-- Ha van kép -->
+      <!-- Ha van kép és feldolgozva, akkor a képre kattintva is menjen mérésre -->
+      <RouterLink
+        v-if="(wall.images[0]?.processedImageUrl || wall.images[0]?.previewUrl) && wall.images[0]?.uploadStatus === 'success'"
+        :to="`/survey/${String(route.params.surveyId)}/measure/${wall.id}`"
+        class="block"
+      >
+        <img
+          :src="wall.images[0].processedImageUrl || wall.images[0].previewUrl"
+          class="object-cover w-full h-full"
+          alt="Falfotó"
+        />
+      </RouterLink>
+      <!-- Ha van kép, de még nincs kész, csak mutassuk -->
       <img
-        v-if="wall.images[0]?.processedImageUrl || wall.images[0]?.previewUrl"
+        v-else-if="wall.images[0]?.processedImageUrl || wall.images[0]?.previewUrl"
         :src="wall.images[0].processedImageUrl || wall.images[0].previewUrl"
         class="object-cover w-full h-full"
         alt="Falfotó"
