@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('auth', {
+
     state: () => ({
         user: null,
         token: null,
@@ -28,7 +29,9 @@ export const useAuthStore = defineStore('auth', {
                 this.isLoggedIn = true
 
                 // Save token to localStorage for persistence
-                localStorage.setItem('token', response.token)
+                if (process.client) {
+                    localStorage.setItem('token', response.token)
+                }
 
                 return { success: true }
             } catch (error) {
@@ -55,11 +58,17 @@ export const useAuthStore = defineStore('auth', {
                 this.user = null
                 this.token = null
                 this.isLoggedIn = false
-                localStorage.removeItem('token')
+                if (process.client) {
+                    localStorage.removeItem('token')
+                }
             }
         },
 
         async checkAuth() {
+            if (!process.client) {
+                return false
+            }
+
             const savedToken = localStorage.getItem('token')
 
             if (savedToken) {
@@ -81,7 +90,9 @@ export const useAuthStore = defineStore('auth', {
                     this.token = null
                     this.user = null
                     this.isLoggedIn = false
-                    localStorage.removeItem('token')
+                    if (process.client) {
+                        localStorage.removeItem('token')
+                    }
                     return false
                 }
             }
