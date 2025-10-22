@@ -10,10 +10,30 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" v-if="imageSrc">
     <div class="col-span-1">
-      <div class="mb-3 pb-3 border-b-1 border-secondary/30">
+      <div class="mb-3 pb-3 border-b-1 border-secondary/30 flex items-center justify-between gap-3">
         <UButton :to="`/survey/${String(route.params.surveyId)}/measure`" color="neutral">
           <Icon name="i-lucide-layout-list" class="h-5 w-5" />Vissza a falfelületek listára
         </UButton>
+
+        <div class="ml-2">
+          <span
+            v-if="!editingWallName"
+            class="inline-flex items-center cursor-pointer font-semibold text-primary border border-primary rounded-full pl-3 pr-2 py-1 bg-white"
+            @click="startEditingWallName"
+          >
+            <span class="pr-2 leading-none">{{ wallName || 'Névtelen fal' }}</span>
+            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0" />
+          </span>
+          <UInput
+            v-else
+            v-model="wallName"
+            type="text"
+            size="sm"
+            class="h-7 w-[12rem]"
+            @blur="stopEditingWallName"
+            @keyup.enter="stopEditingWallName"
+          />
+        </div>
       </div>
       <PolygonList
         v-if="imageRef"
@@ -181,6 +201,25 @@ const wall = computed<Wall>(() => {
   const w = map[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
+const wallName = computed<string>({
+  get: () => wall.value?.name ?? '',
+  set: (val: string) => {
+    if (wall.value) {
+      store.setWall(wall.value.id, { ...wall.value, name: val });
+    }
+  },
+});
+const editingWallName = ref<boolean>(false);
+const startEditingWallName = () => {
+  editingWallName.value = true;
+  void nextTick(() => {
+    const input = document.querySelector<HTMLInputElement>('input[type="text"]:focus');
+    input?.select();
+  });
+};
+const stopEditingWallName = () => {
+  editingWallName.value = false;
+};
 const firstImage = computed(() => wall.value?.images?.[0] ?? null);
 
 const zoomScale = ref(1);
