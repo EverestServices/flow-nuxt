@@ -18,7 +18,7 @@
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-              Select investments
+              {{ mode === 'ai' ? 'Select investments for AI Scenarios' : 'Create New Scenario' }}
             </h3>
             <button
               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
@@ -117,12 +117,17 @@ interface Props {
   modelValue: boolean
   surveyId: string
   selectedInvestments: Investment[]
+  mode?: 'ai' | 'manual'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  mode: 'ai'
+})
+
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'create-scenarios': [investmentIds: string[]]
+  'create-manual-scenario': [investmentIds: string[]]
 }>()
 
 // Local selection state for the modal
@@ -155,7 +160,11 @@ const closeModal = () => {
 }
 
 const handleCreate = () => {
-  emit('create-scenarios', localSelectedIds.value)
+  if (props.mode === 'ai') {
+    emit('create-scenarios', localSelectedIds.value)
+  } else {
+    emit('create-manual-scenario', localSelectedIds.value)
+  }
   closeModal()
 }
 

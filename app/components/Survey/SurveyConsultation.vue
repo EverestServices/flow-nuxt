@@ -20,8 +20,8 @@
           />
         </div>
         <div class="flex-1 overflow-auto">
-          <!-- Action Buttons - Only in Scenario mode -->
-          <div v-if="viewMode === 'scenarios'" class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+          <!-- Action Buttons -->
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
             <!-- AI Scenarios button -->
             <UButton
               color="primary"
@@ -48,7 +48,7 @@
             </UButton>
           </div>
           <!-- Technical Data Container -->
-          <div v-if="!hasScenarios && viewMode === 'scenarios'" class="border-b border-gray-200 dark:border-gray-700">
+          <div v-if="!hasScenarios" class="border-b border-gray-200 dark:border-gray-700">
             <div class="p-4">
               <p class="text-sm text-gray-500 dark:text-gray-400">
                 No scenarios created yet. Use the buttons above to create scenarios.
@@ -57,7 +57,7 @@
           </div>
 
           <!-- Active Scenario Content -->
-          <div v-if="activeScenario && viewMode === 'scenarios'" class="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div v-if="activeScenario" class="p-4 border-b border-gray-200 dark:border-gray-700">
             <!-- Investment Accordions -->
             <SurveyScenarioInvestments
               :survey-id="surveyId"
@@ -68,34 +68,102 @@
           <!-- Accordions -->
           <div class="p-4 space-y-3 mt-auto">
             <!-- Subsidy Accordion -->
-            <UAccordion
-              :items="[{
-                label: 'Subsidy',
-                icon: 'i-lucide-banknote',
-                slot: 'subsidy'
-              }]"
-            >
-              <template #subsidy>
-                <div class="p-3">
-                  <!-- Empty for now -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="subsidyOpen = !subsidyOpen"
+              >
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-lucide-banknote" class="w-4 h-4" />
+                  <span>Subsidy</span>
                 </div>
-              </template>
-            </UAccordion>
+                <div class="flex items-center gap-2">
+                  <!-- Info Button with Tooltip -->
+                  <div class="relative group">
+                    <button
+                      class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                      @click.stop
+                      type="button"
+                    >
+                      <UIcon name="i-lucide-alert-circle" class="w-4 h-4" />
+                    </button>
+                    <!-- Tooltip -->
+                    <div class="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50">
+                      Subsidies are available
+                      <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-0 h-0 border-4 border-transparent border-l-gray-900 dark:border-l-gray-700"></div>
+                    </div>
+                  </div>
+                  <UIcon
+                    :name="subsidyOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                    class="w-4 h-4"
+                  />
+                </div>
+              </button>
+              <div
+                v-show="subsidyOpen"
+                class="border-t border-gray-200 dark:border-gray-700"
+              >
+                <div class="p-3">
+                  <div v-if="subsidiesLoading" class="flex items-center justify-center py-4">
+                    <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                  <SurveySubsidies
+                    v-else
+                    :subsidies="getSubsidiesWithStatus"
+                    :eligibility-conditions="eligibilityConditions"
+                    @toggle="handleSubsidyToggle"
+                    @update-condition="handleConditionUpdate"
+                  />
+                </div>
+              </div>
+            </div>
 
             <!-- Household Data Accordion -->
-            <UAccordion
-              :items="[{
-                label: 'Household Data',
-                icon: 'i-lucide-info',
-                slot: 'household-data'
-              }]"
-            >
-              <template #household-data>
-                <div class="p-3">
-                  <!-- Empty for now -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="householdDataOpen = !householdDataOpen"
+              >
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-lucide-info" class="w-4 h-4" />
+                  <span>Household Data</span>
                 </div>
-              </template>
-            </UAccordion>
+                <div class="flex items-center gap-2">
+                  <!-- Action Buttons -->
+                  <button
+                    class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    @click.stop="showElectricCarsModal = true"
+                    title="Elektromos autó beállítás"
+                  >
+                    <UIcon name="i-lucide-car" class="w-4 h-4" />
+                  </button>
+                  <button
+                    class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    @click.stop="showHeavyConsumersModal = true"
+                    title="Nagyfogyasztó beállítás"
+                  >
+                    <UIcon name="i-lucide-plug-zap" class="w-4 h-4" />
+                  </button>
+                  <UIcon
+                    :name="householdDataOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                    class="w-4 h-4"
+                  />
+                </div>
+              </button>
+              <div
+                v-show="householdDataOpen"
+                class="border-t border-gray-200 dark:border-gray-700"
+              >
+                <div class="p-3">
+                  <SurveyHouseholdData
+                    :key="`household-${surveyId}-${householdDataKey}`"
+                    :survey-id="surveyId"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -153,8 +221,110 @@
             @click="handleConsultationToggle(false)"
           />
         </div>
-        <div class="flex-1 p-4 overflow-auto">
-          <!-- Empty for now -->
+        <div class="flex-1 p-4 overflow-auto space-y-3">
+          <!-- Investment Details Accordion -->
+          <UAccordion
+            :items="[{
+              label: 'Investment Details',
+              icon: 'i-lucide-bar-chart-3',
+              slot: 'investment-details',
+              defaultOpen: true
+            }]"
+          >
+            <template #investment-details>
+              <div class="p-3">
+                <SurveyInvestmentDetails :survey-id="surveyId" />
+              </div>
+            </template>
+          </UAccordion>
+
+          <!-- Consultation Accordion -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="consultationDataOpen = !consultationDataOpen"
+            >
+              <div class="flex items-center gap-2">
+                <UIcon name="i-lucide-file-text" class="w-4 h-4" />
+                <span>Consultation</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Info Button -->
+                <button
+                  class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  @click.stop="showConsultationInfoModal = true"
+                  title="Information"
+                >
+                  <UIcon name="i-lucide-info" class="w-4 h-4" />
+                </button>
+                <UIcon
+                  :name="consultationDataOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="w-4 h-4"
+                />
+              </div>
+            </button>
+            <div
+              v-show="consultationDataOpen"
+              class="border-t border-gray-200 dark:border-gray-700"
+            >
+              <div class="p-3">
+                <SurveyConsultationData
+                  :survey-id="surveyId"
+                  :show-return-time="showReturnTime"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Contract Details Accordion -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="handleContractDetailsClick"
+            >
+              <div class="flex items-center gap-2">
+                <UIcon name="i-lucide-file-check" class="w-4 h-4" />
+                <span>Contract Details</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Info Button -->
+                <button
+                  class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  @click.stop="showContractDetailsInfoModal = true"
+                  title="Information"
+                >
+                  <UIcon name="i-lucide-info" class="w-4 h-4" />
+                </button>
+                <!-- Settings/Gear Button -->
+                <button
+                  class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  @click.stop="showFinancingModal = true"
+                  title="Financing Settings"
+                >
+                  <UIcon name="i-lucide-settings" class="w-4 h-4" />
+                </button>
+                <UIcon
+                  :name="contractDetailsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="w-4 h-4"
+                />
+              </div>
+            </button>
+            <div
+              v-show="contractDetailsOpen"
+              class="border-t border-gray-200 dark:border-gray-700"
+            >
+              <div class="p-3">
+                <SurveyContractDetailsCosts
+                  v-if="activeScenario"
+                  :survey-id="surveyId"
+                  :scenario-id="activeScenario.id"
+                  :commission-rate="commissionRate"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Transition>
@@ -167,18 +337,49 @@
     >
       <UIcon name="i-lucide-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
     </button>
+
+    <!-- Modals -->
+    <SurveyElectricCarsModal
+      v-model="showElectricCarsModal"
+      :survey-id="surveyId"
+      @saved="handleElectricCarsSaved"
+    />
+
+    <SurveyHeavyConsumersModal
+      v-model="showHeavyConsumersModal"
+      :survey-id="surveyId"
+      @saved="handleHeavyConsumersSaved"
+    />
+
+    <SurveyConsultationInfoModal
+      v-model="showConsultationInfoModal"
+    />
+
+    <SurveyContractDetailsInfoModal
+      v-model="showContractDetailsInfoModal"
+    />
+
+    <SurveyFinancingModal
+      v-model="showFinancingModal"
+      :survey-id="surveyId"
+      :scenario-id="activeScenario?.id || null"
+      v-model:show-return-time="showReturnTime"
+      @commission-changed="handleCommissionChanged"
+      @saved="handleFinancingSaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
 import { useScenariosStore } from '~/stores/scenarios'
+import { useSubsidies } from '~/composables/useSubsidies'
+import type { EligibilityConditions } from '~/types/subsidy'
 
 interface Props {
   surveyId: string
   systemDesignOpen: boolean
   consultationOpen: boolean
-  viewMode: 'scenarios' | 'independent'
 }
 
 const props = defineProps<Props>()
@@ -191,19 +392,77 @@ const emit = defineEmits<{
 }>()
 
 const scenariosStore = useScenariosStore()
+const {
+  loadSubsidies,
+  loadSurveySubsidies,
+  toggleSubsidy,
+  updateEligibilityCondition,
+  getSubsidiesWithStatus,
+  eligibilityConditions,
+  loading: subsidiesLoading
+} = useSubsidies()
 
 // Accordion states
-const subsidyOpen = ref([0])
-const householdDataOpen = ref([0])
+const subsidyOpen = ref(false)
+const householdDataOpen = ref(false)
+const consultationDataOpen = ref(false)
+const contractDetailsOpen = ref(false)
+const contractDetailsFirstClick = ref(true)
+
+// Key to force remount household data when investments change
+const householdDataKey = ref(0)
+
+// Modal states
+const showElectricCarsModal = ref(false)
+const showHeavyConsumersModal = ref(false)
+const showConsultationInfoModal = ref(false)
+const showContractDetailsInfoModal = ref(false)
+const showFinancingModal = ref(false)
+
+// UI states
+const showReturnTime = ref(true)
+const commissionRate = ref(0.12) // Default 12%
 
 // Computed
 const activeScenario = computed(() => scenariosStore.activeScenario)
 const hasScenarios = computed(() => scenariosStore.scenarios.length > 0)
 
-// Load scenarios on mount
+// Realtime subscription ref
+const supabase = useSupabaseClient()
+let subscription: any = null
+
+// Load scenarios and subsidies on mount
 onMounted(async () => {
-  if (props.viewMode === 'scenarios') {
-    await scenariosStore.loadScenarios(props.surveyId)
+  // Load scenarios
+  await scenariosStore.loadScenarios(props.surveyId)
+
+  // Load subsidies
+  await loadSubsidies()
+  await loadSurveySubsidies(props.surveyId)
+
+  // Subscribe to survey_investments changes to refresh household data
+  subscription = supabase
+    .channel('survey-investments-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'survey_investments',
+        filter: `survey_id=eq.${props.surveyId}`
+      },
+      () => {
+        // Force remount household data component
+        householdDataKey.value++
+      }
+    )
+    .subscribe()
+})
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (subscription) {
+    subscription.unsubscribe()
   }
 })
 
@@ -215,6 +474,76 @@ const handleSystemDesignToggle = (isOpen: boolean) => {
 const handleConsultationToggle = (isOpen: boolean) => {
   emit('update:consultation-open', isOpen)
 }
+
+const handleSubsidyToggle = async (subsidyId: string, isEnabled: boolean) => {
+  try {
+    await toggleSubsidy(props.surveyId, subsidyId, isEnabled)
+  } catch (error) {
+    console.error('Error toggling subsidy:', error)
+    // TODO: Show error toast
+  }
+}
+
+const handleConditionUpdate = (key: keyof EligibilityConditions, value: boolean) => {
+  updateEligibilityCondition(key, value)
+}
+
+const handleElectricCarsSaved = () => {
+  console.log('Electric cars saved')
+  // TODO: Show success toast or refresh data if needed
+}
+
+const handleHeavyConsumersSaved = () => {
+  console.log('Heavy consumers saved')
+  // TODO: Show success toast or refresh data if needed
+}
+
+const handleContractDetailsClick = () => {
+  // On first click, open financing modal instead of toggling accordion
+  if (contractDetailsFirstClick.value) {
+    contractDetailsFirstClick.value = false
+    showFinancingModal.value = true
+  } else {
+    contractDetailsOpen.value = !contractDetailsOpen.value
+  }
+}
+
+const handleFinancingSaved = () => {
+  console.log('Financing saved')
+  // TODO: Show success toast or refresh data if needed
+}
+
+const handleCommissionChanged = (rate: number) => {
+  commissionRate.value = rate
+}
+
+// Load commission rate when active scenario changes
+const loadCommissionRate = async () => {
+  if (!activeScenario.value) {
+    commissionRate.value = 0.12
+    return
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('scenarios')
+      .select('commission_rate')
+      .eq('id', activeScenario.value.id)
+      .single()
+
+    if (error) throw error
+
+    commissionRate.value = data?.commission_rate || 0.12
+  } catch (error) {
+    console.error('Error loading commission rate:', error)
+    commissionRate.value = 0.12
+  }
+}
+
+// Watch for active scenario changes
+watch(() => activeScenario.value?.id, () => {
+  loadCommissionRate()
+}, { immediate: true })
 </script>
 
 <style scoped>

@@ -6,7 +6,6 @@
       :client-name="clientName"
       :show-mode-toggle="activeTab === 'property-assessment'"
       :selected-investments="selectedInvestments"
-      :consultation-view-mode="consultationViewMode"
       :scenarios="scenarios"
       :active-scenario-id="activeScenario?.id"
       :scenario-investments="scenarioInvestments"
@@ -16,7 +15,6 @@
       @toggle-view-mode="handleToggleViewMode"
       @toggle-investment-filter="handleToggleInvestmentFilter"
       @toggle-visualization="handleToggleVisualization"
-      @toggle-consultation-view-mode="handleToggleConsultationViewMode"
       @select-scenario="handleSelectScenario"
     />
 
@@ -54,7 +52,6 @@
         :survey-id="surveyId"
         :system-design-open="consultationSystemDesignOpen"
         :consultation-open="consultationPanelOpen"
-        :view-mode="consultationViewMode"
         @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
         @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
         @ai-scenarios="handleAIScenarios"
@@ -84,7 +81,6 @@
       :show-property-actions="activeTab === 'property-assessment'"
       :missing-items-count="missingItemsCount"
       :can-proceed="canProceed"
-      :consultation-view-mode="consultationViewMode"
       :active-scenario="activeScenario"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
@@ -94,6 +90,8 @@
       @show-missing-items="handleShowMissingItems"
       @consultation-save="handleConsultationSave"
       @consultation-preview="handleConsultationPreview"
+      @ai-scenarios="handleAIScenarios"
+      @new-scenario="handleNewScenario"
       @rename-scenario="handleRenameScenario"
       @duplicate-scenario="handleDuplicateScenario"
       @delete-scenario="handleDeleteScenario"
@@ -122,7 +120,9 @@
       v-model="showSelectInvestmentsModal"
       :survey-id="surveyId"
       :selected-investments="selectedInvestments"
+      :mode="selectInvestmentsModalMode"
       @create-scenarios="handleCreateScenarios"
+      @create-manual-scenario="handleCreateManualScenario"
     />
 
     <!-- Rename Scenario Modal -->
@@ -236,6 +236,7 @@ const showInvestmentModal = ref(false)
 const showMissingItemsModal = ref(false)
 const showSelectInvestmentsModal = ref(false)
 const showRenameScenarioModal = ref(false)
+const selectInvestmentsModalMode = ref<'ai' | 'manual'>('ai')
 
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
@@ -246,15 +247,12 @@ const photoUploadInvestmentId = ref<string | undefined>()
 // Consultation panel states
 const consultationSystemDesignOpen = ref(true)
 const consultationPanelOpen = ref(false)
-const consultationViewMode = ref<'scenarios' | 'independent'>('scenarios')
 
 // Load survey data
 onMounted(async () => {
   await loadSurveyData()
-  // Load scenarios if on consultation tab
-  if (consultationViewMode.value === 'scenarios') {
-    await scenariosStore.loadScenarios(surveyId.value)
-  }
+  // Load scenarios
+  await scenariosStore.loadScenarios(surveyId.value)
 })
 
 const loadSurveyData = async () => {
@@ -290,9 +288,6 @@ const loadSurveyData = async () => {
       }
       if (survey.consultation_panel_open !== null && survey.consultation_panel_open !== undefined) {
         consultationPanelOpen.value = survey.consultation_panel_open
-      }
-      if (survey.consultation_view_mode) {
-        consultationViewMode.value = survey.consultation_view_mode
       }
     } else {
       clientName.value = 'Unknown Client'
@@ -419,29 +414,6 @@ const handleNext = () => {
 }
 
 // Consultation handlers
-const handleToggleConsultationViewMode = async (mode: 'scenarios' | 'independent') => {
-  const supabase = useSupabaseClient()
-  consultationViewMode.value = mode
-
-  try {
-    const { error } = await supabase
-      .from('surveys')
-      .update({ consultation_view_mode: mode })
-      .eq('id', surveyId.value)
-
-    if (error) {
-      console.error('Error updating consultation view mode:', error)
-    }
-
-    // Load scenarios if switching to scenarios mode
-    if (mode === 'scenarios') {
-      await scenariosStore.loadScenarios(surveyId.value)
-    }
-  } catch (error) {
-    console.error('Error saving consultation view mode:', error)
-  }
-}
-
 const handleSelectScenario = (scenarioId: string) => {
   scenariosStore.setActiveScenario(scenarioId)
 }
@@ -455,10 +427,12 @@ const handleConsultationPreview = () => {
 }
 
 const handleAIScenarios = () => {
+  selectInvestmentsModalMode.value = 'ai'
   showSelectInvestmentsModal.value = true
 }
 
 const handleNewScenario = () => {
+  selectInvestmentsModalMode.value = 'manual'
   showSelectInvestmentsModal.value = true
 }
 
@@ -554,6 +528,11 @@ const handleDeleteScenario = async () => {
     // Refresh scenarios list
     await scenariosStore.loadScenarios(surveyId.value)
 
+    // Set first scenario as active if any scenarios remain
+    if (scenarios.value.length > 0) {
+      scenariosStore.setActiveScenario(scenarios.value[0].id)
+    }
+
     // TODO: Show success message
   } catch (error) {
     console.error('Error deleting scenario:', error)
@@ -579,6 +558,57 @@ const handleCreateScenarios = async (investmentIds: string[]) => {
     }
   } catch (error) {
     console.error('Error in handleCreateScenarios:', error)
+  }
+}
+
+const handleCreateManualScenario = async (investmentIds: string[]) => {
+  try {
+    const supabase = useSupabaseClient()
+
+    // Get the highest sequence number
+    const maxSequence = Math.max(...scenarios.value.map(s => s.sequence || 0), 0)
+
+    // Create empty scenario
+    const { data: newScenario, error: scenarioError } = await supabase
+      .from('scenarios')
+      .insert({
+        survey_id: surveyId.value,
+        name: `Scenario ${maxSequence + 1}`,
+        sequence: maxSequence + 1,
+        description: null
+      })
+      .select()
+      .single()
+
+    if (scenarioError) throw scenarioError
+
+    // Add scenario investments (but no main components)
+    if (investmentIds.length > 0) {
+      const { error: invError } = await supabase
+        .from('scenario_investments')
+        .insert(
+          investmentIds.map(invId => ({
+            scenario_id: newScenario.id,
+            investment_id: invId
+          }))
+        )
+
+      if (invError) throw invError
+    }
+
+    // Close modal
+    showSelectInvestmentsModal.value = false
+
+    // Refresh scenarios list
+    await scenariosStore.loadScenarios(surveyId.value)
+
+    // Set the new scenario as active
+    scenariosStore.setActiveScenario(newScenario.id)
+
+    // TODO: Show success message
+  } catch (error) {
+    console.error('Error creating manual scenario:', error)
+    // TODO: Show error message
   }
 }
 

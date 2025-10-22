@@ -2,7 +2,7 @@
   <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
     <div class="flex items-center justify-between">
       <!-- Left Section -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 flex-1">
         <!-- Save and Exit - Always visible -->
         <UButton
           label="Save and Exit"
@@ -42,8 +42,8 @@
           />
         </template>
 
-        <!-- Consultation specific actions - Only in Scenario mode -->
-        <template v-if="activeTab === 'consultation' && consultationViewMode === 'scenarios'">
+        <!-- Consultation specific actions -->
+        <template v-if="activeTab === 'consultation'">
           <!-- Mentés Button -->
           <UButton
             label="Mentés"
@@ -52,18 +52,46 @@
             @click="$emit('consultation-save')"
           />
 
-          <!-- Eye Icon Button -->
+          <!-- Eye Icon Button - Toggle scenario buttons visibility -->
           <UButton
-            icon="i-lucide-eye"
+            :icon="showScenarioButtons ? 'i-lucide-eye' : 'i-lucide-eye-off'"
             color="gray"
             variant="outline"
-            @click="$emit('consultation-preview')"
+            @click="showScenarioButtons = !showScenarioButtons"
           />
         </template>
       </div>
 
+      <!-- Center Section - AI Scenarios and New Scenario buttons -->
+      <div v-if="activeTab === 'consultation' && showScenarioButtons" class="flex items-center gap-2">
+        <!-- AI Scenarios button -->
+        <UButton
+          color="primary"
+          size="sm"
+          @click="$emit('ai-scenarios')"
+        >
+          <template #leading>
+            <UIcon name="i-lucide-zap" class="w-4 h-4" />
+          </template>
+          AI Scenarios
+        </UButton>
+
+        <!-- New Scenario button -->
+        <UButton
+          color="primary"
+          variant="outline"
+          size="sm"
+          @click="$emit('new-scenario')"
+        >
+          <template #leading>
+            <UIcon name="i-lucide-plus" class="w-4 h-4" />
+          </template>
+          New Scenario
+        </UButton>
+      </div>
+
       <!-- Right Section -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 flex-1 justify-end">
         <!-- Property Assessment specific controls -->
         <template v-if="showPropertyActions">
           <!-- Marker Mode Toggle -->
@@ -86,8 +114,8 @@
           />
         </template>
 
-        <!-- Consultation specific Container 3 - Only in Scenario mode -->
-        <template v-if="activeTab === 'consultation' && consultationViewMode === 'scenarios' && activeScenario">
+        <!-- Consultation specific Container 3 -->
+        <template v-if="activeTab === 'consultation' && activeScenario && showScenarioButtons">
           <div class="flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
             <span class="text-sm font-medium text-gray-900 dark:text-white">
               {{ activeScenario.name }}
@@ -149,7 +177,6 @@ interface Props {
   showPropertyActions?: boolean
   missingItemsCount?: number
   canProceed?: boolean
-  consultationViewMode?: 'scenarios' | 'independent'
   activeScenario?: Scenario | null
 }
 
@@ -168,6 +195,8 @@ defineEmits<{
   'show-missing-items': []
   'consultation-save': []
   'consultation-preview': []
+  'ai-scenarios': []
+  'new-scenario': []
   'rename-scenario': []
   'duplicate-scenario': []
   'delete-scenario': []
@@ -175,4 +204,5 @@ defineEmits<{
 }>()
 
 const markerModeEnabled = ref(false)
+const showScenarioButtons = ref(true)
 </script>
