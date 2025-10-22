@@ -1,55 +1,53 @@
 <template>
-  <UDashboardPage>
-    <UDashboardPanel grow>
-      <UDashboardNavbar
-        :title="isEditMode ? 'Edit Client - Energy Consultation' : 'New Client - Energy Consultation'"
-      >
-        <template #right>
-          <UButton
-            icon="i-heroicons-x-mark"
-            color="gray"
-            variant="ghost"
-            @click="handleCancel"
-          />
-        </template>
-      </UDashboardNavbar>
+  <div class="min-h-screen relative">
+    <!-- Map Container (only shown when address is complete) -->
+    <div v-if="showMap" class="fixed left-24 right-6 top-8 bottom-8 z-0 rounded-3xl overflow-hidden">
+      <ClientAddressMap :address="fullAddress" />
+    </div>
 
-      <!-- Two Column Layout -->
-      <div class="flex h-full">
-        <!-- Left Column: Form -->
-        <div class="flex-1 p-6 overflow-y-auto w-full">
-          <!-- Progress Section -->
-          <div class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-6 mb-6">
-            <div class="flex items-center gap-4 mb-4">
-              <div class="bg-primary-500 rounded-full p-3">
-                <UIcon name="i-heroicons-check-circle" class="w-6 h-6 text-white" />
-              </div>
-              <div class="flex-1">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ progressPercentage < 100 ? (isEditMode ? 'Editing Client' : 'Creating New Client') : 'All Data Filled!' }}
-                </h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ progressPercentage < 100 ? `${Math.round(progressPercentage)}% completed - fill in required fields` : 'Ready to save' }}
-                </p>
+
+    <!-- Content Layout -->
+    <div class="relative p-6 overflow-y-auto pointer-events-none">
+      <!-- Form Column -->
+      <div :class="showMap ? 'w-1/2' : 'w-full max-w-2xl mx-auto'" class="pointer-events-auto relative border border-transparent">
+
+
+        <!-- Progress Section - Fixed Top Center -->
+        <div class="absolute left-1/2 transform -translate-x-1/2 z-20 w-full max-w-96 text-center px-6 pointer-events-auto">
+          <UIBox >
+            <div class="p-4">
+              <div class="flex items-center gap-3">
+
+                <div class="flex-1">
+                  <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                      {{ progressPercentage < 100 ? (isEditMode ? 'Editing Client' : 'Creating New Client') : 'All Data Filled!' }}
+                    </h2>
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {{ Math.round(progressPercentage) }}%
+                </span>
+                  </div>
+                  <!-- Progress Bar -->
+                  <div class="relative h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-300"
+                        :style="{ width: `${progressPercentage}%` }"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+          </UIBox>
+        </div>
 
-            <!-- Progress Bar -->
-            <div class="relative h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-              <div
-                class="absolute top-0 left-0 h-full bg-primary-500 transition-all duration-300"
-                :style="{ width: `${progressPercentage}%` }"
-              />
-            </div>
-          </div>
-
-          <!-- Form -->
-          <form @submit.prevent="handleSaveAndStart" class="space-y-6">
-            <!-- Personal Information Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <!-- Form -->
+        <form @submit.prevent="handleSaveAndStart" class="space-y-6 mt-24">
+          <!-- Personal Information Section -->
+          <UIBox>
+            <div class="p-6">
               <div class="flex items-center gap-3 mb-6">
-                <div class="bg-primary-500 rounded-full p-2">
-                  <UIcon name="i-heroicons-user" class="w-5 h-5 text-white" />
+                <div class="bg-blue-500 rounded-full p-2">
+                  <Icon name="i-lucide-user" class="w-5 h-5 text-white" />
                 </div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h3>
               </div>
@@ -59,11 +57,10 @@
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Name <span class="text-red-500">*</span>
                   </label>
-                  <UInput
+                  <UIInput
                     v-model="form.name"
                     placeholder="Enter client name"
-                    icon="i-heroicons-user"
-                    size="lg"
+                    icon="i-lucide-user"
                   />
                 </div>
 
@@ -71,12 +68,11 @@
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email
                   </label>
-                  <UInput
+                  <UIInput
                     v-model="form.email"
                     type="email"
                     placeholder="Enter email address"
-                    icon="i-heroicons-envelope"
-                    size="lg"
+                    icon="i-lucide-mail"
                   />
                 </div>
 
@@ -84,22 +80,23 @@
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Phone
                   </label>
-                  <UInput
+                  <UIInput
                     v-model="form.phone"
                     type="tel"
                     placeholder="Enter phone number"
-                    icon="i-heroicons-phone"
-                    size="lg"
+                    icon="i-lucide-phone"
                   />
                 </div>
               </div>
             </div>
+          </UIBox>
 
-            <!-- Address Information Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <!-- Address Information Section -->
+          <UIBox>
+            <div class="p-6">
               <div class="flex items-center gap-3 mb-6">
-                <div class="bg-primary-500 rounded-full p-2">
-                  <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-white" />
+                <div class="bg-blue-500 rounded-full p-2">
+                  <Icon name="i-lucide-map-pin" class="w-5 h-5 text-white" />
                 </div>
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Address Information</h3>
               </div>
@@ -111,11 +108,10 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Postal Code <span class="text-red-500">*</span>
                     </label>
-                    <UInput
+                    <UIInput
                       v-model="form.postalCode"
                       placeholder="1234"
-                      icon="i-heroicons-hashtag"
-                      size="lg"
+                      icon="i-lucide-hash"
                     />
                   </div>
 
@@ -123,11 +119,10 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       City <span class="text-red-500">*</span>
                     </label>
-                    <UInput
+                    <UIInput
                       v-model="form.city"
                       placeholder="Enter city"
-                      icon="i-heroicons-building-office-2"
-                      size="lg"
+                      icon="i-lucide-building"
                     />
                   </div>
                 </div>
@@ -138,11 +133,10 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Street <span class="text-red-500">*</span>
                     </label>
-                    <UInput
+                    <UIInput
                       v-model="form.street"
                       placeholder="Enter street name"
-                      icon="i-heroicons-map"
-                      size="lg"
+                      icon="i-lucide-map"
                     />
                   </div>
 
@@ -150,47 +144,40 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       House Number <span class="text-red-500">*</span>
                     </label>
-                    <UInput
+                    <UIInput
                       v-model="form.houseNumber"
                       placeholder="123"
-                      icon="i-heroicons-home"
-                      size="lg"
+                      icon="i-lucide-home"
                     />
                   </div>
                 </div>
               </div>
             </div>
+          </UIBox>
 
-            <!-- Action Buttons -->
-            <div class="flex gap-3 justify-end">
-              <UButton
-                color="gray"
-                variant="outline"
-                size="lg"
-                @click="handleCancel"
-              >
-                Cancel
-              </UButton>
-              <UButton
-                type="submit"
-                color="primary"
-                size="lg"
-                icon="i-heroicons-bolt"
-                :disabled="!isFormValid"
-              >
-                {{ isEditMode ? 'Save and Continue Consultation' : 'Save and Start Consultation' }}
-              </UButton>
-            </div>
-          </form>
-        </div>
-
-        <!-- Right Column: Map -->
-        <div class="flex-1 border-l border-gray-200 dark:border-gray-800 w-full">
-          <ClientAddressMap :address="fullAddress" />
-        </div>
+          <!-- Action Buttons -->
+          <div class="flex gap-3 justify-center">
+            <UIButtonEnhanced
+              variant="outline"
+              size="lg"
+              @click="handleCancel"
+            >
+              Cancel
+            </UIButtonEnhanced>
+            <UIButtonEnhanced
+              type="submit"
+              variant="primary"
+              size="lg"
+              :disabled="!isFormValid"
+            >
+              <Icon name="i-lucide-zap" class="w-4 h-4 mr-2" />
+              {{ isEditMode ? 'Save and Continue Consultation' : 'Save and Start Consultation' }}
+            </UIButtonEnhanced>
+          </div>
+        </form>
       </div>
-    </UDashboardPanel>
-  </UDashboardPage>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -245,6 +232,14 @@ const fullAddress = computed(() => {
     form.value.houseNumber
   ].filter(part => part && part.trim() !== '')
   return parts.join(' ')
+})
+
+// Show map only when all address fields are filled
+const showMap = computed(() => {
+  return form.value.postalCode.trim() !== '' &&
+         form.value.city.trim() !== '' &&
+         form.value.street.trim() !== '' &&
+         form.value.houseNumber.trim() !== ''
 })
 
 // Load client data if editing from survey
@@ -365,11 +360,3 @@ const handleSaveAndStart = async () => {
   }
 }
 </script>
-
-<style scoped>
-/* Make UInput wrapper full width */
-:deep(.relative.inline-flex) {
-  display: flex !important;
-  width: 100%;
-}
-</style>

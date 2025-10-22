@@ -1,15 +1,7 @@
 <template>
   <div class="h-full w-full flex flex-col">
-    <!-- Map Header -->
-    <div class="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4 flex items-center gap-3">
-      <div class="bg-white/20 rounded-full p-2">
-        <UIcon name="i-heroicons-map" class="w-6 h-6 text-white" />
-      </div>
-      <h3 class="text-lg font-semibold text-white">Location on Map</h3>
-    </div>
-
     <!-- Map Container -->
-    <div ref="mapContainer" class="flex-1 w-full" />
+    <div ref="mapContainer" class="flex-1 w-full rounded-4xl overflow-hidden" />
   </div>
 </template>
 
@@ -38,13 +30,8 @@ const initMap = () => {
   map.value = new googleMaps.Map(mapContainer.value, {
     center: { lat: 47.497912, lng: 19.040235 },
     zoom: 13,
-    mapTypeId: 'satellite',
-    mapTypeControl: true,
-    mapTypeControlOptions: {
-      style: googleMaps.MapTypeControlStyle.HORIZONTAL_BAR,
-      position: googleMaps.ControlPosition.TOP_RIGHT,
-      mapTypeIds: ['roadmap', 'satellite']
-    }
+    mapTypeId: 'roadmap',
+    mapTypeControl: false
   })
 
   // Add initial marker
@@ -140,9 +127,6 @@ const updateMapLocation = async () => {
       marker.value.setPosition(latLng)
     }
 
-    // Update map view with animation
-    map.value.panTo(latLng)
-
     // Adjust zoom based on address specificity
     if (props.address.match(/\d+$/)) {
       // Has house number - zoom closer
@@ -153,6 +137,33 @@ const updateMapLocation = async () => {
     } else {
       // Only postal code/city - wider zoom
       map.value.setZoom(14)
+    }
+
+    // Offset the center to the right so marker is visible on right side
+    // Calculate offset in pixels (form takes up left 50%, so shift center to right)
+    const bounds = map.value.getBounds()
+    if (bounds) {
+      const projection = map.value.getProjection()
+      if (projection) {
+        // Pan to marker first
+        map.value.panTo(latLng)
+
+        // Then shift the view to show marker on the right side
+        // This moves the center point left so the marker appears on the right
+        const scale = Math.pow(2, map.value.getZoom())
+        const worldCoordinate = projection.fromLatLngToPoint(latLng)
+        const pixelOffset = new window.google.maps.Point(
+          (worldCoordinate.x - 0.15) * scale, // Shift left by 15% of map width
+          worldCoordinate.y * scale
+        )
+        const newCenter = projection.fromPointToLatLng(
+          new window.google.maps.Point(
+            pixelOffset.x / scale,
+            pixelOffset.y / scale
+          )
+        )
+        map.value.panTo(newCenter)
+      }
     }
 
     // Add popup with address
