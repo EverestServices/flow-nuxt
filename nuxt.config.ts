@@ -1,6 +1,10 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-04',
+  devServer: {
+    port: 3000 // Változtasd meg erre: 3001, 3002, stb.
+  },
   modules: [
+    '@nuxt/ui',
     '@nuxt/ui-pro',
     '@pinia/nuxt',
     '@vueuse/nuxt',
@@ -29,7 +33,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.API_BASE_URL || 'http://inki.api.test/api'
+      apiBaseUrl: process.env.API_BASE_URL || 'http://inki.api.test/api',
+      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY
     }
   },
   supabase: {
