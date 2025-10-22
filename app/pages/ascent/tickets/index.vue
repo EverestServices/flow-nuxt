@@ -1,206 +1,246 @@
 <template>
-  <div>
-    <!-- Header -->
-    <div class="bg-gray-50 p-8 flex items-center gap-x-4 pr-24 bg-gradient-to-r from-[#dd3e54] to-[#6be585]">
-      <div class="bg-gradient-to-r from-[#a6c0fe] to-[#f68084] aspect-square p-4 rounded-md flex items-center justify-center">
-        <div class="text-white h-8 w-8">🎫</div>
-      </div>
-      <div class="grow text-white">
-        <h1>Tickets</h1>
-        <p>Manage and track support tickets efficiently.</p>
+  <div class="flex flex-col space-y-6">
+    <!-- Header Section -->
+    <div class="flex justify-between py-4">
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white outfit">Tickets</h1>
       </div>
 
-      <ModalsTicketCreate @created="handleTicketCreated" @updated="handleTicketUpdated" />
-    </div>
-
-    <!-- Statistics -->
-    <div style="padding: 20px 0;">
-      <p>Total: {{ tickets?.length || 0 }}</p>
-      <p>Open: {{ openTickets?.length || 0 }}</p>
-      <p>In Progress: {{ inProgressTickets?.length || 0 }}</p>
-      <p>Resolved: {{ resolvedTickets?.length || 0 }}</p>
-    </div>
-
-    <!-- Search and Filters -->
-    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-      <h3>Search & Filters</h3>
-
-      <!-- Search -->
-      <div style="margin-bottom: 16px;">
-        <label>Search:</label>
-        <input
-          v-model="searchQuery"
-          placeholder="Search tickets by title, description, client, or ticket number..."
-          style="width: 100%; padding: 8px; margin-top: 4px;"
+      <UIBox class="flex px-4 py-2 gap-2">
+        <UISelect
+          v-model="currentStatusFilter"
+          :options="statusSelectOptions"
+          size="sm"
         />
-      </div>
+        <UISelect
+          v-model="currentPriorityFilter"
+          :options="prioritySelectOptions"
+          size="sm"
+        />
+        <UISelect
+          v-model="currentCategoryFilter"
+          :options="categorySelectOptions"
+          size="sm"
+        />
+      </UIBox>
 
-      <!-- Filters -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-        <!-- Status Filter -->
-        <div>
-          <label>Status:</label>
-          <div style="margin-top: 8px;">
-            <button
-              v-for="status in statusOptions"
-              :key="status.value"
-              @click="setStatusFilter(status.value)"
-              :style="{
-                backgroundColor: currentStatusFilter === status.value ? '#007bff' : '#f8f9fa',
-                color: currentStatusFilter === status.value ? 'white' : 'black',
-                margin: '2px',
-                padding: '4px 12px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }"
-            >
-              {{ status.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Priority Filter -->
-        <div>
-          <label>Priority:</label>
-          <div style="margin-top: 8px;">
-            <button
-              v-for="priority in priorityOptions"
-              :key="priority.value"
-              @click="setPriorityFilter(priority.value)"
-              :style="{
-                backgroundColor: currentPriorityFilter === priority.value ? '#007bff' : '#f8f9fa',
-                color: currentPriorityFilter === priority.value ? 'white' : 'black',
-                margin: '2px',
-                padding: '4px 12px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }"
-            >
-              {{ priority.label }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Category Filter -->
-        <div>
-          <label>Category:</label>
-          <select v-model="currentCategoryFilter" style="width: 100%; padding: 8px; margin-top: 4px;">
-            <option value="all">All Categories</option>
-            <option value="technical">Technical</option>
-            <option value="contract">Contract</option>
-            <option value="billing">Billing</option>
-            <option value="maintenance">Maintenance</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Clear Filters -->
-      <div style="margin-top: 16px;">
-        <button @click="clearFilters" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-          Clear All Filters
-        </button>
+      <div class="w-32 mr-16 flex items-center justify-end">
+        <ModalsTicketCreate @created="handleTicketCreated" @updated="handleTicketUpdated" />
       </div>
     </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <UIBox class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ tickets?.length || 0 }}</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+            <Icon name="i-lucide-ticket" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+      </UIBox>
+
+      <UIBox class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">Open</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ openTickets?.length || 0 }}</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+            <Icon name="i-lucide-circle-dot" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+      </UIBox>
+
+      <UIBox class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">In Progress</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ inProgressTickets?.length || 0 }}</p>
+          </div>
+          <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+            <Icon name="i-lucide-clock" class="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+          </div>
+        </div>
+      </UIBox>
+
+      <UIBox class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wide">Resolved</p>
+            <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{{ resolvedTickets?.length || 0 }}</p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+            <Icon name="i-lucide-check-circle" class="w-6 h-6 text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+      </UIBox>
+    </div>
+
+    <!-- Search -->
+    <UIBox class="p-6">
+      <UIInput
+        v-model="searchQuery"
+        placeholder="Search tickets by title, description, client, or ticket number..."
+        clearable
+      >
+        <template #prefix>
+          <Icon name="i-lucide-search" class="w-5 h-5" />
+        </template>
+      </UIInput>
+    </UIBox>
 
     <!-- Loading State -->
-    <div v-if="loading" style="text-align: center; padding: 40px;">
-      Loading tickets...
-    </div>
+    <UIBox v-if="loading" class="p-12">
+      <div class="flex flex-col items-center justify-center space-y-4">
+        <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-gray-600 dark:text-gray-400">Loading tickets...</p>
+      </div>
+    </UIBox>
 
     <!-- Error State -->
-    <div v-else-if="error" style="color: red; padding: 20px; background: #ffebee; border-radius: 4px; margin: 20px 0;">
-      Error: {{ error }}
-      <button @click="refreshTickets" style="margin-left: 16px; padding: 8px 16px;">Try Again</button>
-    </div>
+    <UIAlert v-else-if="error" variant="danger">
+      <strong>Error loading tickets</strong><br />
+      {{ error }}
+      <template #actions>
+        <UIButtonEnhanced variant="danger" size="sm" @click="refreshTickets" class="mt-3">
+          Try Again
+        </UIButtonEnhanced>
+      </template>
+    </UIAlert>
 
     <!-- Empty State -->
-    <div v-else-if="!filteredTickets || filteredTickets.length === 0" style="text-align: center; padding: 40px; color: #666;">
-      <div>📄</div>
-      <p>No tickets found</p>
-      <p v-if="hasActiveFilters" style="font-size: 14px;">Try adjusting your filters or search terms</p>
-      <p v-else style="font-size: 14px;">Create your first ticket to get started</p>
-    </div>
+    <UIBox v-else-if="!filteredTickets || filteredTickets.length === 0" class="p-12">
+      <div class="flex flex-col items-center justify-center space-y-4 text-center">
+        <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+          <Icon name="i-lucide-ticket" class="w-12 h-12 text-gray-400" />
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No tickets found</h3>
+          <p v-if="hasActiveFilters" class="text-gray-600 dark:text-gray-400">
+            Try adjusting your filters or search terms
+          </p>
+          <p v-else class="text-gray-600 dark:text-gray-400">
+            Create your first ticket to get started
+          </p>
+        </div>
+      </div>
+    </UIBox>
 
     <!-- Tickets List -->
-    <div v-else style="margin: 20px 0;">
-      <div style="margin-bottom: 16px;">
-        <small>Showing {{ filteredTickets.length }} of {{ tickets.length }} tickets</small>
+    <UIBox v-else class="p-6">
+      <div class="flex justify-between items-center mb-6">
+        <UIH2>
+          Tickets
+          <span class="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+            (Showing {{ filteredTickets.length }} of {{ tickets.length }})
+          </span>
+        </UIH2>
       </div>
 
       <!-- Tickets Table -->
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
-          <thead style="background: #f8f9fa;">
-            <tr>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Ticket #</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Title</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Client</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Status</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Priority</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Category</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Created</th>
-              <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Actions</th>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Ticket #
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Title
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Client
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Status
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Priority
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Category
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Created
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             <tr
               v-for="ticket in filteredTickets"
               :key="ticket.id"
-              style="border-bottom: 1px solid #ddd;"
               @click="viewTicket(ticket)"
-              class="ticket-row"
+              class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <td style="padding: 12px; border: 1px solid #ddd;">
-                <strong>{{ ticket.ticket_number }}</strong>
+              <td class="px-4 py-4">
+                <span class="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  {{ ticket.ticket_number }}
+                </span>
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
-                {{ ticket.title }}
+              <td class="px-4 py-4">
+                <div class="font-semibold text-gray-900 dark:text-white">{{ ticket.title }}</div>
+                <div v-if="ticket.description" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
+                  {{ ticket.description }}
+                </div>
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
+              <td class="px-4 py-4">
                 <button
                   @click.stop="viewClient(ticket)"
-                  style="background: none; border: none; color: #007bff; text-decoration: underline; cursor: pointer;"
+                  class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
                 >
                   {{ ticket.client_name }}
                 </button>
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
-                <span :style="getStatusStyle(ticket.status)">
+              <td class="px-4 py-4">
+                <span :class="getStatusClasses(ticket.status)">
                   {{ formatStatus(ticket.status) }}
                 </span>
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
-                <span :style="getPriorityStyle(ticket.priority)">
+              <td class="px-4 py-4">
+                <span :class="getPriorityClasses(ticket.priority)">
                   {{ formatPriority(ticket.priority) }}
                 </span>
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
+              <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-400">
                 {{ formatCategory(ticket.category) }}
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
+              <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-400">
                 {{ formatDate(ticket.created_at) }}
               </td>
-              <td style="padding: 12px; border: 1px solid #ddd;">
-                <button
-                  @click.stop="editTicket(ticket)"
-                  style="margin-right: 8px; padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                >
-                  Edit
-                </button>
-                <button
-                  @click.stop="deleteTicket(ticket)"
-                  style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                >
-                  Delete
-                </button>
+              <td class="px-4 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <UIButtonEnhanced
+                    variant="ghost"
+                    size="sm"
+                    @click.stop="editTicket(ticket)"
+                  >
+                    <template #icon>
+                      <Icon name="i-lucide-edit" class="w-4 h-4" />
+                    </template>
+                  </UIButtonEnhanced>
+                  <UIButtonEnhanced
+                    variant="ghost"
+                    size="sm"
+                    @click.stop="deleteTicket(ticket.id)"
+                  >
+                    <template #icon>
+                      <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+                    </template>
+                  </UIButtonEnhanced>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </UIBox>
 
     <!-- Edit Modal -->
     <ModalsTicketCreate
@@ -225,13 +265,18 @@
 import { format } from 'date-fns'
 import type { Ticket } from '~/composables/useTickets'
 
+// Page metadata
+useHead({
+  title: 'Tickets - EverestFlow'
+})
+
 // Composables
 const {
   tickets,
   loading,
   error,
   fetchTickets,
-  deleteTicket,
+  deleteTicket: removeTicket,
   openTickets,
   inProgressTickets,
   resolvedTickets,
@@ -261,6 +306,30 @@ const priorityOptions = [
   { label: 'Normal', value: 'normal' },
   { label: 'High', value: 'high' },
   { label: 'Urgent', value: 'urgent' }
+]
+
+// UISelect format options
+const statusSelectOptions = [
+  { label: 'All Statuses', value: 'all' },
+  { label: 'Open', value: 'open' },
+  { label: 'In Progress', value: 'in_progress' },
+  { label: 'Resolved', value: 'resolved' },
+  { label: 'Closed', value: 'closed' }
+]
+
+const prioritySelectOptions = [
+  { label: 'All Priorities', value: 'all' },
+  { label: 'Normal', value: 'normal' },
+  { label: 'High', value: 'high' },
+  { label: 'Urgent', value: 'urgent' }
+]
+
+const categorySelectOptions = [
+  { label: 'All Categories', value: 'all' },
+  { label: 'Technical', value: 'technical' },
+  { label: 'Contract', value: 'contract' },
+  { label: 'Billing', value: 'billing' },
+  { label: 'Maintenance', value: 'maintenance' }
 ]
 
 // Computed
@@ -304,14 +373,6 @@ const hasActiveFilters = computed(() => {
 })
 
 // Methods
-const setStatusFilter = (status: string) => {
-  currentStatusFilter.value = status
-}
-
-const setPriorityFilter = (priority: string) => {
-  currentPriorityFilter.value = priority
-}
-
 const clearFilters = () => {
   searchQuery.value = ''
   currentStatusFilter.value = 'all'
@@ -335,6 +396,15 @@ const editTicket = (ticket: Ticket) => {
 const viewTicket = (ticket: Ticket) => {
   console.log('View ticket:', ticket)
   // TODO: Implement ticket detail modal
+}
+
+const deleteTicket = async (ticketId: string) => {
+  if (confirm('Are you sure you want to delete this ticket?')) {
+    const success = await removeTicket(ticketId)
+    if (success) {
+      console.log('Ticket deleted successfully')
+    }
+  }
 }
 
 const viewClient = async (ticket: Ticket) => {
@@ -396,7 +466,7 @@ const handleTicketUpdated = () => {
 // Formatting functions
 const formatDate = (dateString: string) => {
   try {
-    return format(new Date(dateString), 'MMM d, yyyy HH:mm')
+    return format(new Date(dateString), 'MMM d, yyyy')
   } catch (e) {
     return dateString
   }
@@ -416,23 +486,23 @@ const formatCategory = (category: string) => {
   return category.charAt(0).toUpperCase() + category.slice(1)
 }
 
-const getStatusStyle = (status: string) => {
-  const styles = {
-    open: { background: '#e3f2fd', color: '#1976d2', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
-    in_progress: { background: '#fff3e0', color: '#f57c00', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
-    resolved: { background: '#e8f5e8', color: '#388e3c', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
-    closed: { background: '#f3e5f5', color: '#7b1fa2', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }
+const getStatusClasses = (status: string): string => {
+  const classes = {
+    open: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
+    in_progress: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
+    resolved: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
+    closed: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400'
   }
-  return styles[status] || {}
+  return classes[status] || classes.open
 }
 
-const getPriorityStyle = (priority: string) => {
-  const styles = {
-    normal: { background: '#f5f5f5', color: '#666', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
-    high: { background: '#fff3e0', color: '#f57c00', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' },
-    urgent: { background: '#ffebee', color: '#d32f2f', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }
+const getPriorityClasses = (priority: string): string => {
+  const classes = {
+    normal: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400',
+    high: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400',
+    urgent: 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
   }
-  return styles[priority] || {}
+  return classes[priority] || classes.normal
 }
 
 // Lifecycle
@@ -447,12 +517,14 @@ watch([searchQuery, currentStatusFilter, currentPriorityFilter, currentCategoryF
 </script>
 
 <style scoped>
-.ticket-row {
-  cursor: pointer;
-  transition: background-color 0.2s;
+.outfit {
+  font-family: 'Outfit', sans-serif;
 }
 
-.ticket-row:hover {
-  background-color: #f8f9fa;
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>
