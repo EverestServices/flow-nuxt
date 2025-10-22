@@ -1141,7 +1141,88 @@ If migrating from previous survey implementation:
 
 ---
 
+## State Management Patterns
+
+### Investment-Specific Response Storage
+
+**Context:** Questions with the same `name` can exist across multiple investments. Each investment must maintain its own set of responses.
+
+**Store Structure:**
+```typescript
+// app/stores/surveyInvestments.ts
+state: () => ({
+  investmentResponses: {} as Record<string, Record<string, any>>,
+  // Structure: investmentResponses[investmentId][questionName] = value
+})
+```
+
+**Example:**
+```typescript
+investmentResponses: {
+  'uuid-solar-panel': {
+    'electrical_network_condition': 'Good',
+    'roof_type': 'Pitched',
+    'roof_area': '150'
+  },
+  'uuid-heat-pump': {
+    'electrical_network_condition': 'Needs renovation',
+    'heating_system': 'Gas boiler'
+  },
+  'uuid-battery': {
+    'electrical_network_condition': '' // Not yet answered
+  }
+}
+```
+
+### Accessing Investment-Specific Responses
+
+**❌ WRONG - Active Investment Only:**
+```typescript
+// This only checks the currently active investment
+const response = store.getResponse(question.name)
+```
+
+**✅ CORRECT - Specific Investment:**
+```typescript
+// Directly access the specific investment's response
+const response = store.investmentResponses[investment.id]?.[question.name]
+```
+
+### Critical Implementation Points
+
+1. **Progress Calculation:**
+   - Each `SurveyPage` belongs to a specific `investment_id`
+   - Progress must be calculated using `page.investment_id` context
+   - Function signature: `getPageCompletionPercentage(page: SurveyPage)` (not just `pageId`)
+
+2. **Missing Items Detection:**
+   - Loop through all investments
+   - Check each investment's specific responses
+   - Deduplicate by `investmentId:questionName` key
+   - Prevents same question from appearing multiple times if answered for one investment
+
+3. **Response Updates:**
+   - Always update: `investmentResponses[investmentId][questionName] = value`
+   - Never rely on "active" investment for multi-investment scenarios
+
+### Affected Components
+
+**Components using investment-specific responses:**
+- `/app/components/Survey/SurveyHouseVisualization.vue` - Progress indicators
+- `/app/components/Survey/SurveyMissingItemsModal.vue` - Missing items detection
+- `/app/components/Survey/SurveyPropertyAssessment.vue` - Question rendering
+- `/app/stores/surveyInvestments.ts` - Core state management
+
+**Bug History:**
+- **Issue:** Missing Items count incorrect when same question exists across investments
+- **Root Cause:** Using `store.getResponse()` which only checked active investment
+- **Fix Date:** 2025-10-22
+- **Solution:** Direct access to `investmentResponses[investment.id][question.name]`
+
+---
+
 ## Related Documentation
 
 - [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
 - [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
+- [Investment-Aware Response Tracking Bugfix](survey-property-assessment.md#investment-aware-question-response-tracking-bugfix) - Detailed bugfix documentation

@@ -1294,17 +1294,369 @@ const closeAccordion = (event: MouseEvent) => {
 
 ---
 
+## Investment Icon Management (Database-Driven)
+
+### Áttekintés
+Az investment ikonok kezelése teljes mértékben adatbázis-alapúvá vált. A korábban használt hardcoded iconMap objektumok eltávolításra kerültek.
+
+### Változások
+
+**Migrációk:**
+- **Migration 061:** `update_solar_battery_icon.sql` - Solar Panel + Battery investment ikonjának frissítése `i-lucide-battery-charging` értékre
+
+**Érintett komponensek:**
+
+#### 1. SurveyScenarioInvestments.vue
+**Előtte:**
+```typescript
+const iconMap: Record<string, string> = {
+  'Solar Panel': 'i-lucide-sun',
+  'Solar Panel + Battery': 'i-lucide-battery-charging',
+  'Heat Pump': 'i-lucide-wind',
+  // ... hardcoded mapping
+}
+
+const getInvestmentIcon = (investmentName: string) => {
+  return iconMap[investmentName] || 'i-lucide-package'
+}
+```
+
+**Utána:**
+```typescript
+// Directly use investment.icon from database
+icon: investment.icon
+```
+
+#### 2. SurveyHeader.vue
+**Előtte:**
+```typescript
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+  const iconMap: Record<string, string> = { /* hardcoded */ }
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? iconMap[investment.name] || 'i-lucide-package' : null
+    })
+    .filter(Boolean)
+}
+```
+
+**Utána:**
+```typescript
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? investment.icon : null
+    })
+    .filter(Boolean)
+}
+```
+
+### Előnyök
+- **Single Source of Truth:** Ikonok az adatbázisban tárolódnak
+- **Könnyebb karbantartás:** Új investment hozzáadása nem igényel kódmódosítást
+- **Dinamikus:** Ikonok módosíthatók migration-ökkel vagy admin felületről
+- **Konzisztencia:** Minden komponens ugyanazt az ikont használja
+
+### Érintett fájlok
+- `/supabase/migrations/061_update_solar_battery_icon.sql` (új)
+- `/app/components/Survey/SurveyScenarioInvestments.vue`
+- `/app/components/Survey/SurveyHeader.vue`
+
+---
+
+## Survey Page Progress Indicators
+
+### Áttekintés
+A házvisualizáció SurveyPage gombjai cirkuláris progress indikátorral jelenítik meg a kitöltöttségi százalékot.
+
+### Megjelenés
+- **Progress Ring:** SVG-alapú körgyűrű a gomb körül
+- **Kezdőpont:** Felül (12 óra pozíció)
+- **Irány:** Óramutató járása szerint (clockwise)
+- **Színek:**
+  - **100% kitöltöttség:** Zöld (`text-green-500 dark:text-green-400`)
+  - **<100% kitöltöttség:** Primary kék (`text-primary-500`)
+- **Méret:** 40px × 40px (pontosan a gomb mérete)
+- **Vastagság:** 2px stroke width
+- **Nincs tooltip:** A százalék nem jelenik meg hover-re
+
+### Implementáció
+
+**Fájl:** `/app/components/Survey/SurveyHouseVisualization.vue`
+
+#### Template struktúra
+```vue
+<div class="absolute group" :style="{ top: page.position.top + 'px', right: page.position.right + 'px' }">
+  <!-- Button -->
+  <button
+    class="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg transition-transform flex items-center justify-center"
+    @click="$emit('page-click', page.id)"
+  >
+    <UIcon
+      :name="getInvestmentIcon(page.investment_id)"
+      class="w-5 h-5 text-primary-600 dark:text-primary-400"
+    />
+  </button>
+
+  <!-- Circular Progress SVG -->
+  <svg
+    class="absolute inset-0 w-10 h-10 -rotate-90 pointer-events-none"
+    viewBox="0 0 40 40"
+  >
+    <circle
+      cx="20"
+      cy="20"
+      r="18"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      :class="[
+        'transition-all duration-300',
+        getPageCompletionPercentage(page) === 100
+          ? 'text-green-500 dark:text-green-400'
+          : 'text-primary-500'
+      ]"
+      :stroke-dasharray="113.097"
+      :stroke-dashoffset="getProgressDashoffset(getPageCompletionPercentage(page))"
+    />
+  </svg>
+</div>
+```
+
+#### Completion kalkuláció (Investment-specific)
+```typescript
+const getPageCompletionPercentage = (page: SurveyPage): number => {
+  const questions = store.surveyQuestions[page.id] || []
+
+  // Get only required questions
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100 // If no required questions, consider it complete
+  }
+
+  // Count answered required questions (investment-specific)
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.investmentResponses[page.investment_id]?.[question.name]
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+#### SVG stroke-dashoffset kalkuláció
+```typescript
+const getProgressDashoffset = (percentage: number): number => {
+  const circumference = 2 * Math.PI * 18 // radius is 18
+  return circumference - (percentage / 100) * circumference
+}
+```
+
+### Matematikai alapok
+- **Circumference (kerület):** `2 × π × r = 2 × π × 18 ≈ 113.097`
+- **stroke-dasharray:** `113.097` (teljes kerület)
+- **stroke-dashoffset:** `113.097 - (percentage / 100) × 113.097`
+- **-rotate-90:** SVG elforgatása, hogy felülről induljon a progress
+- **pointer-events-none:** SVG ne fogja el a kattintás eseményt
+
+### Design döntések
+- **Nincs hover scale:** A gombok mérete állandó
+- **Nincs z-index:** DOM sorrend biztosítja a helyes rétegelést (SVG a button után)
+- **Smooth transition:** 300ms `transition-all duration-300`
+- **Rounded linecap:** `stroke-linecap="round"` elegánsabb végpontok
+
+### Érintett fájlok
+- `/app/components/Survey/SurveyHouseVisualization.vue` (lines 29-65, 135-159)
+
+---
+
+## Investment-Aware Question Response Tracking (Bugfix)
+
+### Probléma
+Ha ugyanolyan kérdés név (`name` mező) létezett 3 különböző Investment-hez tartozó SurveyPage-eken, a Missing Items számláló és a progress indicator helytelenül működött:
+- Néha 3-mal csökkent egyetlen válaszadás után a Missing Items értéke
+- Néha egyáltalán nem csökkent
+
+### Alapvető ok (Root Cause)
+A kérdésekre adott válaszok **investment-specifikusan** vannak tárolva a store-ban:
+```typescript
+investmentResponses: {
+  [investmentId]: {
+    [questionName]: value
+  }
+}
+```
+
+**Példa:**
+```typescript
+investmentResponses: {
+  'uuid-solar-panel': {
+    'electrical_network_condition': 'Jó állapotú'
+  },
+  'uuid-heat-pump': {
+    'electrical_network_condition': 'Felújítandó'
+  },
+  'uuid-battery': {
+    'electrical_network_condition': '' // Még nincs válasz
+  }
+}
+```
+
+**Probléma a kódban:**
+- A `store.getResponse(questionName)` csak az **aktív investment** válaszát nézte
+- A Missing Items Modal végigiterált minden investment-en, de mindig a `getResponse()` függvényt hívta
+- Így nem az adott investment válaszát kapta, hanem az épp aktív investment-ét
+
+### Megoldás
+
+#### 1. SurveyMissingItemsModal.vue (lines 172-210)
+
+**Előtte (hibás):**
+```typescript
+const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
+  const unanswered: UnansweredQuestion[] = []
+
+  store.selectedInvestments.forEach(investment => {
+    const pages = store.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = store.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          const response = store.getResponse(question.name) // ❌ WRONG - uses active investment only
+          if (!response || response === '' || response === null || response === undefined) {
+            unanswered.push({...})
+          }
+        }
+      })
+    })
+  })
+
+  return unanswered
+})
+```
+
+**Utána (helyes):**
+```typescript
+const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
+  const unanswered: UnansweredQuestion[] = []
+  const seenQuestions = new Set<string>() // Track by investment + question name
+
+  store.selectedInvestments.forEach(investment => {
+    const pages = store.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = store.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          // ✅ Get investment-specific response
+          const response = store.investmentResponses[investment.id]?.[question.name]
+          if (!response || response === '' || response === null || response === undefined) {
+            // Create unique key: investmentId + questionName
+            const questionKey = `${investment.id}:${question.name}`
+
+            // Only add if we haven't seen this investment+question combination before
+            if (!seenQuestions.has(questionKey)) {
+              seenQuestions.add(questionKey)
+              unanswered.push({
+                id: question.id,
+                label: translateField(question.name),
+                pageId: page.id,
+                pageName: translatePage(page.name),
+                investmentId: investment.id,
+                investmentName: investment.name,
+                investmentIcon: investment.icon
+              })
+            }
+          }
+        }
+      })
+    })
+  })
+
+  return unanswered
+})
+```
+
+#### 2. SurveyHouseVisualization.vue (lines 135-153)
+
+**Előtte (hibás):**
+```typescript
+const getPageCompletionPercentage = (pageId: string): number => {
+  const questions = store.surveyQuestions[pageId] || []
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100
+  }
+
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.getResponse(question.name) // ❌ WRONG - active investment only
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+**Utána (helyes):**
+```typescript
+const getPageCompletionPercentage = (page: SurveyPage): number => {
+  const questions = store.surveyQuestions[page.id] || []
+
+  // Get only required questions
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100 // If no required questions, consider it complete
+  }
+
+  // ✅ Count answered required questions (investment-specific)
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.investmentResponses[page.investment_id]?.[question.name]
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+### Kulcsváltozások
+1. **Direct access:** `store.investmentResponses[investment.id][question.name]` helyett `store.getResponse()`
+2. **Page object használata:** `getPageCompletionPercentage` most teljes `page` objektumot kap, nem csak `pageId`-t
+3. **Deduplication key:** `investmentId:questionName` formátum a duplikáció elkerülésére
+4. **Investment context:** Minden válasz ellenőrzés a megfelelő investment kontextusban történik
+
+### Eredmény
+- **Helyes Missing Items számláló:** Minden investment kérdései külön követettek
+- **Helyes progress indicator:** Minden page-hez a megfelelő investment válaszai alapján számított progress
+- **Nincs duplikáció:** Ugyanolyan nevű kérdések különböző investment-ekhez külön kezeltek
+
+### Érintett fájlok
+- `/app/components/Survey/SurveyMissingItemsModal.vue` (lines 172-210)
+- `/app/components/Survey/SurveyHouseVisualization.vue` (lines 135-153)
+
+---
+
 ## Következő lépések
 
 1. ✅ DocumentCategory gombok renderelése
 2. ✅ Fotó feltöltési modal implementálása (3 mód)
 3. ✅ "Upload All Photos" funkció
 4. ✅ "Fill All Data" funkció (display mode váltás)
-5. "Generate Assessment Sheet" funkció implementálása
-6. Marker Mode implementálása
-7. ✅ Missing Items tracking és megjelenítése
-8. Fotók tényleges feltöltése és tárolása adatbázisban
-9. Megválaszolt kérdések mentése adatbázisba
+5. ✅ Investment icon management (database-driven)
+6. ✅ Survey page progress indicators (circular progress)
+7. ✅ Investment-aware question response tracking (bugfix)
+8. "Generate Assessment Sheet" funkció implementálása
+9. Marker Mode implementálása
+10. Fotók tényleges feltöltése és tárolása adatbázisban
+11. Megválaszolt kérdések mentése adatbázisba
 
 ---
 

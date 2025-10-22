@@ -44,8 +44,6 @@
           <UISelect
             :model-value="scenarioComponent.main_component_id"
             :options="getComponentOptions(category.id)"
-            value-attribute="value"
-            label-attribute="label"
             class="flex-1"
             size="sm"
             @update:model-value="(value) => handleComponentChange(scenarioComponent.id, value)"

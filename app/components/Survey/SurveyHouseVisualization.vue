@@ -16,30 +16,53 @@
       class="w-full h-auto"
     />
 
-    <!-- Survey Page Buttons -->
-    <button
+    <!-- Survey Page Buttons with Progress Indicator -->
+    <div
       v-for="page in filteredSurveyPages"
       :key="page.id"
-      class="absolute w-10 h-10 rounded-full bg-white dark:bg-gray-800 border-2 border-primary-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center group"
+      class="absolute group"
       :style="{
         top: page.position.top + 'px',
         right: page.position.right + 'px'
       }"
-      @click="$emit('page-click', page.id)"
     >
-      <!-- Investment Icon (smaller) -->
-      <UIcon
-        :name="getInvestmentIcon(page.investment_id)"
-        class="w-5 h-5 text-primary-600 dark:text-primary-400"
-      />
+      <!-- Button -->
+      <button
+        class="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg transition-transform flex items-center justify-center"
+        @click="$emit('page-click', page.id)"
+      >
+        <!-- Investment Icon (smaller) -->
+        <UIcon
+          :name="getInvestmentIcon(page.investment_id)"
+          class="w-5 h-5 text-primary-600 dark:text-primary-400"
+        />
+      </button>
 
-      <!-- Tooltip -->
-      <div class="absolute bottom-full mb-2 hidden group-hover:block">
-        <div class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-          {{ page.name }}
-        </div>
-      </div>
-    </button>
+      <!-- Circular Progress SVG -->
+      <svg
+        class="absolute inset-0 w-10 h-10 -rotate-90 pointer-events-none"
+        viewBox="0 0 40 40"
+      >
+        <!-- Progress circle -->
+        <circle
+          cx="20"
+          cy="20"
+          r="18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          :class="[
+            'transition-all duration-300',
+            getPageCompletionPercentage(page) === 100
+              ? 'text-green-500 dark:text-green-400'
+              : 'text-primary-500'
+          ]"
+          :stroke-dasharray="113.097"
+          :stroke-dashoffset="getProgressDashoffset(getPageCompletionPercentage(page))"
+        />
+      </svg>
+    </div>
 
     <!-- Document Category Buttons (grouped by persist_name) -->
     <button
@@ -73,6 +96,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
+import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 
 interface DocumentCategoryWithInvestment {
   id: string
@@ -105,6 +129,34 @@ defineEmits<{
   'category-click': [categoryId: string]
   'toggle-list-view': []
 }>()
+
+const store = useSurveyInvestmentsStore()
+
+// Calculate completion percentage for a page
+const getPageCompletionPercentage = (page: SurveyPage): number => {
+  const questions = store.surveyQuestions[page.id] || []
+
+  // Get only required questions
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100 // If no required questions, consider it complete
+  }
+
+  // Count answered required questions (investment-specific)
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.investmentResponses[page.investment_id]?.[question.name]
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+
+// Calculate SVG stroke-dashoffset for circular progress
+const getProgressDashoffset = (percentage: number): number => {
+  const circumference = 2 * Math.PI * 18 // radius is 18
+  return circumference - (percentage / 100) * circumference
+}
 
 // Filter survey pages based on view mode and investment filter
 const filteredSurveyPages = computed(() => {

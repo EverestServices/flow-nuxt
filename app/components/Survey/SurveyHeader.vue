@@ -219,22 +219,11 @@ const handleToggleVisualization = () => {
 // Helper to get investment icons for a scenario
 const getScenarioInvestmentIcons = (scenarioId: string) => {
   const investmentIds = props.scenarioInvestments[scenarioId] || []
-  const iconMap: Record<string, string> = {
-    'Solar Panel': 'i-lucide-sun',
-    'Solar Panel + Battery': 'i-lucide-battery-charging',
-    'Heat Pump': 'i-lucide-thermometer',
-    'Facade Insulation': 'i-lucide-layers',
-    'Roof Insulation': 'i-lucide-home',
-    'Windows': 'i-lucide-layout-grid',
-    'Air Conditioner': 'i-lucide-wind',
-    'Battery': 'i-lucide-battery',
-    'Car Charger': 'i-lucide-plug-zap'
-  }
 
   return investmentIds
     .map(id => {
       const investment = props.selectedInvestments.find(inv => inv.id === id)
-      return investment ? iconMap[investment.name] || 'i-lucide-package' : null
+      return investment ? investment.icon : null
     })
     .filter(Boolean)
 }

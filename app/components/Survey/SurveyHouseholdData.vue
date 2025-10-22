@@ -10,8 +10,6 @@
         <UISelect
           :model-value="localData.roofType"
           :options="roofTypeOptions"
-          value-attribute="value"
-          label-attribute="label"
           size="sm"
           @update:model-value="handleFieldChange('roofType', $event)"
         />
@@ -153,6 +151,55 @@
           : 'Megjegyzés: Ezek az adatok az "Ingatlan felmérése" oldalról származnak. Ha itt módosítja, az eredeti felmérési adatok nem változnak.'
         }}
       </p>
+
+      <!-- Monthly Gas Bill Slider -->
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-sm font-medium text-gray-900 dark:text-white">
+            Monthly Gas Bill
+          </label>
+          <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
+            {{ formatCurrency(localData.monthlyGasBill) }}
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-500 dark:text-gray-400 min-w-[60px]">0 Ft</span>
+          <input
+            type="range"
+            :value="localData.monthlyGasBill"
+            min="0"
+            max="500000"
+            step="1000"
+            class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+            @input="handleFieldChange('monthlyGasBill', Number(($event.target as HTMLInputElement).value))"
+          />
+          <span class="text-sm text-gray-500 dark:text-gray-400 min-w-[90px] text-right">500 000 Ft</span>
+        </div>
+      </div>
+
+      <!-- Consumption Profiles -->
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+          Consumption Profiles
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="profile in consumptionProfiles"
+            :key="profile.value"
+            type="button"
+            :class="[
+              'flex flex-col items-center justify-center py-3 px-3 rounded-lg border-2 transition-all text-xs',
+              selectedProfiles.includes(profile.value)
+                ? 'bg-primary-600 border-primary-600 text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+            ]"
+            @click="toggleProfile(profile.value)"
+          >
+            <UIcon :name="profile.icon" class="w-5 h-5 mb-1" />
+            <span class="font-medium text-center">{{ profile.label }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -174,6 +221,7 @@ interface HouseholdData {
   consumptionUnit: 'kW' | 'Ft'
   consumptionPeriod: 'hónap' | 'év'
   consumption: string
+  monthlyGasBill: number
 }
 
 interface Props {
@@ -191,12 +239,23 @@ const localData = ref<HouseholdData>({
   tiltAngle: 30,
   consumptionUnit: 'kW',
   consumptionPeriod: 'év',
-  consumption: ''
+  consumption: '',
+  monthlyGasBill: 0
 })
 
 const isModified = ref(false)
 const showSolarFields = ref(false)
 const selectedInvestments = ref<string[]>([])
+const selectedProfiles = ref<string[]>([])
+
+// Consumption profiles options
+const consumptionProfiles = [
+  { value: 'work_from_home', label: 'Work from home', icon: 'i-lucide-home' },
+  { value: 'traditional_hours', label: 'Traditional hours (9-17)', icon: 'i-lucide-briefcase' },
+  { value: 'shift_work', label: 'Shift work', icon: 'i-lucide-clock' },
+  { value: 'retired_stay_at_home', label: 'Retired/Stay at home', icon: 'i-lucide-armchair' },
+  { value: 'young_family', label: 'Young family with children', icon: 'i-lucide-baby' }
+]
 
 /**
  * Check if solar-related investment is selected
@@ -253,7 +312,7 @@ const loadHouseholdData = async () => {
   try {
     const { data: survey, error } = await supabase
       .from('surveys')
-      .select('household_data')
+      .select('household_data, consumption_profiles')
       .eq('id', props.surveyId)
       .single()
 
@@ -267,6 +326,11 @@ const loadHouseholdData = async () => {
       // Load from Property Assessment survey answers
       await loadFromPropertyAssessment()
       isModified.value = false
+    }
+
+    // Load consumption profiles
+    if (survey?.consumption_profiles) {
+      selectedProfiles.value = survey.consumption_profiles
     }
   } catch (error) {
     console.error('Error loading household data:', error)
@@ -334,7 +398,10 @@ const saveHouseholdData = async () => {
   try {
     const { error } = await supabase
       .from('surveys')
-      .update({ household_data: localData.value })
+      .update({
+        household_data: localData.value,
+        consumption_profiles: selectedProfiles.value
+      })
       .eq('id', props.surveyId)
 
     if (error) throw error
@@ -352,6 +419,31 @@ const handleFieldChange = (field: keyof HouseholdData, value: any) => {
   localData.value[field] = value as never
   // Debounce save
   saveHouseholdData()
+}
+
+/**
+ * Toggle consumption profile selection
+ */
+const toggleProfile = (profileValue: string) => {
+  const index = selectedProfiles.value.indexOf(profileValue)
+  if (index > -1) {
+    selectedProfiles.value.splice(index, 1)
+  } else {
+    selectedProfiles.value.push(profileValue)
+  }
+  // Save immediately
+  saveHouseholdData()
+}
+
+/**
+ * Format currency in HUF
+ */
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('hu-HU', {
+    style: 'currency',
+    currency: 'HUF',
+    maximumFractionDigits: 0
+  }).format(amount)
 }
 
 // Load data on mount

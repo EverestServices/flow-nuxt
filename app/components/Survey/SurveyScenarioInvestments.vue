@@ -6,7 +6,7 @@
       :key="investment.id"
       :items="[{
         label: investment.name,
-        icon: getInvestmentIcon(investment.name),
+        icon: investment.icon,
         slot: `investment-${investment.id}`,
         defaultOpen: false
       }]"
@@ -64,20 +64,4 @@ const scenarioInvestments = computed(() => {
     .map(id => investmentsStore.availableInvestments.find(inv => inv.id === id))
     .filter(Boolean)
 })
-
-// Get investment icon based on name
-const getInvestmentIcon = (name: string): string => {
-  const iconMap: Record<string, string> = {
-    'Solar Panel': 'i-lucide-sun',
-    'Solar Panel + Battery': 'i-lucide-battery-charging',
-    'Heat Pump': 'i-lucide-thermometer',
-    'Facade Insulation': 'i-lucide-layers',
-    'Roof Insulation': 'i-lucide-home',
-    'Windows': 'i-lucide-layout-grid',
-    'Air Conditioner': 'i-lucide-wind',
-    'Battery': 'i-lucide-battery',
-    'Car Charger': 'i-lucide-plug-zap'
-  }
-  return iconMap[name] || 'i-lucide-package'
-}
 </script>
