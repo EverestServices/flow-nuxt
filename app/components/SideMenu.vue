@@ -81,19 +81,20 @@
       <!-- Share Location -->
       <button
           class="rounded-full flex items-center justify-center w-14 h-14
-
          backdrop-blur-sm
-         border border-white
-         text-white font-medium
+         border font-medium
          shadow-lg
-         hover:bg-[#FAE696]/30
-         dark:bg-black/30 dark:border-black/70
-         hover:text-white
          cursor-pointer
          transition"
-          @click="openMenuSection('Location')"
+          :class="locationTrackingEnabled
+            ? 'bg-green-500 border-green-600 hover:bg-green-600'
+            : 'border-white hover:bg-[#FAE696]/30 dark:bg-black/30 dark:border-black/70'"
+          @click="handleLocationClick"
       >
-        <IconLocation class="w-6 h-6 text-black dark:text-white" />
+        <IconLocation
+          class="w-6 h-6"
+          :class="locationTrackingEnabled ? 'text-white' : 'text-black dark:text-white'"
+        />
       </button>
 
       <!-- Settings -->
@@ -249,6 +250,9 @@ const user = useSupabaseUser();
 // Online status
 const { currentUserOnline } = useOnlineStatus();
 
+// Location tracking
+const { locationTrackingEnabled, toggleLocationTracking } = useLocationTracking();
+
 // Debug log for online status
 watch(currentUserOnline, (newValue) => {
   console.log('SideMenu - currentUserOnline changed to:', newValue)
@@ -325,12 +329,6 @@ const handleLogout = async () => {
 
 // Function to open menu with specific section
 const openMenuSection = (sectionLabel: string) => {
-  // Special handling for Location - request geolocation
-  if (sectionLabel === 'Location') {
-    shareLocation();
-    return;
-  }
-
   const menuItem = items.find(item => item.label === sectionLabel);
 
   // If the menu item has children, only open the first level menu (not submenu)
@@ -347,6 +345,11 @@ const openMenuSection = (sectionLabel: string) => {
   }
 };
 
+// Handle location click - toggle tracking instead of navigating
+const handleLocationClick = async () => {
+  await toggleLocationTracking();
+};
+
 // Handle menu item click in slide panel
 const handleMenuItemClick = (menu: any) => {
   if (!menu.children || menu.children.length === 0) {
@@ -355,65 +358,6 @@ const handleMenuItemClick = (menu: any) => {
     closeMenu();
   }
   // If menu has children, do nothing on click (hover handles submenu)
-};
-
-// Share location function
-const shareLocation = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log('✅ Location access granted:', { latitude, longitude });
-
-        // Store location in localStorage or state if needed
-        localStorage.setItem('userLocation', JSON.stringify({ latitude, longitude, timestamp: new Date().toISOString() }));
-
-        // Navigate to location page
-        const menuItem = items.find(item => item.label === 'Location');
-        if (menuItem?.to) {
-          navigateTo(menuItem.to);
-        }
-      },
-      (error) => {
-        console.error('❌ Error getting location:', error);
-
-        // Show user-friendly error message based on error code
-        let errorMessage = 'Unable to get your location.';
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
-            break;
-        }
-
-        alert(errorMessage);
-
-        // Still navigate to location page even if permission denied
-        const menuItem = items.find(item => item.label === 'Location');
-        if (menuItem?.to) {
-          navigateTo(menuItem.to);
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-  } else {
-    alert('Geolocation is not supported by your browser.');
-
-    // Navigate to location page anyway
-    const menuItem = items.find(item => item.label === 'Location');
-    if (menuItem?.to) {
-      navigateTo(menuItem.to);
-    }
-  }
 };
 
 // Dark mode toggle function
@@ -443,7 +387,7 @@ const items: NavigationMenuItem[] = [
       },
       {
         label : 'Energy Consultation',
-        to : '/ascent/energyconsultation'
+        to : '/survey'
       },
       {
         label : 'Offer/Contract Wizard',
@@ -506,10 +450,6 @@ const items: NavigationMenuItem[] = [
         to: '/academy/aisherpa'
       }
     ]
-  },
-  {
-    label: 'Location',
-    to: '/location'
   },
   {
     label: 'Settings',

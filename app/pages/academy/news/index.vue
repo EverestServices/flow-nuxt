@@ -1,89 +1,142 @@
 <template>
-  <div class="" :key="$route.fullPath">
-    <div>
-      <h1 class="text-4xl font-bold text-gray-900 mb-2 outfit">Flow News</h1>
-      <p class="text-lg text-gray-600">Stay updated with the latest company and industry news</p>
-    </div>
-    <!-- Quick Search -->
-    <div class="">
-      <UInput
-          v-model="searchQuery"
-          icon="i-lucide-search"
-          placeholder="Search news..."
-          size="lg"
-          :loading="searching"
-          @update:model-value="handleQuickSearch"
-      />
+  <div :key="$route.fullPath">
+    <!-- Header matching dashboard style -->
+    <div class="flex h-24 items-center">
+      <div class="text-2xl font-light">Flow <span class="font-black">News</span></div>
     </div>
 
-      <div class="">
-        <!-- Sidebar with Filters -->
-        <aside class="">
-          <div class="sticky top-8">
-            <NewsFilters
-              :categories="categories"
-              :filters="filters"
-              @update:filters="updateFilters"
-            />
+    <div class="flex flex-col space-y-8">
+      <!-- Welcome Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 min-h-48">
+        <div class="basis-0 flex flex-col items-start justify-center">
+          <div class="text-5xl font-thin outfit">
+            Stay updated with the <strong class="font-black">latest news</strong> and<br />
+            <strong class="font-black">industry insights</strong>
           </div>
-        </aside>
+          <div class="text-2xl outfit font-thin text-gray-600 dark:text-gray-400 mt-4">
+            {{ totalCount }} articles available
+          </div>
+        </div>
 
-        <!-- Main Content -->
-        <main class="lg:col-span-3 space-y-8">
-          <!-- Featured Articles Section -->
-          <FeaturedNews
-            v-if="featuredArticles.length && !hasActiveFilters"
-            :articles="featuredArticles"
-            layout="grid"
-          />
-
-          <!-- Articles Section -->
-          <div>
-            <!-- Section Header -->
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-2xl font-bold text-gray-900">
-                {{ getSectionTitle() }}
-                <span v-if="totalCount" class="text-lg font-normal text-gray-500">
-                  ({{ totalCount }} articles)
-                </span>
-              </h2>
-
-              <!-- View Toggle -->
-              <div class="flex items-center gap-2">
-                <UButtonGroup>
-                  <UButton
-                    :variant="viewMode === 'grid' ? 'solid' : 'outline'"
-                    size="sm"
-                    @click="viewMode = 'grid'"
-                  >
-                    <Icon name="i-lucide-grid-3x3" class="w-4 h-4" />
-                  </UButton>
-                  <UButton
-                    :variant="viewMode === 'list' ? 'solid' : 'outline'"
-                    size="sm"
-                    @click="viewMode = 'list'"
-                  >
-                    <Icon name="i-lucide-list" class="w-4 h-4" />
-                  </UButton>
-                </UButtonGroup>
+        <!-- Stats Cards -->
+        <div class="flex flex-col basis-0 items-start justify-center">
+          <div class="grid grid-cols-3 gap-4 w-full">
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {{ totalCount }}
               </div>
-            </div>
-
-            <!-- Articles List -->
-            <NewsList
-              :articles="articles"
-              :loading="loading"
-              :error="error"
-              :layout="viewMode"
-              :show-load-more="true"
-              :has-more="hasMore"
-              :loading-more="loadingMore"
-              @load-more="loadMoreArticles"
-            />
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Articles</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                {{ featuredArticles.length }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Featured</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                {{ categories.length }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Categories</div>
+            </UIBox>
           </div>
-        </main>
+        </div>
       </div>
 
+      <!-- Filters Section -->
+      <UIBox>
+        <div class="flex items-center gap-3 p-4">
+          <div class="flex-1">
+            <UIInput
+              v-model="searchQuery"
+              placeholder="Search news..."
+              icon="i-lucide-search"
+              @update:model-value="handleQuickSearch"
+            />
+          </div>
+          <UISelect
+            v-model="filters.category"
+            :options="categoryOptions"
+            size="sm"
+            class="w-40"
+            @update:model-value="loadArticles()"
+          />
+          <UISelect
+            v-model="filters.newsType"
+            :options="newsTypeOptions"
+            size="sm"
+            class="w-32"
+            @update:model-value="loadArticles()"
+          />
+          <UISelect
+            v-model="filters.sortBy"
+            :options="sortOptions"
+            size="sm"
+            class="w-32"
+            @update:model-value="loadArticles()"
+          />
+          <div class="flex items-center gap-2 whitespace-nowrap">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                v-model="filters.featured"
+                @change="loadArticles()"
+                class="sr-only peer"
+              />
+              <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
+            <span class="text-xs text-gray-600 dark:text-gray-400">Featured</span>
+          </div>
+          <button
+            @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Icon v-if="viewMode === 'grid'" name="i-lucide-list" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Icon v-else name="i-lucide-grid-3x3" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+      </UIBox>
+
+      <!-- Featured Articles Section -->
+      <div v-if="featuredArticles.length && !hasActiveFilters">
+        <FeaturedNews
+          :articles="featuredArticles"
+          layout="grid"
+        />
+      </div>
+
+      <!-- Articles Section Header -->
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+          {{ getSectionTitle() }}
+        </h2>
+      </div>
+
+      <!-- Loading State -->
+      <UIBox v-if="loading" class="p-12">
+        <div class="flex justify-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </UIBox>
+
+      <!-- Error State -->
+      <UIAlert v-else-if="error" variant="danger">
+        {{ error }}
+      </UIAlert>
+
+      <!-- Articles List -->
+      <NewsList
+        v-else
+        :articles="articles"
+        :loading="loading"
+        :error="error"
+        :layout="viewMode"
+        :show-load-more="true"
+        :has-more="hasMore"
+        :loading-more="loadingMore"
+        @load-more="loadMoreArticles"
+      />
+    </div>
   </div>
 </template>
 
@@ -135,6 +188,24 @@ const filters = ref({
   dateRange: 'all',
   sortBy: 'newest'
 })
+
+// Filter options
+const categoryOptions = computed(() => [
+  { label: 'All Categories', value: null },
+  ...categories.value.map(cat => ({ label: cat.name, value: cat.id }))
+])
+
+const newsTypeOptions = [
+  { label: 'All News', value: 'all' },
+  { label: 'Global', value: 'global' },
+  { label: 'Company', value: 'company' }
+]
+
+const sortOptions = [
+  { label: 'Newest', value: 'newest' },
+  { label: 'Oldest', value: 'oldest' },
+  { label: 'Most Popular', value: 'popular' }
+]
 
 // Computed
 const hasActiveFilters = computed(() => {

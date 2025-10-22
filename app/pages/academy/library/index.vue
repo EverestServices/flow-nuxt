@@ -1,374 +1,333 @@
 <template>
-  <div class="min-h-screen">
+  <div>
     <!-- Header -->
     <div class="flex h-24 items-center justify-between">
       <div class="text-2xl font-light">Academy <span class="font-black">Library</span></div>
-      <div class="flex items-center gap-4">
-        <!-- Upload Button -->
-        <UButton
+      <div class="flex items-center gap-3">
+        <UIButtonEnhanced
           icon="i-lucide-upload"
-          size="sm"
-          color="primary"
+          variant="primary"
+          size="md"
           @click="showUploadModal = true"
         >
           Upload Files
-        </UButton>
-        <!-- New Folder Button -->
-        <UButton
+        </UIButtonEnhanced>
+        <UIButtonEnhanced
           icon="i-lucide-folder-plus"
-          size="sm"
           variant="outline"
+          size="md"
           @click="showCreateFolderModal = true"
         >
           New Folder
-        </UButton>
+        </UIButtonEnhanced>
       </div>
     </div>
 
-    <!-- Content -->
-    <div class="py-8">
-      <div class="grid grid-cols-12 gap-6">
-        <!-- Sidebar -->
-        <div class="col-span-3">
-          <div class="bg-white rounded-lg shadow-sm border p-6">
-            <!-- Search -->
-            <div class="mb-6">
-              <UInput
-                v-model="searchQuery"
-                placeholder="Search files and folders..."
-                icon="i-lucide-search"
-                size="sm"
-                @input="handleSearch"
-              />
-            </div>
-
-            <!-- Categories Filter -->
-            <div class="mb-6">
-              <h3 class="text-sm font-medium text-gray-900 mb-3">Categories</h3>
-              <div class="space-y-2">
-                <div
-                  v-for="category in categories"
-                  :key="category.key"
-                  class="flex items-center cursor-pointer p-2 rounded-md hover:bg-gray-50 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-700': selectedCategory === category.key }"
-                  @click="selectedCategory = selectedCategory === category.key ? null : category.key"
-                >
-                  <Icon :name="category.icon" class="w-4 h-4 mr-3" />
-                  <span class="text-sm">{{ category.name }}</span>
-                  <span class="ml-auto text-xs text-gray-500">{{ category.count }}</span>
-                </div>
+    <div class="flex flex-col space-y-8">
+      <!-- Welcome Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 min-h-48">
+        <!-- Stats Cards -->
+        <div class="flex flex-col basis-0 items-start justify-center">
+          <div class="grid grid-cols-3 gap-4 w-full">
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {{ folderCount }}
               </div>
-            </div>
-
-            <!-- File Types Filter -->
-            <div class="mb-6">
-              <h3 class="text-sm font-medium text-gray-900 mb-3">File Types</h3>
-              <div class="space-y-2">
-                <div
-                  v-for="type in fileTypes"
-                  :key="type.key"
-                  class="flex items-center cursor-pointer p-2 rounded-md hover:bg-gray-50 transition-colors"
-                  :class="{ 'bg-blue-50 text-blue-700': selectedFileType === type.key }"
-                  @click="selectedFileType = selectedFileType === type.key ? null : type.key"
-                >
-                  <div class="w-4 h-4 mr-3 rounded" :style="{ backgroundColor: type.color }"></div>
-                  <span class="text-sm">{{ type.name }}</span>
-                  <span class="ml-auto text-xs text-gray-500">{{ type.count }}</span>
-                </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Folders</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                {{ fileCount }}
               </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div>
-              <h3 class="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
-              <div class="space-y-2">
-                <button
-                  class="w-full text-left p-2 rounded-md hover:bg-gray-50 transition-colors flex items-center"
-                  @click="viewMode = 'recent'"
-                >
-                  <Icon name="i-lucide-clock" class="w-4 h-4 mr-3" />
-                  <span class="text-sm">Recent Files</span>
-                </button>
-                <button
-                  class="w-full text-left p-2 rounded-md hover:bg-gray-50 transition-colors flex items-center"
-                  @click="viewMode = 'favorites'"
-                >
-                  <Icon name="i-lucide-star" class="w-4 h-4 mr-3" />
-                  <span class="text-sm">Favorites</span>
-                </button>
-                <button
-                  class="w-full text-left p-2 rounded-md hover:bg-gray-50 transition-colors flex items-center"
-                  @click="viewMode = 'shared'"
-                >
-                  <Icon name="i-lucide-users" class="w-4 h-4 mr-3" />
-                  <span class="text-sm">Shared</span>
-                </button>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Files</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                {{ formatFileSize(totalSize) }}
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="col-span-9">
-          <div class="bg-white rounded-lg shadow-sm border">
-            <!-- Toolbar -->
-            <div class="border-b border-gray-200 px-6 py-4">
-              <div class="flex items-center justify-between">
-                <!-- Breadcrumb -->
-                <nav class="flex items-center space-x-2 text-sm">
-                  <button
-                    v-for="(crumb, index) in breadcrumbs"
-                    :key="index"
-                    class="text-gray-500 hover:text-gray-700 transition-colors"
-                    @click="navigateToFolder(crumb.path)"
-                  >
-                    {{ crumb.name }}
-                    <Icon
-                      v-if="index < breadcrumbs.length - 1"
-                      name="i-lucide-chevron-right"
-                      class="w-4 h-4 inline ml-2"
-                    />
-                  </button>
-                </nav>
-
-                <!-- View Options -->
-                <div class="flex items-center gap-2">
-                  <div class="flex bg-gray-100 rounded-md p-1">
-                    <button
-                      class="p-1 rounded transition-colors"
-                      :class="viewType === 'grid' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                      @click="viewType = 'grid'"
-                    >
-                      <Icon name="i-lucide-grid-3x3" class="w-4 h-4" />
-                    </button>
-                    <button
-                      class="p-1 rounded transition-colors"
-                      :class="viewType === 'list' ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-                      @click="viewType = 'list'"
-                    >
-                      <Icon name="i-lucide-list" class="w-4 h-4" />
-                    </button>
-                  </div>
-                  <UDropdown :items="sortOptions" :popper="{ placement: 'bottom-end' }">
-                    <UButton variant="outline" size="sm" icon="i-lucide-arrow-up-down">
-                      Sort
-                    </UButton>
-                  </UDropdown>
-                </div>
-              </div>
-            </div>
-
-            <!-- File Grid/List View -->
-            <div class="p-6">
-              <!-- Loading State -->
-              <div v-if="loading" class="flex justify-center items-center py-12">
-                <Icon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-gray-400" />
-              </div>
-
-              <!-- Empty State -->
-              <div v-else-if="filteredItems.length === 0" class="text-center py-12">
-                <Icon name="i-lucide-folder-open" class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No files found</h3>
-                <p class="text-gray-500 mb-4">Start by uploading your first file or creating a folder</p>
-                <div class="flex justify-center gap-3">
-                  <UButton size="sm" @click="showUploadModal = true">
-                    Upload Files
-                  </UButton>
-                  <UButton variant="outline" size="sm" @click="showCreateFolderModal = true">
-                    Create Folder
-                  </UButton>
-                </div>
-              </div>
-
-              <!-- Grid View -->
-              <div v-else-if="viewType === 'grid'" class="grid grid-cols-6 gap-4">
-                <div
-                  v-for="item in filteredItems"
-                  :key="item.id"
-                  class="group cursor-pointer"
-                  @click="handleItemClick(item)"
-                  @dblclick="handleItemDoubleClick(item)"
-                >
-                  <div class="relative bg-gray-50 rounded-lg p-4 border-2 border-transparent group-hover:border-blue-200 group-hover:bg-blue-50 transition-all">
-                    <!-- File/Folder Icon -->
-                    <div class="flex justify-center mb-3">
-                      <div v-if="item.type === 'folder'" class="w-12 h-12 flex items-center justify-center">
-                        <Icon name="i-lucide-folder" class="w-10 h-10 text-blue-500" />
-                      </div>
-                      <div v-else class="w-12 h-12 flex items-center justify-center rounded border bg-white">
-                        <Icon :name="getFileIcon(item.fileType)" class="w-8 h-8" :class="getFileColor(item.fileType)" />
-                      </div>
-                    </div>
-
-                    <!-- File Name -->
-                    <div class="text-center">
-                      <p class="text-sm font-medium text-gray-900 truncate" :title="item.name">
-                        {{ item.name }}
-                      </p>
-                      <p v-if="item.type === 'file'" class="text-xs text-gray-500 mt-1">
-                        {{ formatFileSize(item.size) }} • {{ formatDate(item.updatedAt) }}
-                      </p>
-                    </div>
-
-                    <!-- Actions Menu -->
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <UDropdown :items="getItemActions(item)" :popper="{ placement: 'bottom-end' }">
-                        <UButton variant="ghost" size="xs" icon="i-lucide-more-vertical" />
-                      </UDropdown>
-                    </div>
-
-                    <!-- Selection Checkbox -->
-                    <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <UCheckbox
-                        v-model="selectedItems"
-                        :value="item.id"
-                        @click.stop
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- List View -->
-              <div v-else class="overflow-hidden">
-                <table class="w-full">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <UCheckbox v-model="selectAll" @change="handleSelectAll" />
-                      </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modified</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr
-                      v-for="item in filteredItems"
-                      :key="item.id"
-                      class="hover:bg-gray-50 cursor-pointer"
-                      @click="handleItemClick(item)"
-                      @dblclick="handleItemDoubleClick(item)"
-                    >
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <UCheckbox
-                          v-model="selectedItems"
-                          :value="item.id"
-                          @click.stop
-                        />
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                          <Icon
-                            v-if="item.type === 'folder'"
-                            name="i-lucide-folder"
-                            class="w-5 h-5 text-blue-500 mr-3"
-                          />
-                          <Icon
-                            v-else
-                            :name="getFileIcon(item.fileType)"
-                            class="w-5 h-5 mr-3"
-                            :class="getFileColor(item.fileType)"
-                          />
-                          <span class="text-sm font-medium text-gray-900">{{ item.name }}</span>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ item.type === 'folder' ? 'Folder' : item.fileType?.toUpperCase() }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ item.type === 'file' ? formatFileSize(item.size) : '-' }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ formatDate(item.updatedAt) }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <UDropdown :items="getItemActions(item)" :popper="{ placement: 'bottom-end' }">
-                          <UButton variant="ghost" size="xs" icon="i-lucide-more-vertical" @click.stop />
-                        </UDropdown>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Size</div>
+            </UIBox>
           </div>
         </div>
       </div>
+
+      <!-- Filters & Search -->
+      <UIBox>
+        <div class="flex items-center gap-3 p-4">
+          <div class="flex-1">
+            <UIInput
+              v-model="searchQuery"
+              placeholder="Search files and folders..."
+              icon="i-lucide-search"
+            />
+          </div>
+          <UISelect
+            v-model="selectedCategory"
+            :options="categoryOptions"
+            size="sm"
+            class="w-40"
+          />
+          <UISelect
+            v-model="selectedFileType"
+            :options="fileTypeOptions"
+            size="sm"
+            class="w-32"
+          />
+          <button
+            @click="viewType = viewType === 'grid' ? 'list' : 'grid'"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Icon v-if="viewType === 'grid'" name="i-lucide-list" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <Icon v-else name="i-lucide-grid-3x3" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+      </UIBox>
+
+      <!-- Breadcrumb -->
+      <nav class="flex items-center space-x-2 text-sm px-2">
+        <button
+          v-for="(crumb, index) in breadcrumbs"
+          :key="index"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors flex items-center"
+          @click="navigateToFolder(crumb.path)"
+        >
+          {{ crumb.name }}
+          <Icon
+            v-if="index < breadcrumbs.length - 1"
+            name="i-lucide-chevron-right"
+            class="w-4 h-4 ml-2"
+          />
+        </button>
+      </nav>
+
+      <!-- Loading State -->
+      <UIBox v-if="loading" class="p-12">
+        <div class="flex justify-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </UIBox>
+
+      <!-- Empty State -->
+      <UIBox v-else-if="filteredItems.length === 0" class="p-12">
+        <div class="text-center">
+          <Icon name="i-lucide-folder-open" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No files found</h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">
+            Start by uploading your first file or creating a folder
+          </p>
+          <div class="flex justify-center gap-3">
+            <UIButtonEnhanced @click="showUploadModal = true">
+              Upload Files
+            </UIButtonEnhanced>
+            <UIButtonEnhanced variant="outline" @click="showCreateFolderModal = true">
+              Create Folder
+            </UIButtonEnhanced>
+          </div>
+        </div>
+      </UIBox>
+
+      <!-- Grid View -->
+      <div v-else-if="viewType === 'grid'" class="grid grid-cols-6 gap-4">
+        <UIBox
+          v-for="item in filteredItems"
+          :key="item.id"
+          class="cursor-pointer hover:shadow-xl transition-all duration-200"
+          @click="handleItemClick(item)"
+          @dblclick="handleItemDoubleClick(item)"
+        >
+          <div class="p-4">
+            <!-- File/Folder Icon -->
+            <div class="flex justify-center mb-3">
+              <div v-if="item.type === 'folder'" class="w-12 h-12 flex items-center justify-center">
+                <Icon name="i-lucide-folder" class="w-10 h-10 text-blue-500" />
+              </div>
+              <div v-else class="w-12 h-12 flex items-center justify-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <Icon :name="getFileIcon(item.fileType)" class="w-8 h-8" :class="getFileColor(item.fileType)" />
+              </div>
+            </div>
+
+            <!-- File Name -->
+            <div class="text-center">
+              <p class="text-sm font-medium text-gray-900 dark:text-white truncate" :title="item.name">
+                {{ item.name }}
+              </p>
+              <p v-if="item.type === 'file'" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {{ formatFileSize(item.size) }}
+              </p>
+              <p class="text-xs text-gray-400 dark:text-gray-500">
+                {{ formatDate(item.updatedAt) }}
+              </p>
+            </div>
+          </div>
+        </UIBox>
+      </div>
+
+      <!-- List View -->
+      <UIBox v-else class="overflow-hidden">
+        <table class="w-full">
+          <thead class="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Name
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Type
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Size
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Modified
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr
+              v-for="item in filteredItems"
+              :key="item.id"
+              class="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors"
+              @click="handleItemClick(item)"
+              @dblclick="handleItemDoubleClick(item)"
+            >
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <Icon
+                    v-if="item.type === 'folder'"
+                    name="i-lucide-folder"
+                    class="w-5 h-5 text-blue-500 mr-3"
+                  />
+                  <Icon
+                    v-else
+                    :name="getFileIcon(item.fileType)"
+                    class="w-5 h-5 mr-3"
+                    :class="getFileColor(item.fileType)"
+                  />
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">{{ item.name }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                {{ item.type === 'folder' ? 'Folder' : item.fileType?.toUpperCase() }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                {{ item.type === 'file' ? formatFileSize(item.size) : '-' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                {{ formatDate(item.updatedAt) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <button
+                  @click.stop="downloadFile(item)"
+                  class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  <Icon name="i-lucide-download" class="w-4 h-4" />
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </UIBox>
     </div>
 
     <!-- File Preview Modal -->
-    <UModal v-model="showPreviewModal" :ui="{ width: 'w-full max-w-6xl' }">
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-semibold">{{ previewFile?.name }}</h3>
-          <UButton variant="ghost" size="sm" icon="i-lucide-x" @click="showPreviewModal = false" />
-        </div>
+    <Transition name="fade">
+      <div
+        v-if="showPreviewModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        @click.self="showPreviewModal = false"
+      >
+        <UIBox class="w-full max-w-4xl max-h-[90vh] overflow-y-auto" @click.stop>
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ previewFile?.name }}</h3>
+              <button
+                @click="showPreviewModal = false"
+                class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Icon name="i-lucide-x" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
 
-        <!-- File Preview Content -->
-        <div class="bg-gray-50 rounded-lg p-8 min-h-96 flex items-center justify-center">
-          <div v-if="previewFile?.fileType === 'pdf'" class="w-full">
-            <iframe :src="previewFile.url" class="w-full h-96 border-0"></iframe>
-          </div>
-          <div v-else-if="previewFile?.fileType?.startsWith('image')" class="max-w-full max-h-96">
-            <img :src="previewFile.url" :alt="previewFile.name" class="max-w-full max-h-full object-contain" />
-          </div>
-          <div v-else class="text-center text-gray-500">
-            <Icon :name="getFileIcon(previewFile?.fileType)" class="w-16 h-16 mx-auto mb-4" />
-            <p>Preview not available for this file type</p>
-            <UButton class="mt-4" @click="downloadFile(previewFile)">
-              Download File
-            </UButton>
-          </div>
-        </div>
+            <!-- File Preview Content -->
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 min-h-96 flex items-center justify-center">
+              <div class="text-center text-gray-500 dark:text-gray-400">
+                <Icon :name="getFileIcon(previewFile?.fileType)" class="w-16 h-16 mx-auto mb-4" />
+                <p>Preview not available for this file type</p>
+                <UIButtonEnhanced class="mt-4" @click="downloadFile(previewFile)">
+                  Download File
+                </UIButtonEnhanced>
+              </div>
+            </div>
 
-        <!-- File Info -->
-        <div class="mt-6 grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span class="text-gray-500">Size:</span>
-            <span class="ml-2">{{ formatFileSize(previewFile?.size) }}</span>
+            <!-- File Info -->
+            <div class="mt-6 grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Size:</span>
+                <span class="ml-2 text-gray-900 dark:text-white">{{ formatFileSize(previewFile?.size) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Type:</span>
+                <span class="ml-2 text-gray-900 dark:text-white">{{ previewFile?.fileType }}</span>
+              </div>
+              <div>
+                <span class="text-gray-500 dark:text-gray-400">Modified:</span>
+                <span class="ml-2 text-gray-900 dark:text-white">{{ formatDate(previewFile?.updatedAt) }}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <span class="text-gray-500">Type:</span>
-            <span class="ml-2">{{ previewFile?.fileType }}</span>
-          </div>
-          <div>
-            <span class="text-gray-500">Modified:</span>
-            <span class="ml-2">{{ formatDate(previewFile?.updatedAt) }}</span>
-          </div>
-        </div>
+        </UIBox>
       </div>
-    </UModal>
+    </Transition>
 
     <!-- Upload Modal -->
-    <UModal v-model="showUploadModal">
-      <div class="p-6">
-        <h3 class="text-lg font-semibold mb-4">Upload Files</h3>
-        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <Icon name="i-lucide-upload" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p class="text-gray-600 mb-2">Drag and drop files here, or click to browse</p>
-          <UButton>Choose Files</UButton>
-        </div>
+    <Transition name="fade">
+      <div
+        v-if="showUploadModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        @click.self="showUploadModal = false"
+      >
+        <UIBox class="w-full max-w-lg" @click.stop>
+          <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Upload Files</h3>
+            <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+              <Icon name="i-lucide-upload" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p class="text-gray-600 dark:text-gray-400 mb-4">Drag and drop files here, or click to browse</p>
+              <UIButtonEnhanced>Choose Files</UIButtonEnhanced>
+            </div>
+          </div>
+        </UIBox>
       </div>
-    </UModal>
+    </Transition>
 
     <!-- Create Folder Modal -->
-    <UModal v-model="showCreateFolderModal">
-      <div class="p-6">
-        <h3 class="text-lg font-semibold mb-4">Create New Folder</h3>
-        <UInput
-          v-model="newFolderName"
-          placeholder="Folder name"
-          class="mb-4"
-        />
-        <div class="flex justify-end gap-3">
-          <UButton variant="outline" @click="showCreateFolderModal = false">Cancel</UButton>
-          <UButton @click="createFolder">Create</UButton>
-        </div>
+    <Transition name="fade">
+      <div
+        v-if="showCreateFolderModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        @click.self="showCreateFolderModal = false"
+      >
+        <UIBox class="w-full max-w-md" @click.stop>
+          <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create New Folder</h3>
+            <UIInput
+              v-model="newFolderName"
+              placeholder="Folder name"
+              class="mb-4"
+            />
+            <div class="flex justify-end gap-3">
+              <UIButtonEnhanced variant="outline" @click="showCreateFolderModal = false">
+                Cancel
+              </UIButtonEnhanced>
+              <UIButtonEnhanced @click="createFolder">
+                Create
+              </UIButtonEnhanced>
+            </div>
+          </div>
+        </UIBox>
       </div>
-    </UModal>
+    </Transition>
   </div>
 </template>
 
@@ -401,7 +360,6 @@ const viewType = ref('grid')
 const viewMode = ref('all')
 const currentPath = ref('/')
 const selectedItems = ref([])
-const selectAll = ref(false)
 
 // Modals
 const showPreviewModal = ref(false)
@@ -410,7 +368,7 @@ const showCreateFolderModal = ref(false)
 const previewFile = ref(null)
 const newFolderName = ref('')
 
-// Mock static data for categories and file types (these don't come from the composable)
+// Mock static data
 const staticLibraryItems = ref([
   {
     id: '1',
@@ -471,23 +429,22 @@ const staticLibraryItems = ref([
   }
 ])
 
-// Categories
-const categories = ref([
-  { key: 'documents', name: 'Documents', icon: 'i-lucide-file-text', count: 15 },
-  { key: 'images', name: 'Images', icon: 'i-lucide-image', count: 8 },
-  { key: 'videos', name: 'Videos', icon: 'i-lucide-video', count: 3 },
-  { key: 'presentations', name: 'Presentations', icon: 'i-lucide-presentation', count: 5 },
-  { key: 'spreadsheets', name: 'Spreadsheets', icon: 'i-lucide-sheet', count: 4 }
-])
+// Select options
+const categoryOptions = [
+  { label: 'All Categories', value: null },
+  { label: 'Documents', value: 'documents' },
+  { label: 'Images', value: 'images' },
+  { label: 'Videos', value: 'videos' },
+  { label: 'Presentations', value: 'presentations' }
+]
 
-// File types
-const fileTypes = ref([
-  { key: 'pdf', name: 'PDF', color: '#dc2626', count: 8 },
-  { key: 'docx', name: 'Word', color: '#2563eb', count: 5 },
-  { key: 'xlsx', name: 'Excel', color: '#059669', count: 4 },
-  { key: 'pptx', name: 'PowerPoint', color: '#ea580c', count: 3 },
-  { key: 'jpg', name: 'Images', color: '#7c3aed', count: 12 }
-])
+const fileTypeOptions = [
+  { label: 'All Types', value: null },
+  { label: 'PDF', value: 'pdf' },
+  { label: 'Word', value: 'docx' },
+  { label: 'Excel', value: 'xlsx' },
+  { label: 'PowerPoint', value: 'pptx' }
+]
 
 // Breadcrumbs
 const breadcrumbs = computed(() => {
@@ -504,21 +461,18 @@ const breadcrumbs = computed(() => {
 
 // Filtered items
 const filteredItems = computed(() => {
-  let items = libraryItems.value
+  let items = libraryItems.value.length ? libraryItems.value : staticLibraryItems.value
 
-  // Filter by search query
   if (searchQuery.value) {
     items = items.filter(item =>
       item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   }
 
-  // Filter by category
   if (selectedCategory.value) {
     items = items.filter(item => item.category === selectedCategory.value)
   }
 
-  // Filter by file type
   if (selectedFileType.value) {
     items = items.filter(item => item.fileType === selectedFileType.value)
   }
@@ -526,32 +480,12 @@ const filteredItems = computed(() => {
   return items
 })
 
-// Sort options
-const sortOptions = [
-  [{ label: 'Name A-Z', click: () => sortBy('name', 'asc') }],
-  [{ label: 'Name Z-A', click: () => sortBy('name', 'desc') }],
-  [{ label: 'Date Modified', click: () => sortBy('updatedAt', 'desc') }],
-  [{ label: 'Size', click: () => sortBy('size', 'desc') }]
-]
+// Stats
+const folderCount = computed(() => filteredItems.value.filter(i => i.type === 'folder').length)
+const fileCount = computed(() => filteredItems.value.filter(i => i.type === 'file').length)
+const totalSize = computed(() => filteredItems.value.reduce((sum, item) => sum + (item.size || 0), 0))
 
 // Methods
-const handleSearch = () => {
-  // Search is reactive through computed property
-}
-
-const sortBy = (field, direction) => {
-  libraryItems.value.sort((a, b) => {
-    const aVal = a[field]
-    const bVal = b[field]
-
-    if (direction === 'asc') {
-      return aVal > bVal ? 1 : -1
-    } else {
-      return aVal < bVal ? 1 : -1
-    }
-  })
-}
-
 const handleItemClick = (item) => {
   if (selectedItems.value.includes(item.id)) {
     selectedItems.value = selectedItems.value.filter(id => id !== item.id)
@@ -571,54 +505,10 @@ const handleItemDoubleClick = (item) => {
 
 const navigateToFolder = (path) => {
   currentPath.value = path
-  // Load folder contents here
-}
-
-const handleSelectAll = () => {
-  if (selectAll.value) {
-    selectedItems.value = filteredItems.value.map(item => item.id)
-  } else {
-    selectedItems.value = []
-  }
-}
-
-const getItemActions = (item) => {
-  const baseActions = [
-    [{ label: 'Download', icon: 'i-lucide-download', click: () => downloadFile(item) }],
-    [{ label: 'Rename', icon: 'i-lucide-edit-2', click: () => renameItem(item) }],
-    [{ label: 'Move', icon: 'i-lucide-move', click: () => moveItem(item) }],
-    [{ label: 'Delete', icon: 'i-lucide-trash-2', click: () => deleteItem(item) }]
-  ]
-
-  if (item.type === 'file') {
-    baseActions.unshift([{ label: 'Preview', icon: 'i-lucide-eye', click: () => previewFileAction(item) }])
-  }
-
-  return baseActions
-}
-
-const previewFileAction = (item) => {
-  previewFile.value = item
-  showPreviewModal.value = true
 }
 
 const downloadFile = (item) => {
-  // Implementation for file download
   console.log('Downloading:', item.name)
-}
-
-const renameItem = (item) => {
-  // Implementation for renaming
-  console.log('Renaming:', item.name)
-}
-
-const moveItem = (item) => {
-  // Implementation for moving
-  console.log('Moving:', item.name)
-}
-
-const deleteItem = async (item) => {
-  await deleteLibraryItem(item.id)
 }
 
 const createFolder = async () => {
@@ -628,11 +518,6 @@ const createFolder = async () => {
     showCreateFolderModal.value = false
   }
 }
-
-// Initialize data on mount
-onMounted(async () => {
-  await fetchLibraryItems()
-})
 
 const getFileIcon = (fileType) => {
   const iconMap = {
@@ -675,7 +560,7 @@ const getFileColor = (fileType) => {
 }
 
 const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes'
+  if (!bytes || bytes === 0) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -691,10 +576,22 @@ const formatDate = (date) => {
 }
 
 // Initialize
-onMounted(() => {
-  // Simulate loading
+onMounted(async () => {
+  await fetchLibraryItems()
   setTimeout(() => {
     loading.value = false
   }, 1000)
 })
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
