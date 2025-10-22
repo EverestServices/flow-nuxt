@@ -889,17 +889,774 @@ const handleToggleVisualization = (show: boolean) => {
 
 ---
 
+## Survey Pages sequence (sorrend)
+
+### Áttekintés
+A SurveyPage-ek megjelenítési sorrendje a `sequence` oszlop alapján történik, amely az egyes investment-ekhez tartozó oldalak helyes sorrendjét biztosítja.
+
+### 1. Adatbázis módosítások
+
+#### Migration 1: Sequence oszlop hozzáadása
+**Fájl:** `/supabase/migrations/036_5_add_sequence_to_survey_pages_table.sql`
+
+```sql
+ALTER TABLE public.survey_pages
+ADD COLUMN IF NOT EXISTS sequence INTEGER;
+```
+
+#### Migration 2: Sequence értékek feltöltése
+**Fájl:** `/supabase/migrations/037_add_sequence_to_survey_pages.sql`
+
+A migration feltölti minden investment SurveyPage-einek sequence értékeit a FlowFrontend fixtures alapján.
+
+**Példa - Solar Panel:**
+```sql
+UPDATE public.survey_pages
+SET sequence = 1
+WHERE type = 'general' AND investment_id = (SELECT id FROM public.investments WHERE name = 'Solar Panel');
+
+UPDATE public.survey_pages
+SET sequence = 2
+WHERE type = 'solar_panel' AND investment_id = (SELECT id FROM public.investments WHERE name = 'Solar Panel');
+```
+
+**Sorrendek investment-enként:**
+
+- **Solar Panel:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Tető
+- **Solar Panel + Battery:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Akkumulátor, 5. Tető
+- **Heat Pump:** 1. Általános adatok, 2. Helyiségek, 3. Nyílászárók, 4. Fűtés alapadatok, 5. Radiátorok, 6. Igényelt konstrukció, 7. Egyéb kérdések
+- **Facade Insulation:** 1. Általános adatok, 2. Falak, 3. Tető
+- **Battery:** 1. Akkumulátor
+- **Car Charger:** 1. Elektromos autó adatok, 2. Helyszín adatok, 3. Teljesítménybővítés
+- **Air Conditioner:** 1. Általános adatok, 2. Napelem, 3. Inverter, 4. Tető
+- **Roof Insulation:** 1. Általános adatok, 2. Falak, 3. Tető, 4. Nyílászárók
+- **Windows:** 1. Általános adatok, 2. Falak, 3. Tető, 4. Nyílászárók
+
+### 2. TypeScript Interface frissítése
+
+**Fájl:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+export interface SurveyPage {
+  id: string
+  investment_id: string
+  name: string
+  type: string
+  position: { top: number; right: number }
+  sequence: number  // Új mező
+  allow_multiple: boolean
+  allow_delete_first: boolean
+  item_name_template?: string
+}
+```
+
+### 3. Store lekérdezés módosítása
+
+**Előtte:**
+```typescript
+.order('position')
+```
+
+**Utána:**
+```typescript
+.order('sequence')
+```
+
+**Teljes kód:**
+```typescript
+const { data: pages, error: pagesError } = await supabase
+  .from('survey_pages')
+  .select('*')
+  .in('investment_id', investmentIds)
+  .order('sequence')  // Sequence alapján rendezi
+```
+
+### Érintett fájlok
+- `/supabase/migrations/036_5_add_sequence_to_survey_pages_table.sql` (új)
+- `/supabase/migrations/037_add_sequence_to_survey_pages.sql` (új)
+- `/app/stores/surveyInvestments.ts`
+
+### Előnyök
+- Egyértelmű és konfigurálható sorrend
+- Függetlenség a position JSONB értékektől
+- Könnyű módosíthatóság (sequence érték változtatásával)
+- FlowFrontend kompatibilitás
+
+---
+
+## Allow Multiple pages és példánykezelés
+
+### Áttekintés
+Bizonyos SurveyPage-ek lehetővé teszik több példány hozzáadását (pl. több tető, több nyílászáró). Ez az `allow_multiple` flag segítségével valósul meg.
+
+### 1. Adatbázis séma
+
+A `survey_pages` táblában:
+- `allow_multiple`: BOOLEAN - engedélyezi-e több példány létrehozását
+- `allow_delete_first`: BOOLEAN - törölhető-e az utolsó példány is
+- `item_name_template`: VARCHAR(255) - példány elnevezési sablon (pl. `{index}. tető`)
+
+### 2. Store implementáció
+
+**Fájl:** `/app/stores/surveyInvestments.ts`
+
+#### PageInstanceData interface
+```typescript
+export interface PageInstanceData {
+  instances: Record<string, any>[]
+}
+```
+
+#### State bővítése
+```typescript
+state: () => ({
+  // ...
+  pageInstances: {} as Record<string, Record<string, PageInstanceData>>,
+  activeInstanceIndex: {} as Record<string, number>,
+})
+```
+
+**Adatstruktúra:**
+```
+pageInstances: {
+  [investmentId]: {
+    [pageId]: {
+      instances: [
+        { roof_type: 'Sátortető', roof_width: '10', ... },
+        { roof_type: 'Nyeregtető', roof_width: '8', ... }
+      ]
+    }
+  }
+}
+```
+
+#### Példánykezelő függvények
+
+**Példányok lekérdezése:**
+```typescript
+getPageInstances(pageId: string): Record<string, any>[] {
+  if (!this.activeInvestmentId) return []
+
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  return this.pageInstances[this.activeInvestmentId][pageId].instances
+}
+```
+
+**Új példány hozzáadása:**
+```typescript
+addPageInstance(pageId: string) {
+  if (!this.activeInvestmentId) return
+
+  // Initialize if doesn't exist
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  // Add new instance
+  this.pageInstances[this.activeInvestmentId][pageId].instances.push({})
+
+  // Set as active
+  const newIndex = this.pageInstances[this.activeInvestmentId][pageId].instances.length - 1
+  this.activeInstanceIndex[pageId] = newIndex
+}
+```
+
+**Példány törlése:**
+```typescript
+removePageInstance(pageId: string, index: number, allowDeleteLast: boolean = false) {
+  if (!this.activeInvestmentId) return
+
+  const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
+  if (!instances || instances.length === 0) return
+
+  // Remove the instance
+  instances.splice(index, 1)
+
+  // Ensure at least one instance exists (unless allowDeleteLast is true)
+  if (instances.length === 0 && !allowDeleteLast) {
+    instances.push({})
+  }
+
+  // Adjust active index if needed
+  const currentActive = this.activeInstanceIndex[pageId] || 0
+  if (instances.length > 0 && currentActive >= instances.length) {
+    this.activeInstanceIndex[pageId] = instances.length - 1
+  } else if (instances.length === 0) {
+    this.activeInstanceIndex[pageId] = 0
+  }
+}
+```
+
+**Példány adatok mentése:**
+```typescript
+saveInstanceResponse(pageId: string, instanceIndex: number, questionName: string, value: any) {
+  if (!this.activeInvestmentId || !this.currentSurveyId) return
+
+  // Initialize if doesn't exist
+  if (!this.pageInstances[this.activeInvestmentId]) {
+    this.pageInstances[this.activeInvestmentId] = {}
+  }
+  if (!this.pageInstances[this.activeInvestmentId][pageId]) {
+    this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+  }
+
+  const instances = this.pageInstances[this.activeInvestmentId][pageId].instances
+
+  // Ensure instance exists
+  while (instances.length <= instanceIndex) {
+    instances.push({})
+  }
+
+  // Save the value
+  instances[instanceIndex][questionName] = value
+}
+```
+
+### 3. UI Implementáció
+
+**Fájl:** `/app/components/Survey/SurveyPropertyAssessment.vue`
+
+#### Accordion-alapú megjelenítés
+
+```vue
+<div v-if="page.allow_multiple" class="space-y-3">
+  <!-- Empty state message -->
+  <div v-if="getPageInstances(page.id).length === 0" class="text-center">
+    <p class="text-sm">Nincs még hozzáadott elem.</p>
+    <p class="text-xs mt-1">Kattints az alábbi gombra új hozzáadásához.</p>
+  </div>
+
+  <!-- Accordions for each instance -->
+  <UAccordion
+    v-for="(instance, index) in getPageInstances(page.id)"
+    :key="index"
+    :items="[{
+      label: getInstanceName(page, index),
+      slot: `instance-${page.id}-${index}`,
+      defaultOpen: index === 0
+    }]"
+  >
+    <template #default="{ item, open }">
+      <div class="flex items-center justify-between w-full">
+        <span>{{ getInstanceName(page, index) }}</span>
+        <!-- Delete button -->
+        <button
+          v-if="canDeleteInstance(page, index)"
+          @click.stop="deleteInstance(page, index)"
+        >
+          <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+        </button>
+      </div>
+    </template>
+
+    <template #[`instance-${page.id}-${index}`]>
+      <div class="p-4 space-y-6">
+        <!-- Normal Questions -->
+        <div v-for="question in getNormalQuestions(page.id)" :key="question.id">
+          <SurveyQuestionRenderer
+            :question="question"
+            :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+            @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+          />
+        </div>
+
+        <!-- Special Questions Accordion -->
+        <div v-if="getSpecialQuestions(page.id).length > 0">
+          <UAccordion :items="[{
+            label: 'Egyéb kérdések',
+            slot: `special-${page.id}-${index}`,
+            defaultOpen: false
+          }]">
+            <!-- Special questions content -->
+          </UAccordion>
+        </div>
+      </div>
+    </template>
+  </UAccordion>
+
+  <!-- Add Instance Button -->
+  <div class="flex justify-center pt-2">
+    <UButton
+      :label="`${page.name} hozzáadása`"
+      icon="i-lucide-plus"
+      @click="addInstance(page.id)"
+    />
+  </div>
+</div>
+```
+
+#### Helper függvények
+
+```typescript
+const getInstanceName = (page: SurveyPage, index: number) => {
+  if (!page.item_name_template) {
+    return `${page.name} ${index + 1}`
+  }
+  return page.item_name_template.replace('{index}', (index + 1).toString())
+}
+
+const canDeleteInstance = (page: SurveyPage, index: number) => {
+  const instances = store.getPageInstances(page.id)
+
+  if (page.allow_delete_first) {
+    return true  // Can delete any instance, even the last one
+  }
+
+  return index > 0  // Can only delete non-first instances
+}
+
+const deleteInstance = (page: SurveyPage, index: number) => {
+  store.removePageInstance(page.id, index, page.allow_delete_first || false)
+}
+```
+
+### 4. Speciális kérdések kezelése
+
+**Normal vs Special kérdések szétválasztása:**
+
+```typescript
+const getNormalQuestions = (pageId: string) => {
+  const questions = store.surveyQuestions[pageId] || []
+  return questions.filter(q => !q.is_special)
+}
+
+const getSpecialQuestions = (pageId: string) => {
+  const questions = store.surveyQuestions[pageId] || []
+  return questions.filter(q => q.is_special === true)
+}
+```
+
+**Becsuk gomb az Egyéb kérdések accordion-ban:**
+
+```vue
+<UButton
+  label="Becsuk"
+  color="gray"
+  variant="outline"
+  size="sm"
+  @click="closeAccordion"
+/>
+```
+
+```typescript
+const closeAccordion = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  let current = target.parentElement
+
+  while (current) {
+    const buttons = current.querySelectorAll('button')
+    for (const button of Array.from(buttons)) {
+      if (button.textContent?.includes('Egyéb kérdések')) {
+        button.click()
+        return
+      }
+    }
+    current = current.parentElement
+  }
+}
+```
+
+### Érintett fájlok
+- `/app/stores/surveyInvestments.ts`
+- `/app/components/Survey/SurveyPropertyAssessment.vue`
+- `/supabase/migrations/036_set_special_questions.sql`
+
+### Példák
+
+**Tető példányok (Solar Panel):**
+- allow_multiple: true
+- allow_delete_first: false
+- item_name_template: "{index}. tető"
+- Eredmény: "1. tető", "2. tető", "3. tető"
+
+**Nyílászárók (Heat Pump):**
+- allow_multiple: true
+- allow_delete_first: true
+- item_name_template: "{index}. nyílászáró"
+- Eredmény: Minden példány törölhető, akár az utolsó is
+
+### UI Működés
+1. Minden példány egy accordion elemben jelenik meg
+2. Az első példány alapértelmezetten nyitva van
+3. Törlés gomb csak akkor jelenik meg, ha engedélyezett
+4. "+ Hozzáadás" gomb mindig elérhető
+5. Speciális kérdések külön nested accordion-ban
+
+---
+
+## Investment Icon Management (Database-Driven)
+
+### Áttekintés
+Az investment ikonok kezelése teljes mértékben adatbázis-alapúvá vált. A korábban használt hardcoded iconMap objektumok eltávolításra kerültek.
+
+### Változások
+
+**Migrációk:**
+- **Migration 061:** `update_solar_battery_icon.sql` - Solar Panel + Battery investment ikonjának frissítése `i-lucide-battery-charging` értékre
+
+**Érintett komponensek:**
+
+#### 1. SurveyScenarioInvestments.vue
+**Előtte:**
+```typescript
+const iconMap: Record<string, string> = {
+  'Solar Panel': 'i-lucide-sun',
+  'Solar Panel + Battery': 'i-lucide-battery-charging',
+  'Heat Pump': 'i-lucide-wind',
+  // ... hardcoded mapping
+}
+
+const getInvestmentIcon = (investmentName: string) => {
+  return iconMap[investmentName] || 'i-lucide-package'
+}
+```
+
+**Utána:**
+```typescript
+// Directly use investment.icon from database
+icon: investment.icon
+```
+
+#### 2. SurveyHeader.vue
+**Előtte:**
+```typescript
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+  const iconMap: Record<string, string> = { /* hardcoded */ }
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? iconMap[investment.name] || 'i-lucide-package' : null
+    })
+    .filter(Boolean)
+}
+```
+
+**Utána:**
+```typescript
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? investment.icon : null
+    })
+    .filter(Boolean)
+}
+```
+
+### Előnyök
+- **Single Source of Truth:** Ikonok az adatbázisban tárolódnak
+- **Könnyebb karbantartás:** Új investment hozzáadása nem igényel kódmódosítást
+- **Dinamikus:** Ikonok módosíthatók migration-ökkel vagy admin felületről
+- **Konzisztencia:** Minden komponens ugyanazt az ikont használja
+
+### Érintett fájlok
+- `/supabase/migrations/061_update_solar_battery_icon.sql` (új)
+- `/app/components/Survey/SurveyScenarioInvestments.vue`
+- `/app/components/Survey/SurveyHeader.vue`
+
+---
+
+## Survey Page Progress Indicators
+
+### Áttekintés
+A házvisualizáció SurveyPage gombjai cirkuláris progress indikátorral jelenítik meg a kitöltöttségi százalékot.
+
+### Megjelenés
+- **Progress Ring:** SVG-alapú körgyűrű a gomb körül
+- **Kezdőpont:** Felül (12 óra pozíció)
+- **Irány:** Óramutató járása szerint (clockwise)
+- **Színek:**
+  - **100% kitöltöttség:** Zöld (`text-green-500 dark:text-green-400`)
+  - **<100% kitöltöttség:** Primary kék (`text-primary-500`)
+- **Méret:** 40px × 40px (pontosan a gomb mérete)
+- **Vastagság:** 2px stroke width
+- **Nincs tooltip:** A százalék nem jelenik meg hover-re
+
+### Implementáció
+
+**Fájl:** `/app/components/Survey/SurveyHouseVisualization.vue`
+
+#### Template struktúra
+```vue
+<div class="absolute group" :style="{ top: page.position.top + 'px', right: page.position.right + 'px' }">
+  <!-- Button -->
+  <button
+    class="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg transition-transform flex items-center justify-center"
+    @click="$emit('page-click', page.id)"
+  >
+    <UIcon
+      :name="getInvestmentIcon(page.investment_id)"
+      class="w-5 h-5 text-primary-600 dark:text-primary-400"
+    />
+  </button>
+
+  <!-- Circular Progress SVG -->
+  <svg
+    class="absolute inset-0 w-10 h-10 -rotate-90 pointer-events-none"
+    viewBox="0 0 40 40"
+  >
+    <circle
+      cx="20"
+      cy="20"
+      r="18"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      :class="[
+        'transition-all duration-300',
+        getPageCompletionPercentage(page) === 100
+          ? 'text-green-500 dark:text-green-400'
+          : 'text-primary-500'
+      ]"
+      :stroke-dasharray="113.097"
+      :stroke-dashoffset="getProgressDashoffset(getPageCompletionPercentage(page))"
+    />
+  </svg>
+</div>
+```
+
+#### Completion kalkuláció (Investment-specific)
+```typescript
+const getPageCompletionPercentage = (page: SurveyPage): number => {
+  const questions = store.surveyQuestions[page.id] || []
+
+  // Get only required questions
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100 // If no required questions, consider it complete
+  }
+
+  // Count answered required questions (investment-specific)
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.investmentResponses[page.investment_id]?.[question.name]
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+#### SVG stroke-dashoffset kalkuláció
+```typescript
+const getProgressDashoffset = (percentage: number): number => {
+  const circumference = 2 * Math.PI * 18 // radius is 18
+  return circumference - (percentage / 100) * circumference
+}
+```
+
+### Matematikai alapok
+- **Circumference (kerület):** `2 × π × r = 2 × π × 18 ≈ 113.097`
+- **stroke-dasharray:** `113.097` (teljes kerület)
+- **stroke-dashoffset:** `113.097 - (percentage / 100) × 113.097`
+- **-rotate-90:** SVG elforgatása, hogy felülről induljon a progress
+- **pointer-events-none:** SVG ne fogja el a kattintás eseményt
+
+### Design döntések
+- **Nincs hover scale:** A gombok mérete állandó
+- **Nincs z-index:** DOM sorrend biztosítja a helyes rétegelést (SVG a button után)
+- **Smooth transition:** 300ms `transition-all duration-300`
+- **Rounded linecap:** `stroke-linecap="round"` elegánsabb végpontok
+
+### Érintett fájlok
+- `/app/components/Survey/SurveyHouseVisualization.vue` (lines 29-65, 135-159)
+
+---
+
+## Investment-Aware Question Response Tracking (Bugfix)
+
+### Probléma
+Ha ugyanolyan kérdés név (`name` mező) létezett 3 különböző Investment-hez tartozó SurveyPage-eken, a Missing Items számláló és a progress indicator helytelenül működött:
+- Néha 3-mal csökkent egyetlen válaszadás után a Missing Items értéke
+- Néha egyáltalán nem csökkent
+
+### Alapvető ok (Root Cause)
+A kérdésekre adott válaszok **investment-specifikusan** vannak tárolva a store-ban:
+```typescript
+investmentResponses: {
+  [investmentId]: {
+    [questionName]: value
+  }
+}
+```
+
+**Példa:**
+```typescript
+investmentResponses: {
+  'uuid-solar-panel': {
+    'electrical_network_condition': 'Jó állapotú'
+  },
+  'uuid-heat-pump': {
+    'electrical_network_condition': 'Felújítandó'
+  },
+  'uuid-battery': {
+    'electrical_network_condition': '' // Még nincs válasz
+  }
+}
+```
+
+**Probléma a kódban:**
+- A `store.getResponse(questionName)` csak az **aktív investment** válaszát nézte
+- A Missing Items Modal végigiterált minden investment-en, de mindig a `getResponse()` függvényt hívta
+- Így nem az adott investment válaszát kapta, hanem az épp aktív investment-ét
+
+### Megoldás
+
+#### 1. SurveyMissingItemsModal.vue (lines 172-210)
+
+**Előtte (hibás):**
+```typescript
+const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
+  const unanswered: UnansweredQuestion[] = []
+
+  store.selectedInvestments.forEach(investment => {
+    const pages = store.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = store.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          const response = store.getResponse(question.name) // ❌ WRONG - uses active investment only
+          if (!response || response === '' || response === null || response === undefined) {
+            unanswered.push({...})
+          }
+        }
+      })
+    })
+  })
+
+  return unanswered
+})
+```
+
+**Utána (helyes):**
+```typescript
+const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
+  const unanswered: UnansweredQuestion[] = []
+  const seenQuestions = new Set<string>() // Track by investment + question name
+
+  store.selectedInvestments.forEach(investment => {
+    const pages = store.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = store.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          // ✅ Get investment-specific response
+          const response = store.investmentResponses[investment.id]?.[question.name]
+          if (!response || response === '' || response === null || response === undefined) {
+            // Create unique key: investmentId + questionName
+            const questionKey = `${investment.id}:${question.name}`
+
+            // Only add if we haven't seen this investment+question combination before
+            if (!seenQuestions.has(questionKey)) {
+              seenQuestions.add(questionKey)
+              unanswered.push({
+                id: question.id,
+                label: translateField(question.name),
+                pageId: page.id,
+                pageName: translatePage(page.name),
+                investmentId: investment.id,
+                investmentName: investment.name,
+                investmentIcon: investment.icon
+              })
+            }
+          }
+        }
+      })
+    })
+  })
+
+  return unanswered
+})
+```
+
+#### 2. SurveyHouseVisualization.vue (lines 135-153)
+
+**Előtte (hibás):**
+```typescript
+const getPageCompletionPercentage = (pageId: string): number => {
+  const questions = store.surveyQuestions[pageId] || []
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100
+  }
+
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.getResponse(question.name) // ❌ WRONG - active investment only
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+**Utána (helyes):**
+```typescript
+const getPageCompletionPercentage = (page: SurveyPage): number => {
+  const questions = store.surveyQuestions[page.id] || []
+
+  // Get only required questions
+  const requiredQuestions = questions.filter(q => q.is_required)
+
+  if (requiredQuestions.length === 0) {
+    return 100 // If no required questions, consider it complete
+  }
+
+  // ✅ Count answered required questions (investment-specific)
+  const answeredCount = requiredQuestions.filter(question => {
+    const response = store.investmentResponses[page.investment_id]?.[question.name]
+    return response !== null && response !== undefined && response !== ''
+  }).length
+
+  return Math.round((answeredCount / requiredQuestions.length) * 100)
+}
+```
+
+### Kulcsváltozások
+1. **Direct access:** `store.investmentResponses[investment.id][question.name]` helyett `store.getResponse()`
+2. **Page object használata:** `getPageCompletionPercentage` most teljes `page` objektumot kap, nem csak `pageId`-t
+3. **Deduplication key:** `investmentId:questionName` formátum a duplikáció elkerülésére
+4. **Investment context:** Minden válasz ellenőrzés a megfelelő investment kontextusban történik
+
+### Eredmény
+- **Helyes Missing Items számláló:** Minden investment kérdései külön követettek
+- **Helyes progress indicator:** Minden page-hez a megfelelő investment válaszai alapján számított progress
+- **Nincs duplikáció:** Ugyanolyan nevű kérdések különböző investment-ekhez külön kezeltek
+
+### Érintett fájlok
+- `/app/components/Survey/SurveyMissingItemsModal.vue` (lines 172-210)
+- `/app/components/Survey/SurveyHouseVisualization.vue` (lines 135-153)
+
+---
+
 ## Következő lépések
 
 1. ✅ DocumentCategory gombok renderelése
 2. ✅ Fotó feltöltési modal implementálása (3 mód)
 3. ✅ "Upload All Photos" funkció
 4. ✅ "Fill All Data" funkció (display mode váltás)
-5. "Generate Assessment Sheet" funkció implementálása
-6. Marker Mode implementálása
-7. ✅ Missing Items tracking és megjelenítése
-8. Fotók tényleges feltöltése és tárolása adatbázisban
-9. Megválaszolt kérdések mentése adatbázisba
+5. ✅ Investment icon management (database-driven)
+6. ✅ Survey page progress indicators (circular progress)
+7. ✅ Investment-aware question response tracking (bugfix)
+8. "Generate Assessment Sheet" funkció implementálása
+9. Marker Mode implementálása
+10. Fotók tényleges feltöltése és tárolása adatbázisban
+11. Megválaszolt kérdések mentése adatbázisba
 
 ---
 

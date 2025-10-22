@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 export interface Investment {
   id: string
   name: string
+  persist_name: string
   icon: string
   position: { top: number; right: number }
   sequence: number

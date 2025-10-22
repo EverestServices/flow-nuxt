@@ -38,7 +38,7 @@
         :model-value="modelValue || question.default_value"
         :placeholder="question.placeholder_value"
         :required="question.is_required"
-        rows="4"
+        :rows="4"
         class="w-full"
         @update:model-value="$emit('update:modelValue', $event)"
       />
@@ -46,15 +46,13 @@
 
     <!-- Dropdown -->
     <div v-else-if="question.type === 'dropdown'">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {{ questionLabel }}
-        <span v-if="question.is_required" class="text-red-500">*</span>
-      </label>
-      <USelect
+      <UISelect
         :model-value="modelValue || question.default_value"
+        :label="questionLabel"
         :options="question.options || []"
+        :placeholder="question.placeholder_value || 'Select an option'"
         :required="question.is_required"
-        class="w-full"
+        size="md"
         @update:model-value="$emit('update:modelValue', $event)"
       />
     </div>

@@ -137,7 +137,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useSurveyInvestmentsStore()
-const { translatePage, translateQuestion } = useI18n()
+const { translatePage, translateField } = useI18n()
 
 const close = () => {
   emit('update:modelValue', false)
@@ -172,6 +172,7 @@ const missingPhotoCategories = computed<MissingPhotoCategory[]>(() => {
 // Compute unanswered questions
 const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
   const unanswered: UnansweredQuestion[] = []
+  const seenQuestions = new Set<string>() // Track by investment + question name
 
   store.selectedInvestments.forEach(investment => {
     const pages = store.surveyPages[investment.id] || []
@@ -180,17 +181,25 @@ const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
       questions.forEach(question => {
         // Check if required and not answered
         if (question.is_required) {
-          const response = store.getResponse(question.name)
+          // Get investment-specific response
+          const response = store.investmentResponses[investment.id]?.[question.name]
           if (!response || response === '' || response === null || response === undefined) {
-            unanswered.push({
-              id: question.id,
-              label: translateQuestion(question.name),
-              pageId: page.id,
-              pageName: translatePage(page.name),
-              investmentId: investment.id,
-              investmentName: investment.name,
-              investmentIcon: investment.icon
-            })
+            // Create unique key: investmentId + questionName
+            const questionKey = `${investment.id}:${question.name}`
+
+            // Only add if we haven't seen this investment+question combination before
+            if (!seenQuestions.has(questionKey)) {
+              seenQuestions.add(questionKey)
+              unanswered.push({
+                id: question.id,
+                label: translateField(question.name),
+                pageId: page.id,
+                pageName: translatePage(page.name),
+                investmentId: investment.id,
+                investmentName: investment.name,
+                investmentIcon: investment.icon
+              })
+            }
           }
         }
       })

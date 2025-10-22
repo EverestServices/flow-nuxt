@@ -42,6 +42,33 @@
             @click="$emit('edit-client')"
           />
         </template>
+
+        <!-- Consultation specific buttons -->
+        <template v-if="activeTab === 'consultation'">
+          <!-- Scenario buttons - Scrollable container -->
+          <div v-if="scenarios && scenarios.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
+            <button
+              v-for="scenario in scenarios"
+              :key="scenario.id"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap flex-shrink-0"
+              :class="scenario.id === activeScenarioId
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              @click="emit('select-scenario', scenario.id)"
+            >
+              <!-- Investment icons -->
+              <div class="flex -space-x-1">
+                <UIcon
+                  v-for="(icon, index) in getScenarioInvestmentIcons(scenario.id)"
+                  :key="index"
+                  :name="icon"
+                  class="w-4 h-4"
+                />
+              </div>
+              <span>{{ scenario.name }}</span>
+            </button>
+          </div>
+        </template>
       </div>
 
       <!-- Right Section -->
@@ -132,16 +159,26 @@ interface Investment {
   icon: string
 }
 
+interface Scenario {
+  id: string
+  name: string
+}
+
 interface Props {
   activeTab: string
   clientName: string
   showModeToggle?: boolean
   selectedInvestments?: Investment[]
+  scenarios?: Scenario[]
+  activeScenarioId?: string | null
+  scenarioInvestments?: Record<string, string[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showModeToggle: false,
-  selectedInvestments: () => []
+  selectedInvestments: () => [],
+  scenarios: () => [],
+  scenarioInvestments: () => ({})
 })
 
 const emit = defineEmits<{
@@ -151,6 +188,7 @@ const emit = defineEmits<{
   'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
   'toggle-investment-filter': [investmentId: string]
   'toggle-visualization': [show: boolean]
+  'select-scenario': [scenarioId: string]
 }>()
 
 const viewModes = [
@@ -176,5 +214,17 @@ const handleInvestmentFilterChange = (investmentId: string) => {
 const handleToggleVisualization = () => {
   showVisualization.value = !showVisualization.value
   emit('toggle-visualization', showVisualization.value)
+}
+
+// Helper to get investment icons for a scenario
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? investment.icon : null
+    })
+    .filter(Boolean)
 }
 </script>
