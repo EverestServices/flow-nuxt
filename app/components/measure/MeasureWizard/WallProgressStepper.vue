@@ -4,7 +4,7 @@
       <template v-for="(wall, index) in walls" :key="wall.id">
         <Icon v-if="index > 0" name="i-lucide-chevron-right" class="text-secondary/50" />
         <UButton
-          :to="`/energy/consultation/${String(route.params.clientId)}/measure/${String(wall.id)}`"
+          :to="`/survey/${String(route.params.surveyId)}/measure/${String(wall.id)}`"
           :color="getStepClass(wall)"
           :variant="wallIsActive(wall) ? 'solid' : 'soft'"
           class="rounded-full"

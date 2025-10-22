@@ -11,7 +11,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" v-if="imageSrc">
     <div class="col-span-1">
       <div class="mb-3 pb-3 border-b-1 border-secondary/30">
-        <UButton :to="`/energy/consultation/${String(route.params.clientId)}/measure`" color="neutral">
+        <UButton :to="`/survey/${String(route.params.surveyId)}/measure`" color="neutral">
           <Icon name="i-lucide-layout-list" class="h-5 w-5" />Vissza a falfelületek listára
         </UButton>
       </div>

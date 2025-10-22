@@ -69,17 +69,16 @@ const isInMeasure = computed(() => Boolean(route.params.wallId));
 const goToFirstMeasure = () => {
   if (wallList.value.length > 0 && wallList.value[0]) {
     void router.push({
-      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(wallList.value[0].id)}`,
+      path: `/survey/${String(route.params.surveyId)}/measure/${String(wallList.value[0].id)}`,
     });
   }
 };
 
 const getNextWallId = (): string | null => {
-  const currentWallId = String(route.params.wallId);
-  const wallIds = wallList.value.map((w) => w.id);
+  const currentWallId = String(route.params.wallId ?? '');
+  const wallIds: string[] = wallList.value.map((w) => String(w.id));
   const index = wallIds.indexOf(currentWallId);
-
-  if (index >= 0 && index + 1 < wallIds.length && typeof wallIds[index + 1] === 'string') {
+  if (index >= 0 && index + 1 < wallIds.length) {
     return wallIds[index + 1];
   }
   return null;
@@ -90,31 +89,32 @@ const goToNextWall = () => {
 
   if (nextWallId) {
     void router.push({
-      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(nextWallId)}`,
+      path: `/survey/${String(route.params.surveyId)}/measure/${String(nextWallId)}`,
     });
   } else {
     alert('Összes falfelület feldolgozva. Küldés vagy mentés következhet.');
     void router.push({
-      path: `/energy/consultation/${String(route.params.clientId)}/measure`,
+      path: `/survey/${String(route.params.surveyId)}/measure`,
     });
   }
 };
 
-const getPrevWallId = (): string | undefined => {
-  const currentWallId = String(route.params.wallId);
-  const index = wallList.value.findIndex((w) => w.id === currentWallId);
-  return index > 0 ? wallList.value[index - 1].id : undefined;
+const getPrevWallId = (): string | null => {
+  const currentWallId = String(route.params.wallId ?? '');
+  const wallIds: string[] = wallList.value.map((w) => String(w.id));
+  const index = wallIds.indexOf(currentWallId);
+  return index > 0 ? wallIds[index - 1] : null;
 };
 
 const goToPrevWall = () => {
   const prevWallId = getPrevWallId();
   if (prevWallId) {
     void router.push({
-      path: `/energy/consultation/${String(route.params.clientId)}/measure/${String(prevWallId)}`,
+      path: `/survey/${String(route.params.surveyId)}/measure/${String(prevWallId)}`,
     });
   } else {
     void router.push({
-      path: `/energy/consultation/${String(route.params.clientId)}/measure`,
+      path: `/survey/${String(route.params.surveyId)}/measure`,
     });
   }
 };

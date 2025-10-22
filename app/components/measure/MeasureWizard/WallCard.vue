@@ -66,7 +66,7 @@
       <!-- MÉRÉS gomb -->
       <div v-if="wall.images[0]?.uploadStatus === 'success'" class="absolute top-2 right-2">
         <UButton
-          :to="`/energy/consultation/${String(route.params.clientId)}/measure/${wall.id}`"
+          :to="`/survey/${String(route.params.surveyId)}/measure/${wall.id}`"
           :color="isMeasured ? 'neutral' : 'warning'"
           size="sm"
           class="gap-1"
