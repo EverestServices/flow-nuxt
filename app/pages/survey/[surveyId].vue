@@ -22,40 +22,46 @@
 
     <!-- Main Content Area -->
     <div class="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <!-- Property Assessment Tab -->
-      <SurveyPropertyAssessment
-        v-if="activeTab === 'property-assessment'"
-        :survey-id="surveyId"
-        :view-mode="viewMode"
-        :investment-filter="investmentFilter"
-        :show-visualization="showVisualization"
-        :page-display-mode="pageDisplayMode"
-        v-model:show-investment-modal="showInvestmentModal"
-        @toggle-list-view="handleToggleListView"
-        @set-display-mode="handleSetDisplayMode"
-        @open-photo-upload="handleOpenPhotoUpload"
-        @open-camera="handleOpenCamera"
-      />
+      <!-- Render nested /measure pages inside the dark content area -->
+      <NuxtPage v-if="isMeasureRoute" />
 
-      <!-- Consultation Tab -->
-      <div v-else-if="activeTab === 'consultation'" class="h-full flex items-center justify-center">
-        <p class="text-gray-500">Consultation Tab - Under Development</p>
-      </div>
+      <!-- Otherwise render the survey tabs content -->
+      <template v-else>
+        <!-- Property Assessment Tab -->
+        <SurveyPropertyAssessment
+          v-if="activeTab === 'property-assessment'"
+          :survey-id="surveyId"
+          :view-mode="viewMode"
+          :investment-filter="investmentFilter"
+          :show-visualization="showVisualization"
+          :page-display-mode="pageDisplayMode"
+          v-model:show-investment-modal="showInvestmentModal"
+          @toggle-list-view="handleToggleListView"
+          @set-display-mode="handleSetDisplayMode"
+          @open-photo-upload="handleOpenPhotoUpload"
+          @open-camera="handleOpenCamera"
+        />
 
-      <!-- Offer/Contract Tab -->
-      <div v-else-if="activeTab === 'offer-contract'" class="h-full flex items-center justify-center">
-        <p class="text-gray-500">Offer/Contract Tab - Under Development</p>
-      </div>
+        <!-- Consultation Tab -->
+        <div v-else-if="activeTab === 'consultation'" class="h-full flex items-center justify-center">
+          <p class="text-gray-500">Consultation Tab - Under Development</p>
+        </div>
 
-      <!-- Contract Data Tab -->
-      <div v-else-if="activeTab === 'contract-data'" class="h-full flex items-center justify-center">
-        <p class="text-gray-500">Contract Data Tab - Under Development</p>
-      </div>
+        <!-- Offer/Contract Tab -->
+        <div v-else-if="activeTab === 'offer-contract'" class="h-full flex items-center justify-center">
+          <p class="text-gray-500">Offer/Contract Tab - Under Development</p>
+        </div>
 
-      <!-- Summary Tab -->
-      <div v-else-if="activeTab === 'summary'" class="h-full flex items-center justify-center">
-        <p class="text-gray-500">Summary Tab - Under Development</p>
-      </div>
+        <!-- Contract Data Tab -->
+        <div v-else-if="activeTab === 'contract-data'" class="h-full flex items-center justify-center">
+          <p class="text-gray-500">Contract Data Tab - Under Development</p>
+        </div>
+
+        <!-- Summary Tab -->
+        <div v-else-if="activeTab === 'summary'" class="h-full flex items-center justify-center">
+          <p class="text-gray-500">Summary Tab - Under Development</p>
+        </div>
+      </template>
     </div>
 
     <!-- Footer -->
@@ -100,6 +106,9 @@ import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 const route = useRoute()
 const router = useRouter()
 const investmentsStore = useSurveyInvestmentsStore()
+
+// Show nested measure pages inside the dark content area
+const isMeasureRoute = computed(() => route.path.includes('/measure'))
 
 // Get survey ID from route
 const surveyId = computed(() => route.params.surveyId as string)
@@ -296,7 +305,15 @@ const handleGenerateAssessment = () => {
 }
 
 const handleToggleMarkerMode = (enabled: boolean) => {
-  console.log('Toggle marker mode:', enabled)
+  const id = surveyId.value
+  if (!id) return
+  if (enabled) {
+    // ON → jump into measure if not already there
+    if (!isMeasureRoute.value) router.push(`/survey/${id}/measure`)
+  } else {
+    // OFF → leave measure if currently there
+    if (isMeasureRoute.value) router.push(`/survey/${id}`)
+  }
 }
 
 const handleShowMissingItems = () => {
