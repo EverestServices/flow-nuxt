@@ -1,7 +1,23 @@
 <template>
+  <NuxtLink
+    v-if="to && !disabled && !loading"
+    :to="to"
+    :class="computedClasses"
+  >
+    <Icon v-if="icon && iconPosition === 'left'" :name="icon" class="mr-2" />
+    <span v-if="$slots.icon && iconPosition === 'left'" class="inline-flex mr-2">
+      <slot name="icon" />
+    </span>
+    <slot />
+    <span v-if="$slots.icon && iconPosition === 'right'" class="inline-flex ml-2">
+      <slot name="icon" />
+    </span>
+    <Icon v-if="icon && iconPosition === 'right'" :name="icon" class="ml-2" />
+  </NuxtLink>
   <button
+    v-else
     :type="type"
-    :disabled="disabled"
+    :disabled="disabled || loading"
     :class="computedClasses"
     @click="handleClick"
   >
@@ -11,6 +27,7 @@
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
     </span>
+    <Icon v-if="icon && iconPosition === 'left'" :name="icon" class="mr-2" />
     <span v-if="$slots.icon && iconPosition === 'left'" class="inline-flex mr-2">
       <slot name="icon" />
     </span>
@@ -18,6 +35,7 @@
     <span v-if="$slots.icon && iconPosition === 'right'" class="inline-flex ml-2">
       <slot name="icon" />
     </span>
+    <Icon v-if="icon && iconPosition === 'right'" :name="icon" class="ml-2" />
   </button>
 </template>
 
@@ -35,6 +53,8 @@ interface Props {
   loading?: boolean
   block?: boolean
   iconPosition?: IconPosition
+  to?: string
+  icon?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {

@@ -1,62 +1,107 @@
 <template>
-  <UDashboardPage>
-    <UDashboardPanel grow>
-      <UDashboardNavbar
-        title="Clients pending survey"
-      />
+  <div>
+    <!-- Header -->
+    <div class="flex h-24 items-center justify-between">
+      <div class="text-2xl font-light">Energy <span class="font-black">Consultations</span></div>
+      <UIButtonEnhanced
+        icon="i-lucide-zap"
+        variant="primary"
+        size="md"
+        to="/survey/client-data"
+      >
+        New Consultation
+      </UIButtonEnhanced>
+    </div>
 
-      <!-- Filter Bar -->
-      <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <!-- Left: Date Filter Buttons -->
-        <SurveyDateFilterButtonGroup
-          v-model="selectedDateFilter"
-        />
+    <div class="flex flex-col space-y-8">
+      <!-- Welcome Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 min-h-48">
+        <div class="basis-0 flex flex-col items-start justify-center">
+          <div class="text-5xl font-thin outfit">
+            Manage your <strong class="font-black">energy consultations</strong> and<br />
+            <strong class="font-black">client surveys</strong>
+          </div>
+          <div class="text-2xl outfit font-thin text-gray-600 dark:text-gray-400 mt-4">
+            {{ filteredSurveys.length }} pending consultations
+          </div>
+        </div>
 
-        <!-- Right: Search and New Client Button -->
-        <div class="flex items-center gap-3">
-          <UInput
-            v-model="searchQuery"
-            icon="i-heroicons-magnifying-glass-20-solid"
-            placeholder="Search clients..."
-            :ui="{ icon: { trailing: { pointer: '' } } }"
-            class="w-64"
-          />
-
-          <UButton
-            icon="i-heroicons-bolt"
-            label="Energy Consultation for new Client"
-            color="primary"
-            size="sm"
-            to="/survey/client-data"
-          />
+        <!-- Stats Cards -->
+        <div class="flex flex-col basis-0 items-start justify-center">
+          <div class="grid grid-cols-3 gap-4 w-full">
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {{ surveys.length }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Surveys</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                {{ todayCount }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Today</div>
+            </UIBox>
+            <UIBox class="p-4 text-center">
+              <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                {{ thisWeekCount }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">This Week</div>
+            </UIBox>
+          </div>
         </div>
       </div>
 
-      <!-- Survey List -->
-      <div class="divide-y divide-gray-200 dark:divide-gray-800">
-        <!-- Loading State -->
-        <div v-if="loading" class="flex items-center justify-center py-12">
-          <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin text-primary" />
-          <span class="ml-2 text-gray-500">Loading...</span>
+      <!-- Filters Section -->
+      <UIBox>
+        <div class="flex items-center gap-3 p-4">
+          <div class="flex-1">
+            <UIInput
+              v-model="searchQuery"
+              placeholder="Search clients..."
+              icon="i-lucide-search"
+            />
+          </div>
+          <UISelect
+            v-model="selectedDateFilter"
+            :options="dateFilterOptions"
+            size="sm"
+            class="w-40"
+          />
         </div>
+      </UIBox>
 
-        <!-- Empty State -->
-        <div v-else-if="filteredSurveys.length === 0" class="flex flex-col items-center justify-center py-12">
-          <UIcon name="i-heroicons-users" class="w-12 h-12 text-gray-400 mb-3" />
-          <p class="text-gray-500">
-            {{ selectedDateFilter !== 'all' ? 'No clients found for selected filter' : 'No clients found' }}
+      <!-- Loading State -->
+      <UIBox v-if="loading" class="p-12">
+        <div class="flex justify-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </UIBox>
+
+      <!-- Empty State -->
+      <UIBox v-else-if="filteredSurveys.length === 0" class="p-12">
+        <div class="text-center">
+          <Icon name="i-lucide-clipboard-list" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No consultations found</h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">
+            {{ selectedDateFilter !== 'all' ? 'No clients found for selected filter' : 'Start by creating a new energy consultation' }}
           </p>
+          <UIButtonEnhanced to="/survey/client-data">
+            <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
+            New Consultation
+          </UIButtonEnhanced>
         </div>
+      </UIBox>
 
-        <!-- Survey Items -->
+      <!-- Survey List -->
+      <div v-else class="grid grid-cols-1 gap-6">
         <SurveyListItem
           v-for="survey in filteredSurveys"
           :key="survey.id"
           :survey="survey"
         />
       </div>
-    </UDashboardPanel>
-  </UDashboardPage>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -64,13 +109,38 @@ import { computed, ref } from 'vue'
 import type { Survey } from '~/types/survey-new'
 
 // State
-const selectedDateFilter = ref<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'pending' | 'all'>('today')
+const selectedDateFilter = ref<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'pending' | 'all'>('all')
 const searchQuery = ref('')
+
+// Filter options
+const dateFilterOptions = [
+  { label: 'All Time', value: 'all' },
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'This Week', value: 'thisWeek' },
+  { label: 'Last Week', value: 'lastWeek' },
+  { label: 'Pending', value: 'pending' }
+]
 
 // Fetch surveys with client data
 const supabase = useSupabaseClient()
 const loading = ref(true)
 const surveys = ref<Survey[]>([])
+
+// Stats computed
+const todayCount = computed(() => {
+  return surveys.value.filter(survey => {
+    if (!survey.at) return false
+    return isToday(new Date(survey.at))
+  }).length
+})
+
+const thisWeekCount = computed(() => {
+  return surveys.value.filter(survey => {
+    if (!survey.at) return false
+    return isThisWeek(new Date(survey.at))
+  }).length
+})
 
 // Fetch surveys on mount
 onMounted(async () => {
@@ -146,8 +216,6 @@ const filteredSurveys = computed(() => {
   // Apply date filter
   if (selectedDateFilter.value !== 'all') {
     if (selectedDateFilter.value === 'pending') {
-      // For pending, we'll need to check contracts later
-      // For now, show all
       result = surveys.value
     } else {
       result = surveys.value.filter(survey => {
