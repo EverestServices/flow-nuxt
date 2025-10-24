@@ -97,10 +97,10 @@
             </button>
           </div>
 
-          <!-- Contract Selector Buttons -->
-          <div v-if="contracts && contracts.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
+          <!-- Contract Selector Buttons - Only on offer-contract tab -->
+          <div v-if="activeTab === 'offer-contract' && contracts && contracts.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
             <button
-              v-for="contract in contracts"
+              v-for="contract in sortedContracts"
               :key="contract.id"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap flex-shrink-0"
               :class="contract.id === activeContractId
@@ -203,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 interface Investment {
   id: string
@@ -219,6 +219,7 @@ interface Scenario {
 interface Contract {
   id: string
   name: string
+  created_at: string
 }
 
 interface Props {
@@ -266,6 +267,13 @@ const viewModes = [
 const currentViewMode = ref<'photos' | 'data' | 'all'>('all')
 const activeInvestmentFilter = ref<string>('all')
 const showVisualization = ref<boolean>(true)
+
+// Sort contracts by created_at (earliest first)
+const sortedContracts = computed(() => {
+  return [...props.contracts].sort((a, b) => {
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+})
 
 const handleViewModeChange = (mode: 'photos' | 'data' | 'all') => {
   currentViewMode.value = mode

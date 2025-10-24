@@ -13,6 +13,22 @@ export interface Contract {
   total_price: number
   roof_configuration?: any
   notes?: string
+  // Client Data
+  client_name?: string | null
+  client_address?: string | null
+  client_phone?: string | null
+  client_email?: string | null
+  // Personal Details
+  birth_place?: string | null
+  date_of_birth?: string | null
+  id_card_number?: string | null
+  tax_id?: string | null
+  mother_birth_name?: string | null
+  bank_account_number?: string | null
+  citizenship?: string | null
+  marital_status?: string | null
+  residence_card_number?: string | null
+  mailing_address?: string | null
   created_at: string
   updated_at: string
 }
@@ -193,6 +209,22 @@ export const useContractsStore = defineStore('contracts', {
       total_price: number
       roof_configuration?: any
       notes?: string
+      // Client Data
+      client_name?: string | null
+      client_address?: string | null
+      client_phone?: string | null
+      client_email?: string | null
+      // Personal Details
+      birth_place?: string | null
+      date_of_birth?: string | null
+      id_card_number?: string | null
+      tax_id?: string | null
+      mother_birth_name?: string | null
+      bank_account_number?: string | null
+      citizenship?: string | null
+      marital_status?: string | null
+      residence_card_number?: string | null
+      mailing_address?: string | null
       main_components: Array<{ main_component_id: string; investment_id: string; quantity: number; price_snapshot: number }>
       investments: string[]
       solar_extra_costs: Array<{ extra_cost_id: string; snapshot_price: number; quantity?: number; comment?: string }>
@@ -216,7 +248,23 @@ export const useContractsStore = defineStore('contracts', {
             vat: data.vat,
             total_price: data.total_price,
             roof_configuration: data.roof_configuration,
-            notes: data.notes
+            notes: data.notes,
+            // Client Data
+            client_name: data.client_name,
+            client_address: data.client_address,
+            client_phone: data.client_phone,
+            client_email: data.client_email,
+            // Personal Details
+            birth_place: data.birth_place,
+            date_of_birth: data.date_of_birth,
+            id_card_number: data.id_card_number,
+            tax_id: data.tax_id,
+            mother_birth_name: data.mother_birth_name,
+            bank_account_number: data.bank_account_number,
+            citizenship: data.citizenship,
+            marital_status: data.marital_status,
+            residence_card_number: data.residence_card_number,
+            mailing_address: data.mailing_address
           })
           .select()
           .single()
@@ -314,6 +362,22 @@ export const useContractsStore = defineStore('contracts', {
       total_price?: number
       roof_configuration?: any
       notes?: string
+      // Client Data
+      client_name?: string | null
+      client_address?: string | null
+      client_phone?: string | null
+      client_email?: string | null
+      // Personal Details
+      birth_place?: string | null
+      date_of_birth?: string | null
+      id_card_number?: string | null
+      tax_id?: string | null
+      mother_birth_name?: string | null
+      bank_account_number?: string | null
+      citizenship?: string | null
+      marital_status?: string | null
+      residence_card_number?: string | null
+      mailing_address?: string | null
       main_components?: Array<{ main_component_id: string; investment_id: string; quantity: number; price_snapshot: number }>
       investments?: string[]
       solar_extra_costs?: Array<{ extra_cost_id: string; snapshot_price: number; quantity?: number; comment?: string }>
@@ -338,6 +402,22 @@ export const useContractsStore = defineStore('contracts', {
         if (data.total_price !== undefined) updateData.total_price = data.total_price
         if (data.roof_configuration !== undefined) updateData.roof_configuration = data.roof_configuration
         if (data.notes !== undefined) updateData.notes = data.notes
+        // Client Data
+        if (data.client_name !== undefined) updateData.client_name = data.client_name
+        if (data.client_address !== undefined) updateData.client_address = data.client_address
+        if (data.client_phone !== undefined) updateData.client_phone = data.client_phone
+        if (data.client_email !== undefined) updateData.client_email = data.client_email
+        // Personal Details
+        if (data.birth_place !== undefined) updateData.birth_place = data.birth_place
+        if (data.date_of_birth !== undefined) updateData.date_of_birth = data.date_of_birth
+        if (data.id_card_number !== undefined) updateData.id_card_number = data.id_card_number
+        if (data.tax_id !== undefined) updateData.tax_id = data.tax_id
+        if (data.mother_birth_name !== undefined) updateData.mother_birth_name = data.mother_birth_name
+        if (data.bank_account_number !== undefined) updateData.bank_account_number = data.bank_account_number
+        if (data.citizenship !== undefined) updateData.citizenship = data.citizenship
+        if (data.marital_status !== undefined) updateData.marital_status = data.marital_status
+        if (data.residence_card_number !== undefined) updateData.residence_card_number = data.residence_card_number
+        if (data.mailing_address !== undefined) updateData.mailing_address = data.mailing_address
 
         if (Object.keys(updateData).length > 0) {
           const { error: contractError } = await supabase

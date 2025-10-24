@@ -73,9 +73,11 @@
         />
 
         <!-- Contract Data Tab -->
-        <div v-else-if="activeTab === 'contract-data'" class="h-full flex items-center justify-center">
-          <p class="text-gray-500">Contract Data Tab - Under Development</p>
-        </div>
+        <SurveyContractData
+          v-else-if="activeTab === 'contract-data'"
+          :survey-id="surveyId"
+          :client-data="clientData"
+        />
 
         <!-- Summary Tab -->
         <div v-else-if="activeTab === 'summary'" class="h-full flex items-center justify-center">
@@ -228,6 +230,7 @@ const tabs = computed(() => {
 
 // Survey data
 const clientName = ref('Loading...')
+const clientData = ref<any>(null)
 
 // Can proceed - always true for property-assessment tab
 const canProceed = computed(() => {
@@ -303,7 +306,7 @@ const consultationPanelOpen = ref(false)
 const canSaveContract = computed(() => {
   // This will be checked in the SurveyOfferContract component
   // We just need to show the button when on the offer-contract tab
-  return activeTab.value === 'offer-contract' || activeTab.value === 'contract-data'
+  return activeTab.value === 'offer-contract'
 })
 
 // Load survey data
@@ -341,6 +344,7 @@ const loadSurveyData = async () => {
 
     if (survey && survey.client) {
       clientName.value = survey.client.name
+      clientData.value = survey.client
 
       // Load consultation panel states
       if (survey.consultation_system_design_open !== null && survey.consultation_system_design_open !== undefined) {
@@ -351,6 +355,7 @@ const loadSurveyData = async () => {
       }
     } else {
       clientName.value = 'Unknown Client'
+      clientData.value = null
     }
 
   } catch (error) {

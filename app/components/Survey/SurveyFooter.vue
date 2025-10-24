@@ -92,8 +92,8 @@
 
       <!-- Right Section -->
       <div class="flex items-center gap-3 flex-1 justify-end">
-        <!-- Offer/Contract specific actions -->
-        <template v-if="activeTab === 'offer-contract' || activeTab === 'contract-data'">
+        <!-- Offer/Contract specific actions - Only on offer-contract tab -->
+        <template v-if="activeTab === 'offer-contract'">
           <!-- Save Investment Contract Button -->
           <UButton
             v-if="canSaveContract"
@@ -174,8 +174,8 @@
           </div>
         </template>
 
-        <!-- Offer/Contract specific Container - Contract Management -->
-        <template v-if="(activeTab === 'offer-contract' || activeTab === 'contract-data') && activeContract">
+        <!-- Offer/Contract specific Container - Contract Management - Only on offer-contract tab -->
+        <template v-if="activeTab === 'offer-contract' && activeContract">
           <div class="flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
             <span class="text-sm font-medium text-gray-900 dark:text-white">
               {{ activeContract.name }}
