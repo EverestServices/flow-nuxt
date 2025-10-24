@@ -489,12 +489,10 @@ const handleConditionUpdate = (key: keyof EligibilityConditions, value: boolean)
 }
 
 const handleElectricCarsSaved = () => {
-  console.log('Electric cars saved')
   // TODO: Show success toast or refresh data if needed
 }
 
 const handleHeavyConsumersSaved = () => {
-  console.log('Heavy consumers saved')
   // TODO: Show success toast or refresh data if needed
 }
 
@@ -509,7 +507,6 @@ const handleContractDetailsClick = () => {
 }
 
 const handleFinancingSaved = () => {
-  console.log('Financing saved')
   // TODO: Show success toast or refresh data if needed
 }
 

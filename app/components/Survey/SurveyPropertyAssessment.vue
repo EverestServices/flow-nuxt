@@ -411,12 +411,10 @@ const allDocumentCategories = computed(() => {
   }> = []
   selectedInvestments.value.forEach(inv => {
     const invCategories = store.documentCategories[inv.id] || []
-    console.log(`Document categories for investment ${inv.name}:`, invCategories)
     invCategories.forEach(cat => {
       categories.push({ ...cat, investmentId: inv.id, investmentIcon: inv.icon })
     })
   })
-  console.log('All document categories:', categories)
   return categories
 })
 
@@ -570,12 +568,6 @@ const addInstance = (pageId: string) => {
 }
 
 const deleteInstance = (page: SurveyPage, index: number) => {
-  console.log('Deleting instance:', {
-    pageId: page.id,
-    pageName: page.name,
-    index,
-    allow_delete_first: page.allow_delete_first
-  })
   store.removePageInstance(page.id, index, page.allow_delete_first || false)
 }
 

@@ -166,7 +166,6 @@ const roiData = ref<ROIData>({
 const loadROIData = async () => {
   const activeScenarioId = scenariosStore.activeScenarioId
   if (!activeScenarioId) {
-    console.log('[Consultation] No active scenario')
     return
   }
 

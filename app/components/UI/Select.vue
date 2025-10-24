@@ -39,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+
 type SelectSize = 'sm' | 'md' | 'lg'
 type SelectVariant = 'default' | 'glass'
 type Option = string | number | { label: string; value: any; [key: string]: any }

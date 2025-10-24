@@ -188,7 +188,6 @@ const calculateImpacts = async () => {
   try {
     // Get scenario components
     const scenarioComponents = scenariosStore.scenarioComponents[currentScenarioId.value] || []
-    console.log('[Investment Details] Scenario components:', scenarioComponents.length)
 
     if (scenarioComponents.length === 0) {
       loading.value = false
@@ -197,13 +196,11 @@ const calculateImpacts = async () => {
 
     // Get scenario investments
     const scenarioInvestmentIds = scenariosStore.scenarioInvestments[currentScenarioId.value] || []
-    console.log('[Investment Details] Scenario investment IDs:', scenarioInvestmentIds)
 
     // Get investment details
     const investments = investmentsStore.availableInvestments.filter(inv =>
       scenarioInvestmentIds.includes(inv.id)
     )
-    console.log('[Investment Details] Filtered investments:', investments.map(i => ({ name: i.name, persist_name: i.persist_name })))
 
     // Group components by investment (through categories)
     const impactPromises = investments.map(async (investment) => {

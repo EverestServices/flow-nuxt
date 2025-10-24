@@ -159,19 +159,12 @@ const isSelected = (investmentId: string) => {
 }
 
 const toggleInvestment = async (investmentId: string) => {
-  console.log('Toggle investment clicked:', investmentId)
-  console.log('Is selected:', isSelected(investmentId))
-  console.log('Survey ID:', props.surveyId)
-
   try {
     if (isSelected(investmentId)) {
-      console.log('Deselecting investment...')
       await store.deselectInvestment(investmentId)
     } else {
-      console.log('Selecting investment...')
       await store.selectInvestment(investmentId)
     }
-    console.log('Toggle completed successfully')
   } catch (error) {
     console.error('Error toggling investment:', error)
   }

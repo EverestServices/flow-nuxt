@@ -356,15 +356,7 @@ const totalPages = computed(() => {
 })
 
 const showPagination = computed(() => {
-  const shouldShow = props.mode !== 'all' && totalPages.value > 1
-  console.log('showPagination:', {
-    mode: props.mode,
-    categoriesLength: categories.value.length,
-    totalPages: totalPages.value,
-    investmentGroupsLength: investmentGroups.value.length,
-    shouldShow
-  })
-  return shouldShow
+  return props.mode !== 'all' && totalPages.value > 1
 })
 
 const paginatedCategories = computed(() => {

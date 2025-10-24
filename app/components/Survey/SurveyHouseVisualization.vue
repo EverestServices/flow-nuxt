@@ -200,7 +200,6 @@ const getInvestmentIcon = (investmentId: string) => {
 
 // Group document categories by persist_name to count duplicates
 const groupedCategories = computed(() => {
-  console.log('Filtered document categories:', filteredDocumentCategories.value)
   const groups: Record<string, DocumentCategoryWithInvestment[]> = {}
 
   filteredDocumentCategories.value.forEach(cat => {
@@ -210,7 +209,6 @@ const groupedCategories = computed(() => {
     groups[cat.persist_name].push(cat)
   })
 
-  console.log('Grouped categories:', groups)
   return groups
 })
 

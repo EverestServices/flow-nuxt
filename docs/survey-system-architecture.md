@@ -1,9 +1,9 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-21
-**Version:** 2.0.0
-**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`
+**Last Updated:** 2025-10-24
+**Version:** 2.1.0
+**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
 
 ---
 
@@ -29,9 +29,11 @@ A complete survey management system for handling client property assessments, in
 - ✅ Survey answers with dynamic questions
 - ✅ Scenario and contract generation
 - ✅ Electric car and heavy consumer tracking
-- ✅ **Main components catalog system** (NEW)
-- ✅ **AI-powered scenario generation** (NEW)
-- ✅ **Component-based system design** (NEW)
+- ✅ **Main components catalog system**
+- ✅ **AI-powered scenario generation**
+- ✅ **Component-based system design**
+- ✅ **Investment-specific component tracking** (NEW - 2025-10-24)
+- ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
 
 ---
 
@@ -339,15 +341,19 @@ Components selected for each scenario with quantities.
 | updated_at | TIMESTAMPTZ | Last update timestamp |
 | scenario_id | UUID | FK → scenarios |
 | main_component_id | UUID | FK → main_components |
-| quantity | INTEGER | Quantity needed |
+| investment_id | UUID | FK → investments (NEW - 2025-10-24) |
+| quantity | DECIMAL(10,2) | Quantity needed |
 | price_snapshot | NUMERIC | Price at selection time |
 
 **Constraints:**
-- UNIQUE (scenario_id, main_component_id)
+- UNIQUE (scenario_id, main_component_id, investment_id) - Updated 2025-10-24
 
 **Relations:**
 - 1 Scenario → Many Components
 - 1 Main Component → Many Scenario Components
+- 1 Investment → Many Scenario Components (NEW)
+
+**Migration:** See `070_add_investment_id_to_pivot_tables.sql`
 
 #### **main_component_category_investments**
 Links categories to applicable investments.
