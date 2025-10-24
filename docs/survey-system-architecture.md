@@ -1,9 +1,9 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-21
-**Version:** 2.0.0
-**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`
+**Last Updated:** 2025-10-24
+**Version:** 2.2.0
+**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
 
 ---
 
@@ -29,9 +29,13 @@ A complete survey management system for handling client property assessments, in
 - ✅ Survey answers with dynamic questions
 - ✅ Scenario and contract generation
 - ✅ Electric car and heavy consumer tracking
-- ✅ **Main components catalog system** (NEW)
-- ✅ **AI-powered scenario generation** (NEW)
-- ✅ **Component-based system design** (NEW)
+- ✅ **Main components catalog system**
+- ✅ **AI-powered scenario generation**
+- ✅ **Component-based system design**
+- ✅ **Investment-specific component tracking** (NEW - 2025-10-24)
+- ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
+- ✅ **Contract Data page with client information management** (NEW - 2025-10-24)
+- ✅ **Summary page with contract preview and digital signing** (NEW - 2025-10-24)
 
 ---
 
@@ -141,33 +145,48 @@ Different investment scenarios for surveys.
 - Links to Extra Costs (via `extra_cost_relations`)
 
 #### **contracts**
-Contract data (can be linked to survey or standalone).
+Contract data (can be linked to survey or standalone). Manages both technical contract details (name, mode, pricing) and client personal information.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| created_at | TIMESTAMPTZ | Creation timestamp |
-| updated_at | TIMESTAMPTZ | Last update timestamp |
-| survey_id | UUID | FK → surveys (nullable) |
-| client_name | VARCHAR(255) | Client name |
-| client_address | VARCHAR(500) | Full address |
-| client_phone | VARCHAR(50) | Phone |
-| client_email | VARCHAR(255) | Email |
-| birth_place | VARCHAR(255) | Birth place |
-| date_of_birth | DATE | Date of birth |
-| id_card_number | VARCHAR(50) | ID card number |
-| tax_id | VARCHAR(50) | Tax ID |
-| mother_birth_name | VARCHAR(255) | Mother's birth name |
-| bank_account_number | VARCHAR(100) | Bank account |
-| citizenship | VARCHAR(100) | Citizenship |
-| marital_status | VARCHAR(50) | Marital status |
-| residence_card_number | VARCHAR(50) | Residence card number |
-| mailing_address | VARCHAR(500) | Mailing address |
+| Column | Type | Description | Managed On |
+|--------|------|-------------|------------|
+| id | UUID | Primary key | System |
+| created_at | TIMESTAMPTZ | Creation timestamp | System |
+| updated_at | TIMESTAMPTZ | Last update timestamp | System |
+| survey_id | UUID | FK → surveys (nullable) | System |
+| **Technical Fields** | | | |
+| name | VARCHAR(255) | Contract name | Offer/Contract |
+| scenario_id | UUID | FK → scenarios | Offer/Contract |
+| contract_mode | VARCHAR(20) | 'offer' or 'contract' | Offer/Contract |
+| status | VARCHAR(20) | draft/sent/accepted/rejected | Offer/Contract |
+| commission_rate | DECIMAL(5,4) | Commission rate (default 0.12) | Offer/Contract |
+| vat | INTEGER | VAT percentage (default 27) | Offer/Contract |
+| total_price | DECIMAL(12,2) | Total price | Offer/Contract |
+| roof_configuration | JSONB | Roof configuration data | Offer/Contract |
+| notes | TEXT | Additional notes | Offer/Contract |
+| **Client Data** | | | |
+| client_name | VARCHAR(255) | Client name | **Contract Data** |
+| client_address | VARCHAR(500) | Full address | **Contract Data** |
+| client_phone | VARCHAR(50) | Phone | **Contract Data** |
+| client_email | VARCHAR(255) | Email | **Contract Data** |
+| **Personal Details** | | | |
+| birth_place | VARCHAR(255) | Birth place | **Contract Data** |
+| date_of_birth | DATE | Date of birth | **Contract Data** |
+| id_card_number | VARCHAR(50) | ID card number | **Contract Data** |
+| tax_id | VARCHAR(50) | Tax ID | **Contract Data** |
+| mother_birth_name | VARCHAR(255) | Mother's birth name | **Contract Data** |
+| bank_account_number | VARCHAR(100) | Bank account | **Contract Data** |
+| citizenship | VARCHAR(100) | Citizenship | **Contract Data** |
+| marital_status | VARCHAR(50) | Marital status | **Contract Data** |
+| residence_card_number | VARCHAR(50) | Residence card number | **Contract Data** |
+| mailing_address | VARCHAR(500) | Mailing address | **Contract Data** |
 
 **Relations:**
 - 1 Survey → Many Contracts (nullable)
 - Many-to-Many with Investments (via `contract_investments`)
+- 1 Scenario → Many Contracts (optional)
 - Links to Extra Costs (via `extra_cost_relations`)
+
+**See Also:** [Contract Data Page Documentation](survey-contract-data-page.md)
 
 #### **extra_costs**
 Additional costs catalog.
@@ -339,15 +358,19 @@ Components selected for each scenario with quantities.
 | updated_at | TIMESTAMPTZ | Last update timestamp |
 | scenario_id | UUID | FK → scenarios |
 | main_component_id | UUID | FK → main_components |
-| quantity | INTEGER | Quantity needed |
+| investment_id | UUID | FK → investments (NEW - 2025-10-24) |
+| quantity | DECIMAL(10,2) | Quantity needed |
 | price_snapshot | NUMERIC | Price at selection time |
 
 **Constraints:**
-- UNIQUE (scenario_id, main_component_id)
+- UNIQUE (scenario_id, main_component_id, investment_id) - Updated 2025-10-24
 
 **Relations:**
 - 1 Scenario → Many Components
 - 1 Main Component → Many Scenario Components
+- 1 Investment → Many Scenario Components (NEW)
+
+**Migration:** See `070_add_investment_id_to_pivot_tables.sql`
 
 #### **main_component_category_investments**
 Links categories to applicable investments.
@@ -851,6 +874,100 @@ Custom HTML select component for dropdowns.
 - Dark mode support
 - Disabled state
 
+### Contract Data Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveyContractData.vue
+Client information and personal details management for contracts.
+
+**Features:**
+- Multi-contract editing (select up to 3 contracts simultaneously)
+- Smart default population from Survey Client data
+- Auto-save with 1-second debounce
+- Copy client data between contracts
+- Copy personal details between contracts
+- Responsive grid layout (1, 2, or 3 columns)
+- Contract sorting by creation date (earliest first)
+- Full-width input fields
+
+**Data Sections:**
+1. **Client Data**
+   - Name, Address, Phone, Email
+   - Auto-populated from Survey Client
+2. **Personal Details**
+   - Birth Place, Date of Birth, ID Card Number
+   - Tax ID, Mother's Name, Bank Account Number
+   - Citizenship, Marital Status, Residence Card Number
+   - Mailing Address
+
+**See Also:** [Contract Data Page Documentation](survey-contract-data-page.md)
+
+### Summary Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveySummary.vue
+Final survey page displaying all contracts with preview and action capabilities.
+
+**Features:**
+- View mode toggle (List / Card view)
+- Contract cards showing client info and investment details
+- Three action buttons per contract (Save without send, Save and Send, Sign Now)
+- Smart data fallback (contract → Survey Client → empty)
+- Cost summary per contract
+- Footer buttons for bulk operations
+
+#### Modal Components
+
+**SurveySendContractModal.vue** - Single contract email sending
+- Contract preview
+- Email template editor with rich text support
+- Placeholder substitution
+
+**SurveySignContractModal.vue** - Single contract digital signing
+- Contract preview
+- Privacy policy acceptance
+- Contract terms acceptance
+- Email delivery option
+- Touch/mouse signature pad
+
+**SurveySendAllContractsModal.vue** - Bulk contract sending
+- Multiple contract previews with numbering
+- Shared email template editor
+- Batch email functionality
+
+**SurveySignAllContractsModal.vue** - Bulk contract signing
+- Multiple contract previews with numbering
+- Per-contract acceptance and signature
+- Global privacy policy acceptance
+- Comprehensive validation (all contracts must be signed)
+
+#### Supporting Components
+
+**ContractPreview.vue** - Read-only contract display
+- Client information with smart fallback
+- Selected investments with icons
+- Component breakdown with quantities and prices
+- Extra costs and discounts
+- Total price calculation
+- Notes section
+
+**SignaturePad.vue** - Canvas-based signature capture
+- Touch event handling (touchstart, touchmove, touchend)
+- Mouse event handling (mousedown, mousemove, mouseup, mouseleave)
+- Coordinate transformation for proper scaling
+- Clear functionality
+- isEmpty() validation
+- PNG data URL export
+
+**EmailTemplateEditor.vue** - Rich text email editor
+- Toolbar with formatting buttons (Bold, Italic, Underline, List, Link)
+- Text insertion at cursor position
+- Placeholder documentation
+
+**See Also:** [Summary Page Documentation](survey-summary-page.md)
+
 ---
 
 ## Usage Examples
@@ -1225,4 +1342,6 @@ const response = store.investmentResponses[investment.id]?.[question.name]
 
 - [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
 - [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
+- [Contract Data Page](survey-contract-data-page.md) - Contract Data page documentation
+- [Summary Page](survey-summary-page.md) - Summary page with contract preview and signing functionality
 - [Investment-Aware Response Tracking Bugfix](survey-property-assessment.md#investment-aware-question-response-tracking-bugfix) - Detailed bugfix documentation

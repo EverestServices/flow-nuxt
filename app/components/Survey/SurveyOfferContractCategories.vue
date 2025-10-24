@@ -104,7 +104,7 @@ const categories = computed(() => {
 
 // Get scenario components for a category (filtered by investment)
 const getCategoryComponents = (categoryId: string) => {
-  return scenariosStore.getScenarioComponentForCategory(categoryId, undefined, props.investmentId)
+  return scenariosStore.getScenarioComponentForCategory(categoryId, props.scenarioId, props.investmentId)
 }
 
 // Get available components for a category
@@ -184,7 +184,8 @@ const handleAddRow = async (categoryId: string) => {
       return
     }
 
-    await scenariosStore.addScenarioComponent(availableComponent.value, 1, props.investmentId)
+    // TODO: In the future, this should add to contract_components instead of scenario_main_components
+    await scenariosStore.addScenarioComponent(availableComponent.value, 1, props.investmentId, props.scenarioId)
   } catch (error) {
     console.error('Error adding component:', error)
     // TODO: Show error toast
@@ -196,7 +197,8 @@ const handleAddRow = async (categoryId: string) => {
 // Handle component change
 const handleComponentChange = async (scenarioComponentId: string, newComponentId: string) => {
   try {
-    await scenariosStore.updateScenarioComponent(scenarioComponentId, newComponentId)
+    // TODO: In the future, this should update contract_components instead of scenario_main_components
+    await scenariosStore.updateScenarioComponent(scenarioComponentId, newComponentId, undefined, props.scenarioId)
   } catch (error) {
     console.error('Error changing component:', error)
     // TODO: Show error toast
@@ -208,7 +210,8 @@ const handleQuantityChange = async (componentId: string, quantity: number) => {
   if (quantity < 1) return
 
   try {
-    await scenariosStore.updateComponentQuantity(componentId, quantity)
+    // TODO: In the future, this should update contract_components instead of scenario_main_components
+    await scenariosStore.updateComponentQuantity(componentId, quantity, props.scenarioId)
   } catch (error) {
     console.error('Error updating quantity:', error)
     // TODO: Show error toast
@@ -218,7 +221,8 @@ const handleQuantityChange = async (componentId: string, quantity: number) => {
 // Delete row
 const handleDeleteRow = async (componentId: string) => {
   try {
-    await scenariosStore.removeScenarioComponent(componentId)
+    // TODO: In the future, this should delete from contract_components instead of scenario_main_components
+    await scenariosStore.removeScenarioComponent(componentId, props.scenarioId)
   } catch (error) {
     console.error('Error deleting component:', error)
     // TODO: Show error toast

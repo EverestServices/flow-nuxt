@@ -148,11 +148,8 @@ const loadData = async () => {
 
     if (componentsError) throw componentsError
 
-    console.log('[ContractDetailsCosts] Components data:', componentsData)
-
     // Load categories to get names
     const categoryIds = [...new Set(componentsData?.map((item: any) => item.main_component?.main_component_category_id).filter(Boolean))]
-    console.log('[ContractDetailsCosts] Category IDs:', categoryIds)
     let categoriesMap: Record<string, string> = {}
 
     if (categoryIds.length > 0) {
@@ -162,8 +159,6 @@ const loadData = async () => {
         .in('id', categoryIds)
 
       if (!categoriesError && categoriesData) {
-        console.log('[ContractDetailsCosts] Categories data:', categoriesData)
-
         // Category translations based on persist_name
         const categoryTranslations: Record<string, string> = {
           'solar_panels': 'Napelemek',
@@ -185,15 +180,12 @@ const loadData = async () => {
             categoryTranslations[cat.persist_name] || 'Egyéb'
           ])
         )
-        console.log('[ContractDetailsCosts] Categories map:', categoriesMap)
       }
     }
 
     mainComponents.value = (componentsData || []).map((item: any) => {
       const categoryId = item.main_component?.main_component_category_id
       const categoryName = categoryId ? (categoriesMap[categoryId] || 'Other') : 'Other'
-
-      console.log('[ContractDetailsCosts] Component:', item.main_component?.name, 'Category ID:', categoryId, 'Category Name:', categoryName)
 
       return {
         id: item.id,
@@ -203,8 +195,6 @@ const loadData = async () => {
       }
     })
 
-    console.log('[ContractDetailsCosts] Final mainComponents:', mainComponents.value)
-
     // Load extra costs
     const { data: extraCostsData, error: extraCostsError } = await supabase
       .from('extra_cost_relations')
@@ -213,13 +203,9 @@ const loadData = async () => {
 
     if (extraCostsError) throw extraCostsError
 
-    console.log('[ContractDetailsCosts] Extra costs data:', extraCostsData)
-
     extraCostTotal.value = (extraCostsData || []).reduce((sum: number, item: any) => {
       return sum + (item.quantity * item.snapshot_price * (1 + props.commissionRate))
     }, 0)
-
-    console.log('[ContractDetailsCosts] Extra cost total:', extraCostTotal.value)
 
     // Load subsidies
     const { data: subsidiesData, error: subsidiesError } = await supabase

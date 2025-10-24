@@ -92,6 +92,31 @@
 
       <!-- Right Section -->
       <div class="flex items-center gap-3 flex-1 justify-end">
+        <!-- Offer/Contract specific actions - Only on offer-contract tab -->
+        <template v-if="activeTab === 'offer-contract'">
+          <!-- Save Investment Contract Button -->
+          <UButton
+            v-if="canSaveContract"
+            label="Save Investment Contract"
+            icon="i-lucide-save"
+            color="primary"
+            variant="outline"
+            size="md"
+            @click="$emit('save-investment-contract')"
+          />
+
+          <!-- Modify Contract Button -->
+          <UButton
+            v-if="activeContract"
+            :label="`Modify ${activeContract.name}`"
+            icon="i-lucide-pencil"
+            color="gray"
+            variant="outline"
+            size="md"
+            @click="$emit('modify-contract')"
+          />
+        </template>
+
         <!-- Property Assessment specific controls -->
         <template v-if="showPropertyActions">
           <!-- Marker Mode Toggle -->
@@ -149,8 +174,66 @@
           </div>
         </template>
 
-        <!-- Next Button - Always visible -->
+        <!-- Offer/Contract specific Container - Contract Management - Only on offer-contract tab -->
+        <template v-if="activeTab === 'offer-contract' && activeContract">
+          <div class="flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <span class="text-sm font-medium text-gray-900 dark:text-white">
+              {{ activeContract.name }}
+            </span>
+            <div class="flex items-center gap-2">
+              <UButton
+                size="xs"
+                color="gray"
+                variant="outline"
+                @click="$emit('rename-contract')"
+              >
+                Rename
+              </UButton>
+              <UButton
+                size="xs"
+                color="gray"
+                variant="outline"
+                @click="$emit('duplicate-contract')"
+              >
+                Duplicate
+              </UButton>
+              <UButton
+                size="xs"
+                color="red"
+                variant="outline"
+                @click="$emit('delete-contract')"
+              >
+                Delete
+              </UButton>
+            </div>
+          </div>
+        </template>
+
+        <!-- Summary specific actions - Only on summary tab -->
+        <template v-if="activeTab === 'summary'">
+          <!-- Save All and Send -->
+          <UButton
+            label="Save All and Send"
+            icon="i-lucide-send"
+            color="primary"
+            variant="outline"
+            size="lg"
+            @click="$emit('save-all-and-send')"
+          />
+
+          <!-- Sign All Contracts -->
+          <UButton
+            :label="`Sign All Contracts (${contractCount})`"
+            icon="i-lucide-pen-tool"
+            color="primary"
+            size="lg"
+            @click="$emit('sign-all-contracts')"
+          />
+        </template>
+
+        <!-- Next Button - Visible on all tabs except summary -->
         <UButton
+          v-if="activeTab !== 'summary'"
           label="Next"
           icon="i-heroicons-arrow-right"
           trailing
@@ -172,18 +255,28 @@ interface Scenario {
   name: string
 }
 
+interface Contract {
+  id: string
+  name: string
+}
+
 interface Props {
   activeTab: string
   showPropertyActions?: boolean
   missingItemsCount?: number
   canProceed?: boolean
   activeScenario?: Scenario | null
+  activeContract?: Contract | null
+  canSaveContract?: boolean
+  contractCount?: number
 }
 
 withDefaults(defineProps<Props>(), {
   showPropertyActions: false,
   missingItemsCount: 0,
-  canProceed: true
+  canProceed: true,
+  canSaveContract: false,
+  contractCount: 0
 })
 
 defineEmits<{
@@ -200,6 +293,13 @@ defineEmits<{
   'rename-scenario': []
   'duplicate-scenario': []
   'delete-scenario': []
+  'rename-contract': []
+  'duplicate-contract': []
+  'delete-contract': []
+  'save-investment-contract': []
+  'modify-contract': []
+  'save-all-and-send': []
+  'sign-all-contracts': []
   next: []
 }>()
 

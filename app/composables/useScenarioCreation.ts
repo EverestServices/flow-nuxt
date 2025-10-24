@@ -153,6 +153,7 @@ export const useScenarioCreation = () => {
     if (componentsError) throw componentsError
     if (!allComponents) return
 
+    // Collect components to insert
     const componentsToInsert: any[] = []
 
     // For each investment, select components
@@ -192,9 +193,11 @@ export const useScenarioCreation = () => {
         // Calculate quantity
         const quantity = calculateQuantity(baseQuantity, scenarioType)
 
+        // Add component with investment_id
         componentsToInsert.push({
           scenario_id: scenarioId,
           main_component_id: selectedComponent.id,
+          investment_id: investment.id,
           quantity,
           price_snapshot: selectedComponent.price
         })

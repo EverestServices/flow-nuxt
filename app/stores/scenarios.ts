@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useSupabaseClient } from '#imports'
 
 export interface Scenario {
   id: string
@@ -19,6 +20,7 @@ export interface ScenarioMainComponent {
   id: string
   scenario_id: string
   main_component_id: string
+  investment_id: string
   quantity: number
   price_snapshot: number
 }
@@ -93,14 +95,17 @@ export const useScenariosStore = defineStore('scenarios', {
         .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
     },
 
-    getScenarioComponentForCategory: (state) => (categoryId: string) => {
-      if (!state.activeScenarioId) return []
+    getScenarioComponentForCategory: (state) => (categoryId: string, scenarioId?: string, investmentId?: string) => {
+      const targetScenarioId = scenarioId || state.activeScenarioId
+      if (!targetScenarioId) return []
 
-      const scenarioComponents = state.scenarioComponents[state.activeScenarioId] || []
+      const scenarioComponents = state.scenarioComponents[targetScenarioId] || []
 
       return scenarioComponents.filter(sc => {
         const component = state.mainComponents.find(mc => mc.id === sc.main_component_id)
-        return component?.main_component_category_id === categoryId
+        const categoryMatch = component?.main_component_category_id === categoryId
+        const investmentMatch = investmentId ? sc.investment_id === investmentId : true
+        return categoryMatch && investmentMatch
       })
     }
   },
@@ -219,8 +224,9 @@ export const useScenariosStore = defineStore('scenarios', {
       this.activeScenarioId = scenarioId
     },
 
-    async updateComponentQuantity(componentId: string, quantity: number) {
-      if (!this.activeScenarioId) return
+    async updateComponentQuantity(componentId: string, quantity: number, scenarioId?: string) {
+      const targetScenarioId = scenarioId || this.activeScenarioId
+      if (!targetScenarioId) return
 
       const supabase = useSupabaseClient()
 
@@ -235,7 +241,7 @@ export const useScenariosStore = defineStore('scenarios', {
       }
 
       // Update local state
-      const scenarioComponents = this.scenarioComponents[this.activeScenarioId]
+      const scenarioComponents = this.scenarioComponents[targetScenarioId]
       if (scenarioComponents) {
         const component = scenarioComponents.find(c => c.id === componentId)
         if (component) {
@@ -244,8 +250,9 @@ export const useScenariosStore = defineStore('scenarios', {
       }
     },
 
-    async updateScenarioComponent(componentId: string, mainComponentId: string, quantity?: number) {
-      if (!this.activeScenarioId) return
+    async updateScenarioComponent(componentId: string, mainComponentId: string, quantity?: number, scenarioId?: string) {
+      const targetScenarioId = scenarioId || this.activeScenarioId
+      if (!targetScenarioId) return
 
       const supabase = useSupabaseClient()
 
@@ -273,7 +280,7 @@ export const useScenariosStore = defineStore('scenarios', {
       }
 
       // Update local state
-      const scenarioComponents = this.scenarioComponents[this.activeScenarioId]
+      const scenarioComponents = this.scenarioComponents[targetScenarioId]
       if (scenarioComponents) {
         const component = scenarioComponents.find(c => c.id === componentId)
         if (component) {
@@ -286,8 +293,9 @@ export const useScenariosStore = defineStore('scenarios', {
       }
     },
 
-    async addScenarioComponent(mainComponentId: string, quantity: number) {
-      if (!this.activeScenarioId) return
+    async addScenarioComponent(mainComponentId: string, quantity: number, investmentId: string, scenarioId?: string) {
+      const targetScenarioId = scenarioId || this.activeScenarioId
+      if (!targetScenarioId) return
 
       const supabase = useSupabaseClient()
 
@@ -298,8 +306,9 @@ export const useScenariosStore = defineStore('scenarios', {
       const { data, error } = await supabase
         .from('scenario_main_components')
         .insert({
-          scenario_id: this.activeScenarioId,
+          scenario_id: targetScenarioId,
           main_component_id: mainComponentId,
+          investment_id: investmentId,
           quantity,
           price_snapshot: component.price
         })
@@ -312,14 +321,15 @@ export const useScenariosStore = defineStore('scenarios', {
       }
 
       // Update local state
-      if (!this.scenarioComponents[this.activeScenarioId]) {
-        this.scenarioComponents[this.activeScenarioId] = []
+      if (!this.scenarioComponents[targetScenarioId]) {
+        this.scenarioComponents[targetScenarioId] = []
       }
-      this.scenarioComponents[this.activeScenarioId].push(data)
+      this.scenarioComponents[targetScenarioId].push(data)
     },
 
-    async removeScenarioComponent(componentId: string) {
-      if (!this.activeScenarioId) return
+    async removeScenarioComponent(componentId: string, scenarioId?: string) {
+      const targetScenarioId = scenarioId || this.activeScenarioId
+      if (!targetScenarioId) return
 
       const supabase = useSupabaseClient()
 
@@ -334,7 +344,7 @@ export const useScenariosStore = defineStore('scenarios', {
       }
 
       // Update local state
-      const scenarioComponents = this.scenarioComponents[this.activeScenarioId]
+      const scenarioComponents = this.scenarioComponents[targetScenarioId]
       if (scenarioComponents) {
         const index = scenarioComponents.findIndex(c => c.id === componentId)
         if (index > -1) {

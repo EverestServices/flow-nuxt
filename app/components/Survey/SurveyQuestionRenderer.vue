@@ -166,6 +166,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { SurveyQuestion } from '~/stores/surveyInvestments'
 
 interface Props {

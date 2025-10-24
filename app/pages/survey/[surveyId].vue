@@ -9,6 +9,10 @@
       :scenarios="scenarios"
       :active-scenario-id="activeScenario?.id"
       :scenario-investments="scenarioInvestments"
+      :contract-mode="contractMode"
+      :contracts="contracts"
+      :active-contract-id="activeContract?.id"
+      :contract-investments="contractInvestments"
       @back="handleBack"
       @toggle-investment="handleToggleInvestment"
       @edit-client="handleEditClient"
@@ -16,6 +20,8 @@
       @toggle-investment-filter="handleToggleInvestmentFilter"
       @toggle-visualization="handleToggleVisualization"
       @select-scenario="handleSelectScenario"
+      @change-contract-mode="handleContractModeChange"
+      @select-contract="handleSelectContract"
     />
 
     <!-- Navigation Tabs -->
@@ -59,19 +65,29 @@
       />
 
         <!-- Offer/Contract Tab -->
-        <div v-else-if="activeTab === 'offer-contract'" class="h-full flex items-center justify-center">
-          <p class="text-gray-500">Offer/Contract Tab - Under Development</p>
-        </div>
+        <SurveyOfferContract
+          v-else-if="activeTab === 'offer-contract'"
+          ref="offerContractRef"
+          :survey-id="surveyId"
+          :contract-mode="contractMode"
+        />
 
         <!-- Contract Data Tab -->
-        <div v-else-if="activeTab === 'contract-data'" class="h-full flex items-center justify-center">
-          <p class="text-gray-500">Contract Data Tab - Under Development</p>
-        </div>
+        <SurveyContractData
+          v-else-if="activeTab === 'contract-data'"
+          :survey-id="surveyId"
+          :client-data="clientData"
+        />
 
         <!-- Summary Tab -->
-        <div v-else-if="activeTab === 'summary'" class="h-full flex items-center justify-center">
-          <p class="text-gray-500">Summary Tab - Under Development</p>
-        </div>
+        <SurveySummary
+          v-else-if="activeTab === 'summary'"
+          :survey-id="surveyId"
+          :client-data="clientData"
+          @save-without-send="handleSaveWithoutSend"
+          @save-and-send="handleSaveAndSendSingle"
+          @sign-now="handleSignNowSingle"
+        />
       </template>
     </div>
 
@@ -82,6 +98,9 @@
       :missing-items-count="missingItemsCount"
       :can-proceed="canProceed"
       :active-scenario="activeScenario"
+      :active-contract="activeContract"
+      :can-save-contract="canSaveContract"
+      :contract-count="contracts.length"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -95,6 +114,13 @@
       @rename-scenario="handleRenameScenario"
       @duplicate-scenario="handleDuplicateScenario"
       @delete-scenario="handleDeleteScenario"
+      @rename-contract="handleRenameContract"
+      @duplicate-contract="handleDuplicateContract"
+      @delete-contract="handleDeleteContract"
+      @save-investment-contract="handleSaveInvestmentContract"
+      @modify-contract="handleModifyContract"
+      @save-all-and-send="handleSaveAllAndSend"
+      @sign-all-contracts="handleSignAllContracts"
       @next="handleNext"
     />
 
@@ -131,6 +157,71 @@
       :scenario-name="activeScenario?.name || ''"
       @rename="handleRenameComplete"
     />
+
+    <!-- Rename Contract Modal -->
+    <SurveyRenameContractModal
+      v-model="showRenameContractModal"
+      :contract-name="activeContract?.name || ''"
+      @rename="handleRenameContractComplete"
+    />
+
+    <!-- Send Contract Modal (Single) -->
+    <SurveySendContractModal
+      v-if="selectedContractForSend"
+      v-model="showSendContractModal"
+      :contract="selectedContractForSend"
+      :contract-investments="contractInvestments[selectedContractForSend.id] || []"
+      :contract-components="contractsStore.contractMainComponents[selectedContractForSend.id] || []"
+      :contract-extra-costs="contractsStore.contractExtraCosts[selectedContractForSend.id] || []"
+      :contract-discounts="contractsStore.contractDiscounts[selectedContractForSend.id] || []"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @send="handleSendContractEmail"
+    />
+
+    <!-- Sign Contract Modal (Single) -->
+    <SurveySignContractModal
+      v-if="selectedContractForSign"
+      v-model="showSignContractModal"
+      :contract="selectedContractForSign"
+      :contract-investments="contractInvestments[selectedContractForSign.id] || []"
+      :contract-components="contractsStore.contractMainComponents[selectedContractForSign.id] || []"
+      :contract-extra-costs="contractsStore.contractExtraCosts[selectedContractForSign.id] || []"
+      :contract-discounts="contractsStore.contractDiscounts[selectedContractForSign.id] || []"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @sign="handleSignContract"
+    />
+
+    <!-- Send All Contracts Modal -->
+    <SurveySendAllContractsModal
+      v-model="showSendAllContractsModal"
+      :contracts="contracts"
+      :contract-investments="contractInvestments"
+      :contract-components="contractsStore.contractMainComponents"
+      :contract-extra-costs="contractsStore.contractExtraCosts"
+      :contract-discounts="contractsStore.contractDiscounts"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @send="handleSendAllContractsEmail"
+    />
+
+    <!-- Sign All Contracts Modal -->
+    <SurveySignAllContractsModal
+      v-model="showSignAllContractsModal"
+      :contracts="contracts"
+      :contract-investments="contractInvestments"
+      :contract-components="contractsStore.contractMainComponents"
+      :contract-extra-costs="contractsStore.contractExtraCosts"
+      :contract-discounts="contractsStore.contractDiscounts"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @sign="handleSignAllContractsComplete"
+    />
   </div>
 </template>
 
@@ -139,11 +230,16 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useScenariosStore } from '~/stores/scenarios'
+import { useContractsStore } from '~/stores/contracts'
 
 const route = useRoute()
 const router = useRouter()
 const investmentsStore = useSurveyInvestmentsStore()
 const scenariosStore = useScenariosStore()
+const contractsStore = useContractsStore()
+
+// Ref to SurveyOfferContract component
+const offerContractRef = ref<any>(null)
 
 // Show nested measure pages inside the dark content area
 const isMeasureRoute = computed(() => route.path.includes('/measure'))
@@ -159,25 +255,48 @@ const scenarios = computed(() => scenariosStore.scenarios)
 const activeScenario = computed(() => scenariosStore.activeScenario)
 const scenarioInvestments = computed(() => scenariosStore.scenarioInvestments)
 
+// Get contracts for header
+const contracts = computed(() => contractsStore.contracts)
+const activeContract = computed(() => contractsStore.activeContract)
+const contractInvestments = computed(() => contractsStore.contractInvestments)
+
 // Active tab state
 const activeTab = ref<'property-assessment' | 'consultation' | 'offer-contract' | 'contract-data' | 'summary'>('property-assessment')
 
+// Contract mode state (null = not set, 'offer' = Offer mode, 'contract' = Contract mode)
+const contractMode = ref<'offer' | 'contract' | null>(null)
+
 // Tab configuration with dynamic status
-const tabs = computed(() => [
-  {
-    id: 'property-assessment',
-    label: 'Property Assessment',
-    number: 1,
-    status: missingItemsCount.value === 0 ? 'completed' as const : 'warning' as const
-  },
-  { id: 'consultation', label: 'Consultation', number: 2 },
-  { id: 'offer-contract', label: 'Offer/Contract', number: 3 },
-  { id: 'contract-data', label: 'Contract Data', number: 4 },
-  { id: 'summary', label: 'Summary', number: 5 }
-])
+const tabs = computed(() => {
+  // Determine tab 3 and 4 labels based on contractMode
+  let tab3Label = 'Offer/Contract'
+  let tab4Label = 'Contract Data'
+
+  if (contractMode.value === 'offer') {
+    tab3Label = 'Offer'
+    tab4Label = 'Offer Data'
+  } else if (contractMode.value === 'contract') {
+    tab3Label = 'Contract'
+    tab4Label = 'Contract Data'
+  }
+
+  return [
+    {
+      id: 'property-assessment',
+      label: 'Property Assessment',
+      number: 1,
+      status: missingItemsCount.value === 0 ? 'completed' as const : 'warning' as const
+    },
+    { id: 'consultation', label: 'Consultation', number: 2 },
+    { id: 'offer-contract', label: tab3Label, number: 3 },
+    { id: 'contract-data', label: tab4Label, number: 4 },
+    { id: 'summary', label: 'Summary', number: 5 }
+  ]
+})
 
 // Survey data
 const clientName = ref('Loading...')
+const clientData = ref<any>(null)
 
 // Can proceed - always true for property-assessment tab
 const canProceed = computed(() => {
@@ -236,7 +355,16 @@ const showInvestmentModal = ref(false)
 const showMissingItemsModal = ref(false)
 const showSelectInvestmentsModal = ref(false)
 const showRenameScenarioModal = ref(false)
+const showRenameContractModal = ref(false)
 const selectInvestmentsModalMode = ref<'ai' | 'manual'>('ai')
+
+// Summary modals
+const showSendContractModal = ref(false)
+const showSignContractModal = ref(false)
+const showSendAllContractsModal = ref(false)
+const showSignAllContractsModal = ref(false)
+const selectedContractForSend = ref<any>(null)
+const selectedContractForSign = ref<any>(null)
 
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
@@ -248,11 +376,22 @@ const photoUploadInvestmentId = ref<string | undefined>()
 const consultationSystemDesignOpen = ref(true)
 const consultationPanelOpen = ref(false)
 
+// Check if we can save contract (scenario must be selected in offer contract tab)
+const canSaveContract = computed(() => {
+  // This will be checked in the SurveyOfferContract component
+  // We just need to show the button when on the offer-contract tab
+  return activeTab.value === 'offer-contract'
+})
+
 // Load survey data
 onMounted(async () => {
   await loadSurveyData()
   // Load scenarios
   await scenariosStore.loadScenarios(surveyId.value)
+  // Load main components data (needed for contract preview)
+  await scenariosStore.loadMainComponentsData()
+  // Load contracts
+  await contractsStore.loadContracts(surveyId.value)
 })
 
 const loadSurveyData = async () => {
@@ -281,6 +420,7 @@ const loadSurveyData = async () => {
 
     if (survey && survey.client) {
       clientName.value = survey.client.name
+      clientData.value = survey.client
 
       // Load consultation panel states
       if (survey.consultation_system_design_open !== null && survey.consultation_system_design_open !== undefined) {
@@ -291,6 +431,7 @@ const loadSurveyData = async () => {
       }
     } else {
       clientName.value = 'Unknown Client'
+      clientData.value = null
     }
 
   } catch (error) {
@@ -326,6 +467,11 @@ const handleToggleInvestmentFilter = (investmentId: string) => {
 const handleToggleVisualization = (show: boolean) => {
   showVisualization.value = show
   console.log('Toggle visualization:', show)
+}
+
+const handleContractModeChange = (mode: 'offer' | 'contract' | null) => {
+  contractMode.value = mode
+  console.log('Contract mode changed:', mode)
 }
 
 // Footer handlers
@@ -661,5 +807,137 @@ const handleConsultationPanelToggle = async (panelName: 'systemDesign' | 'consul
   } catch (error) {
     console.error('Error saving consultation panel state:', error)
   }
+}
+
+// Contract handlers
+const handleSelectContract = (contractId: string) => {
+  contractsStore.setActiveContract(contractId)
+}
+
+const handleSaveInvestmentContract = async () => {
+  if (offerContractRef.value) {
+    await offerContractRef.value.handleSaveContract()
+  }
+}
+
+const handleModifyContract = async () => {
+  if (offerContractRef.value) {
+    await offerContractRef.value.handleModifyContract()
+  }
+}
+
+const handleRenameContract = () => {
+  showRenameContractModal.value = true
+}
+
+const handleRenameContractComplete = async (newName: string) => {
+  if (!activeContract.value) return
+
+  try {
+    await contractsStore.renameContract(activeContract.value.id, newName)
+    showRenameContractModal.value = false
+
+    // TODO: Show success message
+  } catch (error) {
+    console.error('Error renaming contract:', error)
+    // TODO: Show error message
+  }
+}
+
+const handleDuplicateContract = async () => {
+  if (!activeContract.value) return
+
+  try {
+    const newContractId = await contractsStore.duplicateContract(activeContract.value.id)
+
+    // Refresh contracts list
+    await contractsStore.loadContracts(surveyId.value)
+
+    // Set the new contract as active
+    if (newContractId) {
+      contractsStore.setActiveContract(newContractId)
+    }
+
+    // TODO: Show success message
+  } catch (error) {
+    console.error('Error duplicating contract:', error)
+    // TODO: Show error message
+  }
+}
+
+const handleDeleteContract = async () => {
+  if (!activeContract.value) return
+
+  // TODO: Add confirmation dialog
+  if (!confirm(`Are you sure you want to delete "${activeContract.value.name}"?`)) {
+    return
+  }
+
+  try {
+    await contractsStore.deleteContract(activeContract.value.id)
+
+    // Refresh contracts list
+    await contractsStore.loadContracts(surveyId.value)
+
+    // Set first contract as active if any contracts remain
+    if (contracts.value.length > 0) {
+      contractsStore.setActiveContract(contracts.value[0].id)
+    }
+
+    // TODO: Show success message
+  } catch (error) {
+    console.error('Error deleting contract:', error)
+    // TODO: Show error message
+  }
+}
+
+// Summary handlers
+const handleSaveWithoutSend = (contractId: string) => {
+  console.log('Save without send:', contractId)
+  // TODO: Implement - Auto-save contract data
+}
+
+const handleSaveAndSendSingle = (contractId: string) => {
+  const contract = contracts.value.find(c => c.id === contractId)
+  if (contract) {
+    selectedContractForSend.value = contract
+    showSendContractModal.value = true
+  }
+}
+
+const handleSignNowSingle = (contractId: string) => {
+  const contract = contracts.value.find(c => c.id === contractId)
+  if (contract) {
+    selectedContractForSign.value = contract
+    showSignContractModal.value = true
+  }
+}
+
+const handleSendContractEmail = (emailTemplate: string) => {
+  console.log('Send contract email:', selectedContractForSend.value?.id, emailTemplate)
+  // TODO: Implement - Send email with contract
+}
+
+const handleSignContract = (data: any) => {
+  console.log('Sign contract:', selectedContractForSign.value?.id, data)
+  // TODO: Implement - Save signature and update contract status
+}
+
+const handleSaveAllAndSend = () => {
+  showSendAllContractsModal.value = true
+}
+
+const handleSendAllContractsEmail = (emailTemplate: string) => {
+  console.log('Send all contracts email:', emailTemplate)
+  // TODO: Implement - Send email with all contracts
+}
+
+const handleSignAllContracts = () => {
+  showSignAllContractsModal.value = true
+}
+
+const handleSignAllContractsComplete = (data: any) => {
+  console.log('Sign all contracts:', data)
+  // TODO: Implement - Save all signatures and update contract statuses
 }
 </script>
