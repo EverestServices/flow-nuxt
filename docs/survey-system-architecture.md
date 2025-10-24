@@ -2,7 +2,7 @@
 
 **Created:** 2025-10-17
 **Last Updated:** 2025-10-24
-**Version:** 2.1.0
+**Version:** 2.2.0
 **Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
 
 ---
@@ -35,6 +35,7 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Investment-specific component tracking** (NEW - 2025-10-24)
 - ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
 - ✅ **Contract Data page with client information management** (NEW - 2025-10-24)
+- ✅ **Summary page with contract preview and digital signing** (NEW - 2025-10-24)
 
 ---
 
@@ -902,6 +903,71 @@ Client information and personal details management for contracts.
 
 **See Also:** [Contract Data Page Documentation](survey-contract-data-page.md)
 
+### Summary Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveySummary.vue
+Final survey page displaying all contracts with preview and action capabilities.
+
+**Features:**
+- View mode toggle (List / Card view)
+- Contract cards showing client info and investment details
+- Three action buttons per contract (Save without send, Save and Send, Sign Now)
+- Smart data fallback (contract → Survey Client → empty)
+- Cost summary per contract
+- Footer buttons for bulk operations
+
+#### Modal Components
+
+**SurveySendContractModal.vue** - Single contract email sending
+- Contract preview
+- Email template editor with rich text support
+- Placeholder substitution
+
+**SurveySignContractModal.vue** - Single contract digital signing
+- Contract preview
+- Privacy policy acceptance
+- Contract terms acceptance
+- Email delivery option
+- Touch/mouse signature pad
+
+**SurveySendAllContractsModal.vue** - Bulk contract sending
+- Multiple contract previews with numbering
+- Shared email template editor
+- Batch email functionality
+
+**SurveySignAllContractsModal.vue** - Bulk contract signing
+- Multiple contract previews with numbering
+- Per-contract acceptance and signature
+- Global privacy policy acceptance
+- Comprehensive validation (all contracts must be signed)
+
+#### Supporting Components
+
+**ContractPreview.vue** - Read-only contract display
+- Client information with smart fallback
+- Selected investments with icons
+- Component breakdown with quantities and prices
+- Extra costs and discounts
+- Total price calculation
+- Notes section
+
+**SignaturePad.vue** - Canvas-based signature capture
+- Touch event handling (touchstart, touchmove, touchend)
+- Mouse event handling (mousedown, mousemove, mouseup, mouseleave)
+- Coordinate transformation for proper scaling
+- Clear functionality
+- isEmpty() validation
+- PNG data URL export
+
+**EmailTemplateEditor.vue** - Rich text email editor
+- Toolbar with formatting buttons (Bold, Italic, Underline, List, Link)
+- Text insertion at cursor position
+- Placeholder documentation
+
+**See Also:** [Summary Page Documentation](survey-summary-page.md)
+
 ---
 
 ## Usage Examples
@@ -1276,4 +1342,6 @@ const response = store.investmentResponses[investment.id]?.[question.name]
 
 - [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
 - [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
+- [Contract Data Page](survey-contract-data-page.md) - Contract Data page documentation
+- [Summary Page](survey-summary-page.md) - Summary page with contract preview and signing functionality
 - [Investment-Aware Response Tracking Bugfix](survey-property-assessment.md#investment-aware-question-response-tracking-bugfix) - Detailed bugfix documentation

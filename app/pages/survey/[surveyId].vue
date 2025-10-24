@@ -80,9 +80,14 @@
         />
 
         <!-- Summary Tab -->
-        <div v-else-if="activeTab === 'summary'" class="h-full flex items-center justify-center">
-          <p class="text-gray-500">Summary Tab - Under Development</p>
-        </div>
+        <SurveySummary
+          v-else-if="activeTab === 'summary'"
+          :survey-id="surveyId"
+          :client-data="clientData"
+          @save-without-send="handleSaveWithoutSend"
+          @save-and-send="handleSaveAndSendSingle"
+          @sign-now="handleSignNowSingle"
+        />
       </template>
     </div>
 
@@ -95,6 +100,7 @@
       :active-scenario="activeScenario"
       :active-contract="activeContract"
       :can-save-contract="canSaveContract"
+      :contract-count="contracts.length"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -113,6 +119,8 @@
       @delete-contract="handleDeleteContract"
       @save-investment-contract="handleSaveInvestmentContract"
       @modify-contract="handleModifyContract"
+      @save-all-and-send="handleSaveAllAndSend"
+      @sign-all-contracts="handleSignAllContracts"
       @next="handleNext"
     />
 
@@ -155,6 +163,64 @@
       v-model="showRenameContractModal"
       :contract-name="activeContract?.name || ''"
       @rename="handleRenameContractComplete"
+    />
+
+    <!-- Send Contract Modal (Single) -->
+    <SurveySendContractModal
+      v-if="selectedContractForSend"
+      v-model="showSendContractModal"
+      :contract="selectedContractForSend"
+      :contract-investments="contractInvestments[selectedContractForSend.id] || []"
+      :contract-components="contractsStore.contractMainComponents[selectedContractForSend.id] || []"
+      :contract-extra-costs="contractsStore.contractExtraCosts[selectedContractForSend.id] || []"
+      :contract-discounts="contractsStore.contractDiscounts[selectedContractForSend.id] || []"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @send="handleSendContractEmail"
+    />
+
+    <!-- Sign Contract Modal (Single) -->
+    <SurveySignContractModal
+      v-if="selectedContractForSign"
+      v-model="showSignContractModal"
+      :contract="selectedContractForSign"
+      :contract-investments="contractInvestments[selectedContractForSign.id] || []"
+      :contract-components="contractsStore.contractMainComponents[selectedContractForSign.id] || []"
+      :contract-extra-costs="contractsStore.contractExtraCosts[selectedContractForSign.id] || []"
+      :contract-discounts="contractsStore.contractDiscounts[selectedContractForSign.id] || []"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @sign="handleSignContract"
+    />
+
+    <!-- Send All Contracts Modal -->
+    <SurveySendAllContractsModal
+      v-model="showSendAllContractsModal"
+      :contracts="contracts"
+      :contract-investments="contractInvestments"
+      :contract-components="contractsStore.contractMainComponents"
+      :contract-extra-costs="contractsStore.contractExtraCosts"
+      :contract-discounts="contractsStore.contractDiscounts"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @send="handleSendAllContractsEmail"
+    />
+
+    <!-- Sign All Contracts Modal -->
+    <SurveySignAllContractsModal
+      v-model="showSignAllContractsModal"
+      :contracts="contracts"
+      :contract-investments="contractInvestments"
+      :contract-components="contractsStore.contractMainComponents"
+      :contract-extra-costs="contractsStore.contractExtraCosts"
+      :contract-discounts="contractsStore.contractDiscounts"
+      :investments="investmentsStore.availableInvestments"
+      :main-components="scenariosStore.mainComponents"
+      :client-data="clientData"
+      @sign="handleSignAllContractsComplete"
     />
   </div>
 </template>
@@ -292,6 +358,14 @@ const showRenameScenarioModal = ref(false)
 const showRenameContractModal = ref(false)
 const selectInvestmentsModalMode = ref<'ai' | 'manual'>('ai')
 
+// Summary modals
+const showSendContractModal = ref(false)
+const showSignContractModal = ref(false)
+const showSendAllContractsModal = ref(false)
+const showSignAllContractsModal = ref(false)
+const selectedContractForSend = ref<any>(null)
+const selectedContractForSign = ref<any>(null)
+
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
 const photoUploadMode = ref<'single' | 'investment' | 'all'>('single')
@@ -314,6 +388,8 @@ onMounted(async () => {
   await loadSurveyData()
   // Load scenarios
   await scenariosStore.loadScenarios(surveyId.value)
+  // Load main components data (needed for contract preview)
+  await scenariosStore.loadMainComponentsData()
   // Load contracts
   await contractsStore.loadContracts(surveyId.value)
 })
@@ -813,5 +889,55 @@ const handleDeleteContract = async () => {
     console.error('Error deleting contract:', error)
     // TODO: Show error message
   }
+}
+
+// Summary handlers
+const handleSaveWithoutSend = (contractId: string) => {
+  console.log('Save without send:', contractId)
+  // TODO: Implement - Auto-save contract data
+}
+
+const handleSaveAndSendSingle = (contractId: string) => {
+  const contract = contracts.value.find(c => c.id === contractId)
+  if (contract) {
+    selectedContractForSend.value = contract
+    showSendContractModal.value = true
+  }
+}
+
+const handleSignNowSingle = (contractId: string) => {
+  const contract = contracts.value.find(c => c.id === contractId)
+  if (contract) {
+    selectedContractForSign.value = contract
+    showSignContractModal.value = true
+  }
+}
+
+const handleSendContractEmail = (emailTemplate: string) => {
+  console.log('Send contract email:', selectedContractForSend.value?.id, emailTemplate)
+  // TODO: Implement - Send email with contract
+}
+
+const handleSignContract = (data: any) => {
+  console.log('Sign contract:', selectedContractForSign.value?.id, data)
+  // TODO: Implement - Save signature and update contract status
+}
+
+const handleSaveAllAndSend = () => {
+  showSendAllContractsModal.value = true
+}
+
+const handleSendAllContractsEmail = (emailTemplate: string) => {
+  console.log('Send all contracts email:', emailTemplate)
+  // TODO: Implement - Send email with all contracts
+}
+
+const handleSignAllContracts = () => {
+  showSignAllContractsModal.value = true
+}
+
+const handleSignAllContractsComplete = (data: any) => {
+  console.log('Sign all contracts:', data)
+  // TODO: Implement - Save all signatures and update contract statuses
 }
 </script>

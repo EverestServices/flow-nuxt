@@ -209,8 +209,31 @@
           </div>
         </template>
 
-        <!-- Next Button - Always visible -->
+        <!-- Summary specific actions - Only on summary tab -->
+        <template v-if="activeTab === 'summary'">
+          <!-- Save All and Send -->
+          <UButton
+            label="Save All and Send"
+            icon="i-lucide-send"
+            color="primary"
+            variant="outline"
+            size="lg"
+            @click="$emit('save-all-and-send')"
+          />
+
+          <!-- Sign All Contracts -->
+          <UButton
+            :label="`Sign All Contracts (${contractCount})`"
+            icon="i-lucide-pen-tool"
+            color="primary"
+            size="lg"
+            @click="$emit('sign-all-contracts')"
+          />
+        </template>
+
+        <!-- Next Button - Visible on all tabs except summary -->
         <UButton
+          v-if="activeTab !== 'summary'"
           label="Next"
           icon="i-heroicons-arrow-right"
           trailing
@@ -245,13 +268,15 @@ interface Props {
   activeScenario?: Scenario | null
   activeContract?: Contract | null
   canSaveContract?: boolean
+  contractCount?: number
 }
 
 withDefaults(defineProps<Props>(), {
   showPropertyActions: false,
   missingItemsCount: 0,
   canProceed: true,
-  canSaveContract: false
+  canSaveContract: false,
+  contractCount: 0
 })
 
 defineEmits<{
@@ -273,6 +298,8 @@ defineEmits<{
   'delete-contract': []
   'save-investment-contract': []
   'modify-contract': []
+  'save-all-and-send': []
+  'sign-all-contracts': []
   next: []
 }>()
 
