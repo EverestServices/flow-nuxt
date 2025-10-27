@@ -1,41 +1,65 @@
 <template>
-  <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-    <!-- Row 1: Client Name & Survey Date -->
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-base font-semibold text-gray-900 dark:text-white">
-        {{ survey.client?.name || 'Unknown Client' }}
-      </h3>
-      <div class="text-sm text-gray-500 dark:text-gray-400">
-        <span class="font-medium">Survey date:</span>
-        {{ formattedDate }}
+  <UIBox class="cursor-pointer hover:shadow-xl transition-all duration-200">
+    <div class="p-4">
+      <!-- Single Row Layout -->
+      <div class="flex items-center justify-between gap-4">
+        <!-- Left: Client Info -->
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <!-- Client Avatar/Icon -->
+          <div class="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2 flex-shrink-0">
+            <Icon name="i-lucide-user" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+              {{ survey.client?.name || 'Unknown Client' }}
+            </h3>
+            <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span v-if="clientAddress" class="flex items-center gap-1 truncate">
+                <Icon name="i-lucide-map-pin" class="w-3 h-3 flex-shrink-0" />
+                {{ clientAddress }}
+              </span>
+              <span v-if="survey.client?.email" class="flex items-center gap-1 truncate">
+                <Icon name="i-lucide-mail" class="w-3 h-3 flex-shrink-0" />
+                {{ survey.client.email }}
+              </span>
+              <span v-if="survey.client?.phone" class="flex items-center gap-1">
+                <Icon name="i-lucide-phone" class="w-3 h-3 flex-shrink-0" />
+                {{ survey.client.phone }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: Date Badge -->
+        <div class="flex-shrink-0">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-full">
+            <Icon name="i-lucide-calendar" class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+            <span class="text-xs font-medium text-orange-600 dark:text-orange-400">{{ formattedDateShort }}</span>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <UIButtonEnhanced
+            variant="outline"
+            size="sm"
+            :to="`/client/${survey.client?.id}?from=survey`"
+          >
+            <Icon name="i-lucide-user" class="w-3.5 h-3.5" />
+          </UIButtonEnhanced>
+          <UIButtonEnhanced
+            variant="primary"
+            size="sm"
+            :to="`/survey/${survey.id}`"
+          >
+            <Icon name="i-lucide-zap" class="w-3.5 h-3.5 mr-1.5" />
+            Start
+          </UIButtonEnhanced>
+        </div>
       </div>
     </div>
-
-    <!-- Row 2: Contact Info -->
-    <div class="flex items-center gap-4 mb-3 text-sm text-gray-600 dark:text-gray-300">
-      <span v-if="clientAddress" class="truncate">{{ clientAddress }}</span>
-      <span v-if="survey.client?.email" class="truncate">{{ survey.client.email }}</span>
-      <span v-if="survey.client?.phone">{{ survey.client.phone }}</span>
-    </div>
-
-    <!-- Row 3: Action Buttons -->
-    <div class="flex items-center justify-end gap-3">
-      <UButton
-        label="Client profile"
-        color="gray"
-        variant="outline"
-        size="sm"
-        :to="`/client/${survey.client?.id}?from=survey`"
-      />
-      <UButton
-        icon="i-heroicons-bolt"
-        label="Start Energy Consultation"
-        color="primary"
-        size="sm"
-        :to="`/survey/${survey.id}`"
-      />
-    </div>
-  </div>
+  </UIBox>
 </template>
 
 <script setup lang="ts">
@@ -65,6 +89,20 @@ const formattedDate = computed(() => {
   return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+})
+
+// Shorter date format for compact view
+const formattedDateShort = computed(() => {
+  if (!props.survey.at) return 'No date'
+
+  const date = new Date(props.survey.at)
+  return date.toLocaleString('en-US', {
+    month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',

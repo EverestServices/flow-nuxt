@@ -42,6 +42,85 @@
             @click="$emit('edit-client')"
           />
         </template>
+
+        <!-- Consultation specific buttons -->
+        <template v-if="activeTab === 'consultation'">
+          <!-- Scenario buttons - Scrollable container -->
+          <div v-if="scenarios && scenarios.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
+            <button
+              v-for="scenario in scenarios"
+              :key="scenario.id"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap flex-shrink-0"
+              :class="scenario.id === activeScenarioId
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              @click="emit('select-scenario', scenario.id)"
+            >
+              <!-- Investment icons -->
+              <div class="flex -space-x-1">
+                <UIcon
+                  v-for="(icon, index) in getScenarioInvestmentIcons(scenario.id)"
+                  :key="index"
+                  :name="icon"
+                  class="w-4 h-4"
+                />
+              </div>
+              <span>{{ scenario.name }}</span>
+            </button>
+          </div>
+        </template>
+
+        <!-- Offer/Contract Toggle - Only on offer-contract and contract-data tabs -->
+        <template v-if="activeTab === 'offer-contract' || activeTab === 'contract-data'">
+          <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <button
+              :class="[
+                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                contractMode === 'offer'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              ]"
+              @click="handleContractModeChange('offer')"
+            >
+              Offer
+            </button>
+            <button
+              :class="[
+                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                contractMode === 'contract'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              ]"
+              @click="handleContractModeChange('contract')"
+            >
+              Contract
+            </button>
+          </div>
+
+          <!-- Contract Selector Buttons - Only on offer-contract tab -->
+          <div v-if="activeTab === 'offer-contract' && contracts && contracts.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
+            <button
+              v-for="contract in sortedContracts"
+              :key="contract.id"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap flex-shrink-0"
+              :class="contract.id === activeContractId
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              @click="emit('select-contract', contract.id)"
+            >
+              <!-- Investment icons -->
+              <div class="flex gap-0.5">
+                <UIcon
+                  v-for="(icon, index) in getContractInvestmentIcons(contract.id)"
+                  :key="index"
+                  :name="icon"
+                  class="w-4 h-4"
+                />
+              </div>
+              <span>{{ contract.name }}</span>
+            </button>
+          </div>
+        </template>
       </div>
 
       <!-- Right Section -->
@@ -124,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 interface Investment {
   id: string
@@ -132,16 +211,39 @@ interface Investment {
   icon: string
 }
 
+interface Scenario {
+  id: string
+  name: string
+}
+
+interface Contract {
+  id: string
+  name: string
+  created_at: string
+}
+
 interface Props {
   activeTab: string
   clientName: string
   showModeToggle?: boolean
   selectedInvestments?: Investment[]
+  scenarios?: Scenario[]
+  activeScenarioId?: string | null
+  scenarioInvestments?: Record<string, string[]>
+  contractMode?: 'offer' | 'contract' | null
+  contracts?: Contract[]
+  activeContractId?: string | null
+  contractInvestments?: Record<string, string[]>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showModeToggle: false,
-  selectedInvestments: () => []
+  selectedInvestments: () => [],
+  scenarios: () => [],
+  scenarioInvestments: () => ({}),
+  contractMode: null,
+  contracts: () => [],
+  contractInvestments: () => ({})
 })
 
 const emit = defineEmits<{
@@ -151,6 +253,9 @@ const emit = defineEmits<{
   'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
   'toggle-investment-filter': [investmentId: string]
   'toggle-visualization': [show: boolean]
+  'select-scenario': [scenarioId: string]
+  'change-contract-mode': [mode: 'offer' | 'contract' | null]
+  'select-contract': [contractId: string]
 }>()
 
 const viewModes = [
@@ -162,6 +267,13 @@ const viewModes = [
 const currentViewMode = ref<'photos' | 'data' | 'all'>('all')
 const activeInvestmentFilter = ref<string>('all')
 const showVisualization = ref<boolean>(true)
+
+// Sort contracts by created_at (earliest first)
+const sortedContracts = computed(() => {
+  return [...props.contracts].sort((a, b) => {
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+})
 
 const handleViewModeChange = (mode: 'photos' | 'data' | 'all') => {
   currentViewMode.value = mode
@@ -176,5 +288,33 @@ const handleInvestmentFilterChange = (investmentId: string) => {
 const handleToggleVisualization = () => {
   showVisualization.value = !showVisualization.value
   emit('toggle-visualization', showVisualization.value)
+}
+
+const handleContractModeChange = (mode: 'offer' | 'contract') => {
+  emit('change-contract-mode', mode)
+}
+
+// Helper to get investment icons for a scenario
+const getScenarioInvestmentIcons = (scenarioId: string) => {
+  const investmentIds = props.scenarioInvestments[scenarioId] || []
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? investment.icon : null
+    })
+    .filter(Boolean)
+}
+
+// Helper to get investment icons for a contract
+const getContractInvestmentIcons = (contractId: string) => {
+  const investmentIds = props.contractInvestments[contractId] || []
+
+  return investmentIds
+    .map(id => {
+      const investment = props.selectedInvestments.find(inv => inv.id === id)
+      return investment ? investment.icon : null
+    })
+    .filter(Boolean)
 }
 </script>

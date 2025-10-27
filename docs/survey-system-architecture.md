@@ -1,8 +1,9 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Version:** 1.0.0
-**Migration:** `003_create_survey_system.sql`
+**Last Updated:** 2025-10-24
+**Version:** 2.2.0
+**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
 
 ---
 
@@ -28,6 +29,13 @@ A complete survey management system for handling client property assessments, in
 - ✅ Survey answers with dynamic questions
 - ✅ Scenario and contract generation
 - ✅ Electric car and heavy consumer tracking
+- ✅ **Main components catalog system**
+- ✅ **AI-powered scenario generation**
+- ✅ **Component-based system design**
+- ✅ **Investment-specific component tracking** (NEW - 2025-10-24)
+- ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
+- ✅ **Contract Data page with client information management** (NEW - 2025-10-24)
+- ✅ **Summary page with contract preview and digital signing** (NEW - 2025-10-24)
 
 ---
 
@@ -126,40 +134,59 @@ Different investment scenarios for surveys.
 | created_at | TIMESTAMPTZ | Creation timestamp |
 | updated_at | TIMESTAMPTZ | Last update timestamp |
 | survey_id | UUID | FK → surveys |
+| **name** | TEXT | Scenario name |
+| **sequence** | INTEGER | Display order |
+| **description** | TEXT | Scenario description |
 
 **Relations:**
 - 1 Survey → Many Scenarios
 - Many-to-Many with Investments (via `scenario_investments`)
+- 1 Scenario → Many Main Components (via `scenario_main_components`)
 - Links to Extra Costs (via `extra_cost_relations`)
 
 #### **contracts**
-Contract data (can be linked to survey or standalone).
+Contract data (can be linked to survey or standalone). Manages both technical contract details (name, mode, pricing) and client personal information.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| created_at | TIMESTAMPTZ | Creation timestamp |
-| updated_at | TIMESTAMPTZ | Last update timestamp |
-| survey_id | UUID | FK → surveys (nullable) |
-| client_name | VARCHAR(255) | Client name |
-| client_address | VARCHAR(500) | Full address |
-| client_phone | VARCHAR(50) | Phone |
-| client_email | VARCHAR(255) | Email |
-| birth_place | VARCHAR(255) | Birth place |
-| date_of_birth | DATE | Date of birth |
-| id_card_number | VARCHAR(50) | ID card number |
-| tax_id | VARCHAR(50) | Tax ID |
-| mother_birth_name | VARCHAR(255) | Mother's birth name |
-| bank_account_number | VARCHAR(100) | Bank account |
-| citizenship | VARCHAR(100) | Citizenship |
-| marital_status | VARCHAR(50) | Marital status |
-| residence_card_number | VARCHAR(50) | Residence card number |
-| mailing_address | VARCHAR(500) | Mailing address |
+| Column | Type | Description | Managed On |
+|--------|------|-------------|------------|
+| id | UUID | Primary key | System |
+| created_at | TIMESTAMPTZ | Creation timestamp | System |
+| updated_at | TIMESTAMPTZ | Last update timestamp | System |
+| survey_id | UUID | FK → surveys (nullable) | System |
+| **Technical Fields** | | | |
+| name | VARCHAR(255) | Contract name | Offer/Contract |
+| scenario_id | UUID | FK → scenarios | Offer/Contract |
+| contract_mode | VARCHAR(20) | 'offer' or 'contract' | Offer/Contract |
+| status | VARCHAR(20) | draft/sent/accepted/rejected | Offer/Contract |
+| commission_rate | DECIMAL(5,4) | Commission rate (default 0.12) | Offer/Contract |
+| vat | INTEGER | VAT percentage (default 27) | Offer/Contract |
+| total_price | DECIMAL(12,2) | Total price | Offer/Contract |
+| roof_configuration | JSONB | Roof configuration data | Offer/Contract |
+| notes | TEXT | Additional notes | Offer/Contract |
+| **Client Data** | | | |
+| client_name | VARCHAR(255) | Client name | **Contract Data** |
+| client_address | VARCHAR(500) | Full address | **Contract Data** |
+| client_phone | VARCHAR(50) | Phone | **Contract Data** |
+| client_email | VARCHAR(255) | Email | **Contract Data** |
+| **Personal Details** | | | |
+| birth_place | VARCHAR(255) | Birth place | **Contract Data** |
+| date_of_birth | DATE | Date of birth | **Contract Data** |
+| id_card_number | VARCHAR(50) | ID card number | **Contract Data** |
+| tax_id | VARCHAR(50) | Tax ID | **Contract Data** |
+| mother_birth_name | VARCHAR(255) | Mother's birth name | **Contract Data** |
+| bank_account_number | VARCHAR(100) | Bank account | **Contract Data** |
+| citizenship | VARCHAR(100) | Citizenship | **Contract Data** |
+| marital_status | VARCHAR(50) | Marital status | **Contract Data** |
+| residence_card_number | VARCHAR(50) | Residence card number | **Contract Data** |
+| mailing_address | VARCHAR(500) | Mailing address | **Contract Data** |
 
 **Relations:**
 - 1 Survey → Many Contracts (nullable)
 - Many-to-Many with Investments (via `contract_investments`)
+- 1 Scenario → Many Contracts (optional)
 - Links to Extra Costs (via `extra_cost_relations`)
+
+**See Also:** [Contract Data Page Documentation](survey-contract-data-page.md)
 
 #### **extra_costs**
 Additional costs catalog.
@@ -276,6 +303,86 @@ Uploaded documents/photos.
 - 1 Survey → Many Documents
 - 1 Category → Many Documents
 
+#### **main_component_categories**
+Categories for main components (e.g., Solar Panels, Inverters).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| persist_name | TEXT | Internal name (e.g., 'panel', 'inverter') |
+| sequence | INTEGER | Display order |
+
+**Examples:** panel, inverter, mounting, battery, heatpump
+
+**Relations:**
+- 1 Category → Many Main Components
+- Many-to-Many with Investments (via `main_component_category_investments`)
+
+#### **main_components**
+Catalog of available components for scenarios.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| name | TEXT | Component name |
+| persist_name | TEXT | Internal identifier |
+| unit | TEXT | Unit (pcs, set, m²) |
+| price | NUMERIC | Component price |
+| main_component_category_id | UUID | FK → main_component_categories |
+| manufacturer | TEXT | Manufacturer name |
+| details | TEXT | Additional details |
+| power | NUMERIC | Power rating (W/kW) |
+| capacity | NUMERIC | Capacity (kWh) |
+| efficiency | NUMERIC | Efficiency (%) |
+| u_value | NUMERIC | U-value (W/m²K) |
+| thickness | NUMERIC | Thickness (mm) |
+| cop | NUMERIC | COP value |
+| energy_class | TEXT | Energy class (A++, etc.) |
+| sequence | INTEGER | Display/quality order |
+
+**Relations:**
+- 1 Category → Many Components
+- Many Components → Many Scenarios (via `scenario_main_components`)
+
+#### **scenario_main_components**
+Components selected for each scenario with quantities.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| scenario_id | UUID | FK → scenarios |
+| main_component_id | UUID | FK → main_components |
+| investment_id | UUID | FK → investments (NEW - 2025-10-24) |
+| quantity | DECIMAL(10,2) | Quantity needed |
+| price_snapshot | NUMERIC | Price at selection time |
+
+**Constraints:**
+- UNIQUE (scenario_id, main_component_id, investment_id) - Updated 2025-10-24
+
+**Relations:**
+- 1 Scenario → Many Components
+- 1 Main Component → Many Scenario Components
+- 1 Investment → Many Scenario Components (NEW)
+
+**Migration:** See `070_add_investment_id_to_pivot_tables.sql`
+
+#### **main_component_category_investments**
+Links categories to applicable investments.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| main_component_category_id | UUID | FK → main_component_categories |
+| investment_id | UUID | FK → investments |
+| sequence | INTEGER | Display order |
+
+**Purpose:** Determines which component categories are relevant for each investment type.
+
 ---
 
 ## Entity Relationships
@@ -390,9 +497,11 @@ Uploaded documents/photos.
 | `survey_investments` | Survey ↔ Investment | - |
 | `survey_heavy_consumers` | Survey ↔ Heavy Consumer | `status` (enum) |
 | `scenario_investments` | Scenario ↔ Investment | - |
+| `scenario_main_components` | Scenario ↔ Main Component | `quantity`, `price_snapshot` |
 | `contract_investments` | Contract ↔ Investment | - |
 | `extra_cost_relations` | (Scenario OR Contract) ↔ Extra Cost | `snapshot_price`, `quantity` |
 | `investment_document_categories` | Investment ↔ Document Category | `position` (integer) |
+| `main_component_category_investments` | Main Component Category ↔ Investment | `sequence` |
 | `survey_survey_pages` | Survey ↔ Survey Page | `position` (integer) |
 
 ---
@@ -471,6 +580,52 @@ ContractFormData extends InsertContract {
   extra_costs: { id: string; quantity: number; snapshot_price: number }[]
 }
 ```
+
+---
+
+## State Management
+
+### Scenarios Store
+
+**Location:** `/app/stores/scenarios.ts`
+
+**Purpose:** Centralized state management for scenarios, main components, and system design.
+
+```typescript
+const scenariosStore = useScenariosStore()
+
+// State
+scenariosStore.scenarios                  // Scenario[]
+scenariosStore.activeScenarioId           // string | null
+scenariosStore.scenarioInvestments        // Record<string, string[]>
+scenariosStore.scenarioComponents         // Record<string, ScenarioMainComponent[]>
+scenariosStore.mainComponents             // MainComponent[]
+scenariosStore.mainComponentCategories    // MainComponentCategory[]
+scenariosStore.categoryInvestments        // Record<string, string[]>
+scenariosStore.loading                    // boolean
+
+// Getters
+scenariosStore.activeScenario
+scenariosStore.activeScenarioComponents
+scenariosStore.getComponentsByCategoryId(categoryId)
+scenariosStore.getCategoriesForInvestment(investmentId)
+scenariosStore.getScenarioComponentForCategory(categoryId)
+
+// Actions
+await scenariosStore.loadScenarios(surveyId)
+await scenariosStore.loadMainComponentsData()
+scenariosStore.setActiveScenario(scenarioId)
+await scenariosStore.addScenarioComponent(mainComponentId, quantity)
+await scenariosStore.updateScenarioComponent(componentId, mainComponentId, quantity?)
+await scenariosStore.updateComponentQuantity(componentId, quantity)
+await scenariosStore.removeScenarioComponent(componentId)
+```
+
+**Key Features:**
+- Reactive state for real-time UI updates
+- Optimistic updates with local state sync
+- Price snapshot management
+- Category-based component filtering
 
 ---
 
@@ -588,7 +743,7 @@ const {
 
 ### useScenarios()
 
-**Purpose:** Scenario management
+**Purpose:** Scenario management (Legacy - use `useScenariosStore()` for new code)
 
 ```typescript
 const {
@@ -610,6 +765,38 @@ const {
 **Key Features:**
 - Links investments and extra costs
 - Snapshot pricing for extra costs
+
+### useScenarioCreation()
+
+**Purpose:** AI-powered scenario generation
+
+**Location:** `/app/composables/useScenarioCreation.ts`
+
+```typescript
+const { createAIScenarios } = useScenarioCreation()
+
+const result = await createAIScenarios(surveyId, selectedInvestmentIds)
+// Returns: { success: boolean, scenarios?: Scenario[], error?: string }
+```
+
+**Features:**
+- Automatically creates 3 scenario types (Optimum, Minimum, Premium)
+- Smart component selection based on quality level
+- Automatic quantity calculation with multipliers
+- Preferred brand filtering for premium scenarios
+- Price snapshot at creation time
+
+**Scenario Types:**
+- **Optimum:** Medium quality, 1.0x quantity multiplier
+- **Minimum:** Low quality, 0.8x quantity multiplier, budget-focused
+- **Premium:** High quality, 1.2x quantity multiplier, premium brands
+
+**Component Selection Logic:**
+```typescript
+// High quality: First component (highest sequence = best quality)
+// Medium quality: Middle component
+// Low quality: Last component (lowest price)
+```
 
 ### useContracts()
 
@@ -637,6 +824,149 @@ const {
 - Full client details
 - Optional survey linkage
 - Investment and extra cost management
+
+---
+
+## UI Components
+
+### Consultation Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveyConsultation.vue
+Main consultation page with three-column layout:
+- **System Design** (left, collapsible) - Scenario components and configuration
+- **System Visualization** (center) - Visual house representation
+- **Consultation** (right, collapsible) - Communication panel
+
+**Features:**
+- View mode toggle (Scenarios / Independent Investments)
+- AI Scenarios and New Scenario buttons
+- Panel state persistence in database
+- Smooth collapse/expand transitions
+
+#### SurveyScenarioInvestments.vue
+Displays investments for active scenario in accordion format.
+
+**Features:**
+- Dynamic investment accordions
+- Investment-specific icons
+- Categories and components per investment
+
+#### SurveyScenarioCategories.vue
+Component category management with CRUD operations.
+
+**Features:**
+- Add components (auto-selects next available)
+- Edit component selection via dropdown
+- Quantity management
+- Delete components
+- Duplicate prevention
+- Loading states
+
+#### UISelect.vue
+Custom HTML select component for dropdowns.
+
+**Features:**
+- Native `<select>` and `<option>` elements
+- Flexible value/label mapping
+- Size variants (sm, md, lg)
+- Dark mode support
+- Disabled state
+
+### Contract Data Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveyContractData.vue
+Client information and personal details management for contracts.
+
+**Features:**
+- Multi-contract editing (select up to 3 contracts simultaneously)
+- Smart default population from Survey Client data
+- Auto-save with 1-second debounce
+- Copy client data between contracts
+- Copy personal details between contracts
+- Responsive grid layout (1, 2, or 3 columns)
+- Contract sorting by creation date (earliest first)
+- Full-width input fields
+
+**Data Sections:**
+1. **Client Data**
+   - Name, Address, Phone, Email
+   - Auto-populated from Survey Client
+2. **Personal Details**
+   - Birth Place, Date of Birth, ID Card Number
+   - Tax ID, Mother's Name, Bank Account Number
+   - Citizenship, Marital Status, Residence Card Number
+   - Mailing Address
+
+**See Also:** [Contract Data Page Documentation](survey-contract-data-page.md)
+
+### Summary Page
+
+**Location:** `/app/components/Survey/`
+
+#### SurveySummary.vue
+Final survey page displaying all contracts with preview and action capabilities.
+
+**Features:**
+- View mode toggle (List / Card view)
+- Contract cards showing client info and investment details
+- Three action buttons per contract (Save without send, Save and Send, Sign Now)
+- Smart data fallback (contract → Survey Client → empty)
+- Cost summary per contract
+- Footer buttons for bulk operations
+
+#### Modal Components
+
+**SurveySendContractModal.vue** - Single contract email sending
+- Contract preview
+- Email template editor with rich text support
+- Placeholder substitution
+
+**SurveySignContractModal.vue** - Single contract digital signing
+- Contract preview
+- Privacy policy acceptance
+- Contract terms acceptance
+- Email delivery option
+- Touch/mouse signature pad
+
+**SurveySendAllContractsModal.vue** - Bulk contract sending
+- Multiple contract previews with numbering
+- Shared email template editor
+- Batch email functionality
+
+**SurveySignAllContractsModal.vue** - Bulk contract signing
+- Multiple contract previews with numbering
+- Per-contract acceptance and signature
+- Global privacy policy acceptance
+- Comprehensive validation (all contracts must be signed)
+
+#### Supporting Components
+
+**ContractPreview.vue** - Read-only contract display
+- Client information with smart fallback
+- Selected investments with icons
+- Component breakdown with quantities and prices
+- Extra costs and discounts
+- Total price calculation
+- Notes section
+
+**SignaturePad.vue** - Canvas-based signature capture
+- Touch event handling (touchstart, touchmove, touchend)
+- Mouse event handling (mousedown, mousemove, mouseup, mouseleave)
+- Coordinate transformation for proper scaling
+- Clear functionality
+- isEmpty() validation
+- PNG data URL export
+
+**EmailTemplateEditor.vue** - Rich text email editor
+- Toolbar with formatting buttons (Bold, Italic, Underline, List, Link)
+- Text insertion at cursor position
+- Placeholder documentation
+
+**See Also:** [Summary Page Documentation](survey-summary-page.md)
 
 ---
 
@@ -744,6 +1074,93 @@ await createContract({
 })
 ```
 
+### Example 7: Create AI Scenarios
+
+```typescript
+const { createAIScenarios } = useScenarioCreation()
+
+// User selects investments: Solar Panel, Heat Pump
+const result = await createAIScenarios(surveyId, [
+  'uuid-investment-solar',
+  'uuid-investment-heatpump'
+])
+
+if (result.success) {
+  // 3 scenarios created:
+  // 1. "Scenario 1 - Optimum" (medium quality, 1.0x quantity)
+  // 2. "Scenario 2 - Minimum" (low quality, 0.8x quantity)
+  // 3. "Scenario 3 - Premium" (high quality, 1.2x quantity, premium brands)
+
+  console.log(result.scenarios)
+}
+```
+
+### Example 8: Manage Scenario Components
+
+```typescript
+const scenariosStore = useScenariosStore()
+
+// Load scenarios for a survey
+await scenariosStore.loadScenarios('uuid-survey-123')
+
+// Set active scenario
+scenariosStore.setActiveScenario('uuid-scenario-1')
+
+// Add a component
+await scenariosStore.addScenarioComponent('uuid-component-panel-500w', 12)
+
+// Update component
+await scenariosStore.updateScenarioComponent(
+  'uuid-scenario-component-1',
+  'uuid-component-panel-600w',
+  10
+)
+
+// Update quantity only
+await scenariosStore.updateComponentQuantity('uuid-scenario-component-1', 15)
+
+// Remove component
+await scenariosStore.removeScenarioComponent('uuid-scenario-component-1')
+
+// Get components by category
+const panels = scenariosStore.getComponentsByCategoryId('uuid-category-panel')
+
+// Get categories for investment
+const categories = scenariosStore.getCategoriesForInvestment('uuid-investment-solar')
+```
+
+### Example 9: Component Selection in UI
+
+```vue
+<template>
+  <UISelect
+    v-model="selectedComponentId"
+    :options="componentOptions"
+    value-attribute="value"
+    label-attribute="label"
+    size="sm"
+    @update:model-value="handleComponentChange"
+  />
+</template>
+
+<script setup>
+const componentOptions = computed(() => {
+  const components = scenariosStore.getComponentsByCategoryId(categoryId)
+  return components.map(c => ({
+    value: c.id,
+    label: c.name
+  }))
+})
+
+const handleComponentChange = async (componentId) => {
+  await scenariosStore.updateScenarioComponent(
+    scenarioComponentId,
+    componentId
+  )
+}
+</script>
+```
+
 ---
 
 ## RLS Policies
@@ -817,6 +1234,15 @@ If migrating from previous survey implementation:
 - [ ] Email notifications
 - [ ] Revision history
 - [ ] Approval workflows
+- [x] **AI scenario generation** ✅
+- [x] **Component catalog system** ✅
+- [x] **Consultation page UI** ✅
+- [ ] Price calculation engine
+- [ ] Scenario comparison view
+- [ ] Component recommendations
+- [ ] Toast notifications for operations
+- [ ] Category info modals
+- [ ] Bulk component operations
 
 ---
 
@@ -828,4 +1254,94 @@ If migrating from previous survey implementation:
 **Documentation:** `/docs/`
 
 **Created by:** Claude Code
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-21
+
+---
+
+## State Management Patterns
+
+### Investment-Specific Response Storage
+
+**Context:** Questions with the same `name` can exist across multiple investments. Each investment must maintain its own set of responses.
+
+**Store Structure:**
+```typescript
+// app/stores/surveyInvestments.ts
+state: () => ({
+  investmentResponses: {} as Record<string, Record<string, any>>,
+  // Structure: investmentResponses[investmentId][questionName] = value
+})
+```
+
+**Example:**
+```typescript
+investmentResponses: {
+  'uuid-solar-panel': {
+    'electrical_network_condition': 'Good',
+    'roof_type': 'Pitched',
+    'roof_area': '150'
+  },
+  'uuid-heat-pump': {
+    'electrical_network_condition': 'Needs renovation',
+    'heating_system': 'Gas boiler'
+  },
+  'uuid-battery': {
+    'electrical_network_condition': '' // Not yet answered
+  }
+}
+```
+
+### Accessing Investment-Specific Responses
+
+**❌ WRONG - Active Investment Only:**
+```typescript
+// This only checks the currently active investment
+const response = store.getResponse(question.name)
+```
+
+**✅ CORRECT - Specific Investment:**
+```typescript
+// Directly access the specific investment's response
+const response = store.investmentResponses[investment.id]?.[question.name]
+```
+
+### Critical Implementation Points
+
+1. **Progress Calculation:**
+   - Each `SurveyPage` belongs to a specific `investment_id`
+   - Progress must be calculated using `page.investment_id` context
+   - Function signature: `getPageCompletionPercentage(page: SurveyPage)` (not just `pageId`)
+
+2. **Missing Items Detection:**
+   - Loop through all investments
+   - Check each investment's specific responses
+   - Deduplicate by `investmentId:questionName` key
+   - Prevents same question from appearing multiple times if answered for one investment
+
+3. **Response Updates:**
+   - Always update: `investmentResponses[investmentId][questionName] = value`
+   - Never rely on "active" investment for multi-investment scenarios
+
+### Affected Components
+
+**Components using investment-specific responses:**
+- `/app/components/Survey/SurveyHouseVisualization.vue` - Progress indicators
+- `/app/components/Survey/SurveyMissingItemsModal.vue` - Missing items detection
+- `/app/components/Survey/SurveyPropertyAssessment.vue` - Question rendering
+- `/app/stores/surveyInvestments.ts` - Core state management
+
+**Bug History:**
+- **Issue:** Missing Items count incorrect when same question exists across investments
+- **Root Cause:** Using `store.getResponse()` which only checked active investment
+- **Fix Date:** 2025-10-22
+- **Solution:** Direct access to `investmentResponses[investment.id][question.name]`
+
+---
+
+## Related Documentation
+
+- [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
+- [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
+- [Contract Data Page](survey-contract-data-page.md) - Contract Data page documentation
+- [Summary Page](survey-summary-page.md) - Summary page with contract preview and signing functionality
+- [Investment-Aware Response Tracking Bugfix](survey-property-assessment.md#investment-aware-question-response-tracking-bugfix) - Detailed bugfix documentation

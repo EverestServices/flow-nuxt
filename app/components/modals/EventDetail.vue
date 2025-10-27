@@ -2,7 +2,7 @@
   <!-- Backdrop -->
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black/20 z-40"
+    class="fixed inset-0 bg-white/20 z-50 backdrop-blur-sm"
     @click="closeModal"
   ></div>
 
@@ -10,13 +10,13 @@
   <Transition name="slide-event-modal">
     <div
       v-if="isOpen && event"
-      class="fixed bottom-2 right-2 top-2 w-96 bg-black/30 dark:bg-black/40 backdrop-blur-2xl backdrop-saturate-180 border border-white/10 dark:border-white/5 rounded-2xl flex flex-col shadow-2xl z-50"
+      class="fixed bottom-2 right-2 top-2 w-1/3 bg-white/60 dark:bg-black/40 backdrop-blur-2xl backdrop-saturate-180 border border-white/10 dark:border-white/5 rounded-2xl flex flex-col shadow-2xl z-50"
       style="backdrop-filter: blur(20px) saturate(180%);"
     >
       <!-- Header -->
       <div class="p-6 pb-4 border-b border-white/10 dark:border-white/5">
         <div class="flex items-center justify-between">
-          <h3 class="text-white font-semibold text-lg drop-shadow-sm">Event Details</h3>
+          <h3 class="text-black font-semibold text-lg drop-shadow-sm">Event Details</h3>
           <button
             @click="closeModal"
             class="text-white/70 hover:text-white transition-colors"
@@ -32,12 +32,12 @@
         <div class="space-y-4">
           <div>
             <label class="text-white/60 text-sm font-medium">Title</label>
-            <p class="text-white text-lg font-semibold">{{ event.title }}</p>
+            <p class="text-black text-lg font-semibold">{{ event.title }}</p>
           </div>
 
           <div v-if="event.description">
             <label class="text-white/60 text-sm font-medium">Description</label>
-            <p class="text-white">{{ event.description }}</p>
+            <p class="text-black">{{ event.description }}</p>
           </div>
 
           <div>

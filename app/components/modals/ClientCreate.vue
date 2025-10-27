@@ -1,8 +1,8 @@
 <template>
   <div>
-    <button @click="isOpen = true" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    <UIBox @click="isOpen = true" class="px-4 py-4 cursor-pointer text-sm text-white" background="bg-green-500">
       Create Client
-    </button>
+    </UIBox>
 
     <div v-if="isOpen" class="modal">
       <div class="modal-content">
@@ -99,7 +99,7 @@
           </div>
         </form>
 
-        <div v-if="error" style="color: red; margin-top: 16px; padding: 8px; background: #ffebee; border-radius: 4px;">
+        <div v-if="error" class="error-message">
           {{ error }}
         </div>
       </div>
@@ -238,9 +238,17 @@ watch(() => props.editingClient, (newClient) => {
   overflow-y: auto;
 }
 
+.dark .modal-content {
+  background: rgb(17, 24, 39);
+}
+
 .modal-content h3 {
   margin: 0 0 20px 0;
   color: #333;
+}
+
+.dark .modal-content h3 {
+  color: white;
 }
 
 .modal-content label {
@@ -250,12 +258,26 @@ watch(() => props.editingClient, (newClient) => {
   margin-bottom: 4px;
 }
 
+.dark .modal-content label {
+  color: rgb(209, 213, 219);
+}
+
 .modal-content input,
 .modal-content select,
 .modal-content textarea {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+  background: white;
+  color: #333;
+}
+
+.dark .modal-content input,
+.dark .modal-content select,
+.dark .modal-content textarea {
+  background: rgb(31, 41, 55);
+  color: white;
+  border-color: rgb(75, 85, 99);
 }
 
 .modal-content input:focus,
@@ -264,6 +286,13 @@ watch(() => props.editingClient, (newClient) => {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.dark .modal-content input:focus,
+.dark .modal-content select:focus,
+.dark .modal-content textarea:focus {
+  border-color: rgb(96, 165, 250);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
 }
 
 .form-actions {
@@ -275,5 +304,18 @@ watch(() => props.editingClient, (newClient) => {
 .form-actions button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.error-message {
+  color: #dc3545;
+  margin-top: 16px;
+  padding: 8px;
+  background: #ffebee;
+  border-radius: 4px;
+}
+
+.dark .error-message {
+  color: rgb(248, 113, 113);
+  background: rgba(248, 113, 113, 0.1);
 }
 </style>

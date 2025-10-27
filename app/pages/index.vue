@@ -3,15 +3,6 @@
     <div class="text-2xl font-light">Everest<span class="font-black">Flow</span></div>
   </div>
 
-  <button
-    @click="showQuickActions = true"
-    class="cursor-pointer px-4 py-3 flex justify-between items-center border border-white text-sm font-bold rounded-full fixed top-6 left-1/2 transform -translate-x-1/2 z-30 gap-x-4 hover:scale-105 transition-transform text-black backdrop-blur-sm"
-    style="background: linear-gradient(0deg, rgba(180, 192, 219, 0.45) 0%, rgba(180, 192, 219, 0.45) 100%), linear-gradient(90deg, rgba(249, 249, 249, 0.70) 7.65%, rgba(239, 255, 174, 0.70) 92.18%);"
-  >
-    <span>Quick Actions</span>
-    <span><Icon name="i-lucide-chevron-down" class="w-4 h-4 mt-1" /></span>
-  </button>
-
   <div class="flex flex-col space-y-8">
     <!-- welcome and upcoming events -->
     <div class="grid grid-cols-1 lg:grid-cols-2 min-h-96 text-black dark:text-white">

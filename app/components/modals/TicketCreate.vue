@@ -1,8 +1,8 @@
 <template>
   <div>
-    <button @click="isOpen = true">
+    <UIBox @click="isOpen = true" class="px-4 py-4 cursor-pointer text-sm text-white" background="bg-green-500">
       Create Ticket
-    </button>
+    </UIBox>
 
     <div v-if="isOpen" class="modal">
       <div class="modal-content">
@@ -257,10 +257,19 @@ watch(
   overflow-y: auto;
 }
 
+.dark .modal-content {
+  background: rgb(17, 24, 39);
+}
+
 .modal-content h3 {
   margin: 0 0 20px 0;
   font-size: 18px;
   font-weight: 600;
+  color: #333;
+}
+
+.dark .modal-content h3 {
+  color: white;
 }
 
 .modal-content form > div {
@@ -271,6 +280,11 @@ watch(
   display: block;
   margin-bottom: 4px;
   font-weight: 500;
+  color: #333;
+}
+
+.dark .modal-content label {
+  color: rgb(209, 213, 219);
 }
 
 .modal-content input,
@@ -281,6 +295,16 @@ watch(
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+  background: white;
+  color: #333;
+}
+
+.dark .modal-content input,
+.dark .modal-content select,
+.dark .modal-content textarea {
+  background: rgb(31, 41, 55);
+  color: white;
+  border-color: rgb(75, 85, 99);
 }
 
 .modal-content button {
@@ -291,16 +315,32 @@ watch(
   cursor: pointer;
 }
 
+.dark .modal-content button {
+  border-color: rgb(75, 85, 99);
+  background: rgb(31, 41, 55);
+  color: white;
+}
+
 .modal-content button[type="submit"] {
   background: #007bff;
   color: white;
   border-color: #007bff;
 }
 
+.dark .modal-content button[type="submit"] {
+  background: rgb(59, 130, 246);
+  border-color: rgb(59, 130, 246);
+}
+
 .modal-content button[type="submit"]:disabled {
   background: #ccc;
   border-color: #ccc;
   cursor: not-allowed;
+}
+
+.dark .modal-content button[type="submit"]:disabled {
+  background: rgb(75, 85, 99);
+  border-color: rgb(75, 85, 99);
 }
 
 .autocomplete-container {
@@ -321,14 +361,27 @@ watch(
   z-index: 1001;
 }
 
+.dark .autocomplete-dropdown {
+  background: rgb(31, 41, 55);
+  border-color: rgb(75, 85, 99);
+}
+
 .autocomplete-item {
   padding: 8px 12px;
   cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
 }
 
+.dark .autocomplete-item {
+  border-bottom-color: rgb(55, 65, 81);
+}
+
 .autocomplete-item:hover {
   background: #f5f5f5;
+}
+
+.dark .autocomplete-item:hover {
+  background: rgb(55, 65, 81);
 }
 
 .autocomplete-item:last-child {
@@ -339,5 +392,9 @@ watch(
   font-size: 12px;
   color: #666;
   margin-top: 2px;
+}
+
+.dark .client-contact {
+  color: rgb(156, 163, 175);
 }
 </style>

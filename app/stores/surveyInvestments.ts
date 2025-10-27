@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
+import { useSupabaseClient } from '#imports'
 
 export interface Investment {
   id: string
   name: string
+  persist_name: string
   icon: string
   position: { top: number; right: number }
   sequence: number
@@ -267,8 +269,6 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (docCatsError) throw docCatsError
 
-        console.log('Document categories from database:', docCats)
-
         // Group document categories by investment_id
         docCats?.forEach((idc: any) => {
           const investmentId = idc.investment_id
@@ -276,7 +276,6 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             ...idc.document_category,
             investmentPosition: idc.position
           }
-          console.log('Adding document category:', categoryWithPosition)
           this.documentCategories[investmentId].push(categoryWithPosition)
         })
 
@@ -489,24 +488,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
       if (!instances || instances.length === 0) return
 
-      console.log('removePageInstance:', {
-        pageId,
-        index,
-        allowDeleteLast,
-        instancesLengthBefore: instances.length
-      })
-
       // Remove the instance
       instances.splice(index, 1)
 
-      console.log('After splice:', {
-        instancesLengthAfter: instances.length,
-        shouldAddBack: instances.length === 0 && !allowDeleteLast
-      })
-
       // Ensure at least one instance exists (unless allowDeleteLast is true)
       if (instances.length === 0 && !allowDeleteLast) {
-        console.log('Adding back one instance because allowDeleteLast is false')
         instances.push({})
       }
 

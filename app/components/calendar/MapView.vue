@@ -17,6 +17,37 @@
           <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {{ formatDaySubtitle(currentDate) }}
           </div>
+
+          <!-- Location Tracking Toggle -->
+          <div
+            @click="toggleLocationTracking"
+            class="mt-4 flex items-center gap-3 p-3 rounded-lg transition-all border-2"
+            :class="[
+              locationLoading ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 cursor-wait' :
+              locationTrackingEnabled ? 'bg-green-50 dark:bg-green-900/20 border-green-500 cursor-pointer' :
+              'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600 hover:border-green-400 cursor-pointer'
+            ]"
+          >
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+              :class="locationLoading ? 'bg-blue-500' : locationTrackingEnabled ? 'bg-green-500' : 'bg-gray-400 dark:bg-gray-600'"
+            >
+              <span v-if="locationLoading" class="animate-spin">🔄</span>
+              <span v-else>📍</span>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm" :class="locationLoading ? 'text-blue-700 dark:text-blue-400' : locationTrackingEnabled ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'">
+                {{ locationLoading ? 'Getting Location...' : locationTrackingEnabled ? 'Location Tracking On' : 'Access Location' }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400">
+                {{ locationLoading ? 'Please wait...' : locationTrackingEnabled ? 'Click to disable' : 'Click to enable' }}
+              </div>
+            </div>
+            <div
+              v-if="locationTrackingEnabled"
+              class="w-3 h-3 bg-green-500 rounded-full animate-pulse"
+            />
+          </div>
         </div>
 
         <div v-if="eventsWithLocations.length === 0" class="py-10 px-5 text-center text-gray-600 dark:text-gray-400">
@@ -24,6 +55,18 @@
         </div>
 
         <div v-else class="flex-1 overflow-y-auto p-4">
+          <!-- Distance to Next Meeting -->
+          <div v-if="locationTrackingEnabled && distanceToNextMeeting > 0" class="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg mb-4 border-2 border-green-500">
+            <div class="text-[32px]">🎯</div>
+            <div class="flex-1">
+              <div class="text-xs text-green-700 dark:text-green-400 font-semibold uppercase tracking-wide">Distance to Next Meeting</div>
+              <div class="text-xl font-bold text-green-900 dark:text-green-300 mt-0.5">{{ formatDistance(distanceToNextMeeting) }}</div>
+              <div v-if="durationToNextMeeting" class="text-sm text-green-700 dark:text-green-400 mt-1">
+                Approx. {{ durationToNextMeeting }} drive
+              </div>
+            </div>
+          </div>
+
           <!-- Total Distance -->
           <div v-if="totalDistance > 0" class="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-500/15 rounded-lg mb-4">
             <div class="text-[32px]">🚗</div>
@@ -108,6 +151,14 @@ const totalDistance = ref(0)
 const routeDuration = ref('')
 const distancesBetweenEvents = ref<number[]>([])
 const isDarkMode = ref(false)
+
+// Location tracking - use global state
+const { locationTrackingEnabled, locationLoading, userLocation, toggleLocationTracking } = useLocationTracking()
+
+// Map-specific location state
+const userLocationMarker = ref<any>(null)
+const distanceToNextMeeting = ref(0)
+const durationToNextMeeting = ref('')
 
 // Get today's events with locations
 const eventsWithLocations = computed(() => {
@@ -465,9 +516,112 @@ const unhighlightMarker = () => {
   markers.value.forEach(marker => marker.closePopup())
 }
 
+// Watch for location tracking changes to update map
+watch([locationTrackingEnabled, userLocation], async ([enabled, coords]) => {
+  if (!enabled || !coords) {
+    // Location tracking disabled - remove marker and clear distance
+    distanceToNextMeeting.value = 0
+    durationToNextMeeting.value = ''
+    if (userLocationMarker.value) {
+      userLocationMarker.value.remove()
+      userLocationMarker.value = null
+    }
+  } else if (coords && map.value) {
+    // Location tracking enabled - add marker and calculate distance
+    await addUserLocationMarker(coords)
+    await calculateDistanceToNextMeeting(coords)
+  }
+})
+
+const addUserLocationMarker = async (coords: [number, number]) => {
+  if (!map.value) return
+
+  const L = (window as any).L
+  if (!L) return
+
+  // Remove existing user marker
+  if (userLocationMarker.value) {
+    userLocationMarker.value.remove()
+  }
+
+  // Create custom user location icon
+  const userIcon = L.divIcon({
+    className: 'user-location-marker',
+    html: `<div class="user-marker-pin">
+             <span class="user-marker-icon">📍</span>
+           </div>
+           <div class="user-marker-pulse"></div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  })
+
+  // Add marker
+  userLocationMarker.value = L.marker(coords, {
+    icon: userIcon,
+    zIndexOffset: 1000 // Ensure it's on top
+  }).addTo(map.value)
+
+  // Add popup
+  userLocationMarker.value.bindPopup(`
+    <div class="marker-popup">
+      <strong>Your Location</strong><br/>
+      <span>Current position</span>
+    </div>
+  `)
+
+  // Pan to user location
+  map.value.setView(coords, map.value.getZoom())
+}
+
+const calculateDistanceToNextMeeting = async (userCoords: [number, number]) => {
+  if (eventsWithLocations.value.length === 0) {
+    distanceToNextMeeting.value = 0
+    durationToNextMeeting.value = ''
+    return
+  }
+
+  // Get the next upcoming event (first event in the sorted list)
+  const nextEvent = eventsWithLocations.value[0]
+  if (!nextEvent.location) {
+    distanceToNextMeeting.value = 0
+    durationToNextMeeting.value = ''
+    return
+  }
+
+  // Geocode the next event location
+  const eventCoords = await geocodeLocation(nextEvent.location)
+  if (!eventCoords) {
+    distanceToNextMeeting.value = 0
+    durationToNextMeeting.value = ''
+    return
+  }
+
+  // Get driving route from user location to next meeting
+  const route = await getDrivingRoute(userCoords, eventCoords)
+  if (route) {
+    distanceToNextMeeting.value = route.distance
+
+    // Format duration
+    const minutes = Math.round(route.duration / 60)
+    if (minutes < 60) {
+      durationToNextMeeting.value = `${minutes} min`
+    } else {
+      const hrs = Math.floor(minutes / 60)
+      const mins = minutes % 60
+      durationToNextMeeting.value = `${hrs}h ${mins}m`
+    }
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   await initMap()
+
+  // If location tracking is already enabled, show user location on map
+  if (locationTrackingEnabled.value && userLocation.value) {
+    await addUserLocationMarker(userLocation.value)
+    await calculateDistanceToNextMeeting(userLocation.value)
+  }
 })
 
 // Watch for events changes
@@ -477,6 +631,11 @@ watch(eventsWithLocations, async () => {
     if (L) {
       await loadEventsOnMap(L)
     }
+  }
+
+  // Recalculate distance when events change
+  if (locationTrackingEnabled.value && userLocation.value) {
+    await calculateDistanceToNextMeeting(userLocation.value)
   }
 })
 </script>
@@ -527,6 +686,53 @@ watch(eventsWithLocations, async () => {
   font-size: 12px;
   color: #6b7280;
   margin-bottom: 2px;
+}
+
+/* User location marker styles */
+:deep(.user-location-marker) {
+  background: transparent;
+  border: none;
+}
+
+:deep(.user-marker-pin) {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.5);
+  position: relative;
+  z-index: 2;
+}
+
+:deep(.user-marker-icon) {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+:deep(.user-marker-pulse) {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.4);
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: pulse 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 /* Responsive adjustments */
