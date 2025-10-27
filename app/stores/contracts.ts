@@ -29,6 +29,8 @@ export interface Contract {
   marital_status?: string | null
   residence_card_number?: string | null
   mailing_address?: string | null
+  first_sent_at?: string | null
+  first_signed_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -669,6 +671,68 @@ export const useContractsStore = defineStore('contracts', {
 
     setActiveContract(contractId: string | null) {
       this.activeContractId = contractId
+    },
+
+    // Mark contract as sent (set first_sent_at if not already set)
+    async markContractAsSent(contractId: string) {
+      try {
+        const supabase = useSupabaseClient()
+
+        // Get the contract
+        const contract = this.contracts.find(c => c.id === contractId)
+        if (!contract) throw new Error('Contract not found')
+
+        // Only set first_sent_at if it hasn't been set yet
+        if (!contract.first_sent_at) {
+          const { error } = await supabase
+            .from('contracts')
+            .update({
+              first_sent_at: new Date().toISOString(),
+              status: 'sent'
+            })
+            .eq('id', contractId)
+
+          if (error) throw error
+
+          // Update local state
+          contract.first_sent_at = new Date().toISOString()
+          contract.status = 'sent'
+        }
+      } catch (error) {
+        console.error('Error marking contract as sent:', error)
+        throw error
+      }
+    },
+
+    // Mark contract as signed (set first_signed_at if not already set)
+    async markContractAsSigned(contractId: string) {
+      try {
+        const supabase = useSupabaseClient()
+
+        // Get the contract
+        const contract = this.contracts.find(c => c.id === contractId)
+        if (!contract) throw new Error('Contract not found')
+
+        // Only set first_signed_at if it hasn't been set yet
+        if (!contract.first_signed_at) {
+          const { error } = await supabase
+            .from('contracts')
+            .update({
+              first_signed_at: new Date().toISOString(),
+              status: 'accepted'
+            })
+            .eq('id', contractId)
+
+          if (error) throw error
+
+          // Update local state
+          contract.first_signed_at = new Date().toISOString()
+          contract.status = 'accepted'
+        }
+      } catch (error) {
+        console.error('Error marking contract as signed:', error)
+        throw error
+      }
     },
 
     // Helper to generate next contract name

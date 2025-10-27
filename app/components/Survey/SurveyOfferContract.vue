@@ -15,7 +15,7 @@
               v-for="scenario in scenarios"
               :key="scenario.id"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap"
-              :class="selectedScenarioId === scenario.id
+              :class="selectedScenarioId === scenario.id && !contractsStore.activeContractId
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
               @click="handleSelectScenario(scenario.id)"
@@ -371,6 +371,8 @@ const getScenarioInvestmentIcons = (scenarioId: string) => {
 // Handle scenario selection
 const handleSelectScenario = (scenarioId: string) => {
   selectedScenarioId.value = scenarioId
+  // Clear active contract when selecting a scenario for exclusive selection
+  contractsStore.activeContractId = null
 }
 
 // ===================================================================
@@ -556,8 +558,6 @@ const handleSaveContract = async () => {
       ...contractData,
       name: contractName
     })
-
-    alert('Contract saved successfully!')
   } catch (error) {
     console.error('Error saving contract:', error)
     alert(`Error saving contract: ${error.message}`)

@@ -9,7 +9,7 @@
         size="md"
         to="/survey/client-data"
       >
-        New Consultation
+        Energy Consultation for new Client
       </UIButtonEnhanced>
     </div>
 
@@ -94,7 +94,7 @@
           </p>
           <UIButtonEnhanced to="/survey/client-data">
             <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-            New Consultation
+            Energy Consultation for new Client
           </UIButtonEnhanced>
         </div>
       </UIBox>
@@ -113,7 +113,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Survey } from '~/types/survey-new'
+import type { Survey, Contract } from '~/types/survey-new'
+
+interface SurveyWithContracts extends Survey {
+  contracts?: Pick<Contract, 'id' | 'first_sent_at' | 'first_signed_at'>[]
+}
 
 // State
 const selectedDateFilter = ref<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'pending' | 'all'>('all')
@@ -132,7 +136,7 @@ const dateFilterOptions = [
 // Fetch surveys with client data
 const supabase = useSupabaseClient()
 const loading = ref(true)
-const surveys = ref<Survey[]>([])
+const surveys = ref<SurveyWithContracts[]>([])
 
 // Stats computed
 const todayCount = computed(() => {
@@ -165,6 +169,11 @@ onMounted(async () => {
           city,
           street,
           house_number
+        ),
+        contracts (
+          id,
+          first_sent_at,
+          first_signed_at
         )
       `)
       .order('at', { ascending: false })
@@ -223,7 +232,28 @@ const filteredSurveys = computed(() => {
   // Apply date filter
   if (selectedDateFilter.value !== 'all') {
     if (selectedDateFilter.value === 'pending') {
-      result = surveys.value
+      // For pending filter:
+      // - Survey must have been opened at least once (first_opened_at is not null)
+      // - AND either no contracts OR no contracts have been sent/signed
+      result = surveys.value.filter(survey => {
+        // Must have been opened at least once
+        if (!survey.first_opened_at) {
+          return false
+        }
+
+        // No contracts = pending
+        if (!survey.contracts || survey.contracts.length === 0) {
+          return true
+        }
+
+        // Check if any contract has been sent or signed
+        const hasSentOrSignedContract = survey.contracts.some(contract =>
+          contract.first_sent_at || contract.first_signed_at
+        )
+
+        // Pending if no contracts have been sent or signed
+        return !hasSentOrSignedContract
+      })
     } else {
       result = surveys.value.filter(survey => {
         if (!survey.at) return false

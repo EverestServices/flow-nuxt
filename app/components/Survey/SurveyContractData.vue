@@ -378,7 +378,7 @@ const toggleContractSelection = (contractId: string) => {
             client_phone: contract.client_phone || props.clientData?.phone || '',
             client_email: contract.client_email || props.clientData?.email || '',
             birth_place: contract.birth_place || '',
-            date_of_birth: contract.date_of_birth || '',
+            date_of_birth: contract.date_of_birth || null,
             id_card_number: contract.id_card_number || '',
             tax_id: contract.tax_id || '',
             mother_birth_name: contract.mother_birth_name || '',
@@ -496,7 +496,7 @@ const saveContractData = async (contractId: string) => {
       client_phone: data.client_phone,
       client_email: data.client_email,
       birth_place: data.birth_place,
-      date_of_birth: data.date_of_birth,
+      date_of_birth: data.date_of_birth || null, // Convert empty string to null
       id_card_number: data.id_card_number,
       tax_id: data.tax_id,
       mother_birth_name: data.mother_birth_name,

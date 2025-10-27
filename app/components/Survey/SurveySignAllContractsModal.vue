@@ -66,7 +66,7 @@
 
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700 dark:text-gray-300">
-            Szerződés elküldése e-mailben
+            Szerződések elküldése e-mailben
             <span class="text-gray-500 dark:text-gray-400 ml-2">
               ({{ clientEmail }})
             </span>

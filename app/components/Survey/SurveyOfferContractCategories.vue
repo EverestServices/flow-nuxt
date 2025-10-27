@@ -21,6 +21,7 @@
           />
         </div>
         <UButton
+          v-if="!readOnly"
           icon="i-lucide-plus"
           color="primary"
           variant="outline"
@@ -44,6 +45,7 @@
           <UISelect
             :model-value="scenarioComponent.main_component_id"
             :options="getComponentOptions(category.id)"
+            :disabled="readOnly"
             class="flex-1"
             size="sm"
             @update:model-value="(value) => handleComponentChange(scenarioComponent.id, value)"
@@ -52,6 +54,7 @@
           <!-- Quantity Input -->
           <UInput
             :model-value="scenarioComponent.quantity"
+            :disabled="readOnly"
             type="number"
             min="1"
             size="sm"
@@ -61,6 +64,7 @@
 
           <!-- Delete Button -->
           <UButton
+            v-if="!readOnly"
             icon="i-lucide-trash-2"
             color="red"
             variant="ghost"
@@ -88,9 +92,12 @@ import { useScenariosStore } from '~/stores/scenarios'
 interface Props {
   scenarioId: string
   investmentId: string
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: true  // Default to read-only since this is used on Offer/Contract page
+})
 
 const scenariosStore = useScenariosStore()
 

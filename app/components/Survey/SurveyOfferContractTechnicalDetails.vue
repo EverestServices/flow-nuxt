@@ -2,14 +2,9 @@
   <div class="space-y-3">
     <!-- Investment Accordions -->
     <UAccordion
-      v-for="investment in scenarioInvestments"
-      :key="investment.id"
-      :items="[{
-        label: investment.name,
-        icon: investment.icon,
-        slot: `investment-${investment.id}`,
-        defaultOpen: false
-      }]"
+      v-for="(item, index) in investmentAccordionItems"
+      :key="scenarioInvestments[index].id"
+      :items="[item]"
       :ui="{
         wrapper: 'w-full',
         item: {
@@ -18,14 +13,14 @@
         }
       }"
     >
-      <template #[`investment-${investment.id}`]>
+      <template #[item.slot]>
         <div class="p-3">
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Technikai adatok</p>
 
           <!-- Main Component Categories -->
           <SurveyOfferContractCategories
             :scenario-id="scenarioId"
-            :investment-id="investment.id"
+            :investment-id="scenarioInvestments[index].id"
           />
         </div>
       </template>
@@ -42,6 +37,7 @@
 import { computed } from 'vue'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+import { getTechnicalDataSummary } from '~/utils/technicalDataSummary'
 
 interface Props {
   surveyId: string
@@ -63,5 +59,72 @@ const scenarioInvestments = computed(() => {
   return scenarioInvestmentIds.value
     .map(id => investmentsStore.availableInvestments.find(inv => inv.id === id))
     .filter(Boolean)
+})
+
+// Build packageData for an investment from its scenario components
+const buildPackageData = (investmentId: string) => {
+  const components = scenariosStore.scenarioComponents[props.scenarioId] || []
+  const investmentComponents = components.filter(c => c.investment_id === investmentId)
+
+  const packageData: Record<string, any[]> = {}
+
+  investmentComponents.forEach(scenarioComponent => {
+    const mainComponent = scenariosStore.getMainComponentById(scenarioComponent.main_component_id)
+    if (!mainComponent) return
+
+    const category = scenariosStore.mainComponentCategories.find(
+      cat => cat.id === mainComponent.main_component_category_id
+    )
+    if (!category) return
+
+    const categoryKey = category.persist_name
+
+    if (!packageData[categoryKey]) {
+      packageData[categoryKey] = []
+    }
+
+    packageData[categoryKey].push({
+      product: {
+        power: mainComponent.power,
+        capacity: mainComponent.capacity,
+        efficiency: mainComponent.efficiency,
+        uValue: mainComponent.u_value,
+        thickness: mainComponent.thickness,
+        cop: mainComponent.cop,
+        energyClass: mainComponent.energy_class,
+        volume: mainComponent.details ? parseVolume(mainComponent.details) : undefined
+      },
+      quantity: scenarioComponent.quantity
+    })
+  })
+
+  return packageData
+}
+
+// Helper to parse volume from details string (if stored as "200L" or similar)
+const parseVolume = (details: string): number | undefined => {
+  const match = details.match(/(\d+)\s*[lL]/)
+  return match ? parseInt(match[1]) : undefined
+}
+
+// Get technical summary for an investment
+const getTechnicalSummaryForInvestment = (investmentId: string, investmentType: string): string => {
+  const packageData = buildPackageData(investmentId)
+  return getTechnicalDataSummary(investmentType, packageData)
+}
+
+// Build accordion items with technical summaries
+const investmentAccordionItems = computed(() => {
+  return scenarioInvestments.value.map(investment => {
+    const technicalSummary = getTechnicalSummaryForInvestment(investment.id, investment.persist_name)
+
+    return {
+      label: investment.name,
+      icon: investment.icon,
+      slot: `investment-${investment.id}`,
+      defaultOpen: false,
+      description: technicalSummary || undefined
+    }
+  })
 })
 </script>
