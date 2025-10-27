@@ -109,6 +109,17 @@
                 <UButton color="success" size="xs" type="button" @click="applyCalibration">Alkalmaz</UButton>
               </div>
             </div>
+
+            <!-- Single-point delete overlay near the selected vertex -->
+            <div
+              v-if="editPointsMode && singlePointOverlay"
+              class="absolute z-30"
+              :style="{ left: `${singlePointOverlay.x}px`, top: `${singlePointOverlay.y}px`, transform: 'translate(14px, -14px)' }"
+            >
+              <UButton size="xs" color="error" variant="solid" class="rounded-full p-1" title="Pont törlése" @click.stop="deleteSelectedPoints">
+                <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+              </UButton>
+            </div>
           </div>
         </div>
         <!-- Absolute overlays pinned to outer wrapper (not scrolling with content) -->
@@ -265,6 +276,22 @@ const draggingPoint = ref<{
   index: number;
   type: 'polygon' | 'calibration';
 } | null>(null);
+const selectedPoints = ref<Set<string>>(new Set());
+const keyOf = (polyId: string, idx: number) => `${polyId}:${idx}`;
+const clearSelection = () => {
+  selectedPoints.value = new Set();
+};
+const isPointSelected = (polyId: string, idx: number) => selectedPoints.value.has(keyOf(polyId, idx));
+const toggleSelection = (polyId: string, idx: number) => {
+  const k = keyOf(polyId, idx);
+  const next = new Set(selectedPoints.value);
+  if (next.has(k)) next.delete(k);
+  else next.add(k);
+  selectedPoints.value = next;
+};
+const selectOnly = (polyId: string, idx: number) => {
+  selectedPoints.value = new Set([keyOf(polyId, idx)]);
+};
 const mousePos = ref<Point | null>(null);
 const calibrationStart = ref<Point | null>(null);
 const calibrationEnd = ref<Point | null>(null);
@@ -299,6 +326,30 @@ const calibrationMidOverlay = computed(() => {
   const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
   // shift by the image's offset inside the wrapper to align with canvas positioning
   return { x: imageRef.value.offsetLeft + mid.x, y: imageRef.value.offsetTop + mid.y };
+});
+
+const singlePointOverlay = computed(() => {
+  if (!editPointsMode.value || selectedPoints.value.size !== 1 || !imageRef.value) return null as { x: number; y: number } | null;
+  const firstKey = Array.from(selectedPoints.value)[0];
+  if (!firstKey) return null as { x: number; y: number } | null;
+  const parts = firstKey.split(':');
+  if (parts.length !== 2) return null as { x: number; y: number } | null;
+  const polyId = parts[0];
+  const idx = Number(parts[1]);
+  const poly = polygons.value.find((p) => p.id === polyId);
+  const pt = poly?.points?.[idx];
+  if (!poly || !pt) return null as { x: number; y: number } | null;
+  const p = denormalizePoint(pt);
+  const wrapper = zoomWrapperRef.value;
+  let x = imageRef.value.offsetLeft + p.x + 16; // offset right
+  let y = imageRef.value.offsetTop + p.y - 16; // offset up
+  if (wrapper) {
+    const maxX = wrapper.clientWidth - 8;
+    const maxY = wrapper.clientHeight - 8;
+    x = Math.min(maxX, Math.max(8, x));
+    y = Math.min(maxY, Math.max(8, y));
+  }
+  return { x, y };
 });
 
 type HistoryEntry = {
@@ -654,7 +705,9 @@ const drawAllPolygons = () => {
           draggingPoint.value.polygonId === poly.id &&
           draggingPoint.value.index === idx;
 
-        drawCircle(ctx, p.x, p.y, isSelected ? 9 : 7, isSelected ? '#22c55e' : pointColor);
+        const preSelected = isPointSelected(poly.id, idx);
+        const showSelected = isSelected || preSelected;
+        drawCircle(ctx, p.x, p.y, showSelected ? 9 : 7, showSelected ? '#22c55e' : pointColor);
       });
     }
 
@@ -801,6 +854,7 @@ const setMode = (mode: Mode) => {
     calibrationStart.value = null;
     calibrationEnd.value = null;
   }
+  if (mode !== 'edit') clearSelection();
 
   // Exclusive modes
   editingMode.value = mode === 'draw';
@@ -854,21 +908,7 @@ const handleCanvasClick = (event: MouseEvent) => {
         }
       }
     }
-    if (!target || !target.closed || target.points.length < 2) return;
-    let best = { dist: Number.POSITIVE_INFINITY, seg: -1, t: 0 } as { dist: number; seg: number; t: number };
-    for (let i = 0; i < target.points.length; i++) {
-      const j = (i + 1) % target.points.length;
-      const a = target.points[i]!;
-      const b = target.points[j]!;
-      const d = pointSegmentDistance(clickPoint, a, b);
-      if (d.dist < best.dist) best = { dist: d.dist, seg: i, t: d.t };
-    }
-    if (best.seg >= 0 && best.dist < 0.03) {
-      pushHistory();
-      const a = target.points[best.seg]!;
-      const b = target.points[(best.seg + 1) % target.points.length]!;
-      const newP: Point = { x: a.x + best.t * (b.x - a.x), y: a.y + best.t * (b.y - a.y) };
-      target.points.splice(best.seg + 1, 0, newP);
+    if (target) {
       selectedPolygonId.value = target.id;
       drawAllPolygons();
     }
@@ -931,6 +971,14 @@ const getCanvasCoordsFromEvent = (event: MouseEvent | TouchEvent): Point => {
   };
 };
 
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+type DragSnapshot = {
+  start: Point; // normalized
+  items: Array<{ polyId: string; index: number; start: Point }>;
+};
+const dragSnapshot = ref<DragSnapshot | null>(null);
+
 const handleMouseDown = (event: MouseEvent | TouchEvent) => {
   if (!(editPointsMode.value || calibrationMode.value)) return;
   const click = normalizePoint(getCanvasCoordsFromEvent(event));
@@ -946,15 +994,38 @@ const handleMouseDown = (event: MouseEvent | TouchEvent) => {
     }
   }
 
+  // Edit pontok: kiválasztás + húzás (multi-select támogatás)
   for (const polygon of polygons.value) {
     for (let i = 0; i < polygon.points.length; i++) {
       const pi = polygon.points[i] as Point | undefined;
       if (pi && isNearPoint(click, pi)) {
+        if (event instanceof MouseEvent && event.shiftKey) toggleSelection(polygon.id, i);
+        else selectOnly(polygon.id, i);
+
+        // Drag előkészítés a kijelölt pontokra
         pushHistory();
         draggingPoint.value = { polygonId: polygon.id, index: i, type: 'polygon' };
+        const items = Array.from(selectedPoints.value)
+          .map((k) => {
+            const parts = k.split(':');
+            if (parts.length !== 2) return null;
+            const polyId = parts[0] as string;
+            const idx = Number(parts[1]);
+            const p = polygons.value.find((pp) => pp.id === polyId);
+            const pt = p?.points?.[idx];
+            if (!p || !pt) return null;
+            return { polyId, index: idx, start: { x: pt.x, y: pt.y } };
+          })
+          .filter((x): x is { polyId: string; index: number; start: { x: number; y: number } } => Boolean(x));
+        dragSnapshot.value = { start: click, items };
+        drawAllPolygons();
         return;
       }
     }
+  }
+  if (!(event instanceof MouseEvent && event.shiftKey)) {
+    clearSelection();
+    drawAllPolygons();
   }
 };
 
@@ -966,9 +1037,21 @@ const handleMouseMove = (event: MouseEvent) => {
   }
 
   if (draggingPoint.value.type === 'polygon') {
-    const { polygonId, index } = draggingPoint.value;
-    const polygon = polygons.value.find((p) => p.id === polygonId);
-    if (polygon) polygon.points[index] = mousePos.value;
+    if (dragSnapshot.value && mousePos.value) {
+      const dx = mousePos.value.x - dragSnapshot.value.start.x;
+      const dy = mousePos.value.y - dragSnapshot.value.start.y;
+      for (const it of dragSnapshot.value.items) {
+        const poly = polygons.value.find((p) => p.id === it.polyId);
+        if (!poly) continue;
+        const nx = clamp01(it.start.x + dx);
+        const ny = clamp01(it.start.y + dy);
+        poly.points[it.index] = { x: nx, y: ny };
+      }
+    } else {
+      const { polygonId, index } = draggingPoint.value;
+      const polygon = polygons.value.find((p) => p.id === polygonId);
+      if (polygon) polygon.points[index] = mousePos.value;
+    }
   } else if (draggingPoint.value.type === 'calibration') {
     if (mousePos.value) {
       if (draggingPoint.value.index === 0 && calibrationStart.value)
@@ -983,6 +1066,7 @@ const handleMouseMove = (event: MouseEvent) => {
 
 const handleMouseUp = () => {
   draggingPoint.value = null;
+  dragSnapshot.value = null;
 };
 
 const highlightStoredReference = () => {
@@ -1030,6 +1114,37 @@ const resetCurrentEdit = () => {
     currentPolygon.value = null;
     drawAllPolygons();
   }
+};
+
+const deleteSelectedPoints = () => {
+  if (selectedPoints.value.size === 0) return;
+  pushHistory();
+  // Group deletions by polygon
+  const map = new Map<string, number[]>();
+  for (const key of selectedPoints.value) {
+    const parts = key.split(':');
+    if (parts.length !== 2) continue;
+    const pid: string = String(parts[0] ?? '');
+    const idxRaw = parts[1];
+    const idx = Number(idxRaw);
+    if (!pid || Number.isNaN(idx)) continue;
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid)!.push(idx);
+  }
+  // Apply deletions (descending index order)
+  for (const [pid, idxs] of map) {
+    const poly = polygons.value.find((p) => p.id === pid);
+    if (!poly) continue;
+    idxs.sort((a, b) => b - a).forEach((i) => {
+      if (i >= 0 && i < poly.points.length) poly.points.splice(i, 1);
+    });
+    if (poly.closed && poly.points.length < 3) poly.closed = false;
+    if (poly.points.length === 0) {
+      polygons.value = polygons.value.filter((p) => p.id !== pid);
+    }
+  }
+  clearSelection();
+  drawAllPolygons();
 };
 
 const downloadWithPolygons = () => {
@@ -1146,13 +1261,29 @@ const handleResize = () => {
   });
 };
 
+const onKeydown = (e: KeyboardEvent) => {
+  if (!editPointsMode.value) return;
+  const target = e.target as HTMLElement | null;
+  const tn = target?.tagName?.toLowerCase() || '';
+  const isTyping = tn === 'input' || tn === 'textarea' || (target as any)?.isContentEditable;
+  if (isTyping) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedPoints.value.size > 0) {
+      e.preventDefault();
+      deleteSelectedPoints();
+    }
+  }
+};
+
 onMounted(() => {
   window.addEventListener('resize', handleResize);
+  window.addEventListener('keydown', onKeydown);
   const canvas = canvasRef.value;
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('keydown', onKeydown);
   const canvas = canvasRef.value;
 });
 
