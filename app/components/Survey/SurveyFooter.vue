@@ -1,93 +1,81 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-    <div class="flex items-center justify-between">
+  <!-- Main Footer Container - centered -->
+  <div class="fixed bottom-3 left-1/2 -translate-x-1/2 z-30">
+    <div class="flex items-center gap-4">
+      <!-- Scenario Footer - slides in from left -->
+      <Transition name="slide-in-left">
+        <div
+          v-if="activeTab === 'consultation' && showScenarioFooter"
+          class="border border-white dark:border-black/10 py-2 px-4 rounded-4xl backdrop-blur-xs bg-white/20 dark:bg-black/20"
+        >
+          <slot name="scenario-footer" />
+        </div>
+      </Transition>
+
+      <!-- Main Footer - slides right when scenario footer appears -->
+      <div
+        class="border border-white dark:border-black/10 py-1 px-3 rounded-4xl backdrop-blur-xs bg-white/20 dark:bg-black/20 transition-transform duration-300"
+        :class="{ 'translate-x-0': !showScenarioFooter || activeTab !== 'consultation' }"
+      >
+        <div class="flex items-center justify-between">
       <!-- Left Section -->
       <div class="flex items-center gap-3 flex-1">
         <!-- Save and Exit - Always visible -->
-        <UButton
-          label="Save and Exit"
-          color="gray"
-          variant="outline"
-          size="lg"
+        <UIButtonEnhanced
+          variant="primary"
+          size="sm"
           @click="$emit('save-exit')"
-        />
+          class="grow whitespace-nowrap"
+        >
+          Save and Exit
+        </UIButtonEnhanced>
 
         <!-- Property Assessment specific actions -->
         <template v-if="showPropertyActions">
           <!-- Upload All Photos -->
-          <UButton
-            label="Upload All Photos"
-            color="primary"
+          <UIButtonEnhanced
             variant="outline"
-            size="md"
+            size="sm"
             @click="$emit('upload-photos')"
-          />
+            class="whitespace-nowrap"
+          >
+            Upload All Photos
+          </UIButtonEnhanced>
 
           <!-- Fill All Data -->
-          <UButton
-            label="Fill All Data"
-            color="primary"
+          <UIButtonEnhanced
             variant="outline"
-            size="md"
+            size="sm"
             @click="$emit('fill-all-data')"
-          />
+            class="whitespace-nowrap"
+          >
+            Fill All Data
+          </UIButtonEnhanced>
 
           <!-- Generate Assessment Sheet -->
-          <UButton
-            label="Generate Assessment Sheet"
-            color="primary"
+          <UIButtonEnhanced
             variant="outline"
-            size="md"
+            size="sm"
             @click="$emit('generate-assessment')"
-          />
+            class="whitespace-nowrap"
+          >
+            Generate Assessment Sheet
+          </UIButtonEnhanced>
         </template>
 
         <!-- Consultation specific actions -->
         <template v-if="activeTab === 'consultation'">
-          <!-- Mentés Button -->
-          <UButton
-            label="Mentés"
-            color="gray"
+          <!-- Use Scenarios Button -->
+          <UIButtonEnhanced
             variant="outline"
-            @click="$emit('consultation-save')"
-          />
-
-          <!-- Eye Icon Button - Toggle scenario buttons visibility -->
-          <UButton
-            :icon="showScenarioButtons ? 'i-lucide-eye' : 'i-lucide-eye-off'"
-            color="gray"
-            variant="outline"
-            @click="showScenarioButtons = !showScenarioButtons"
-          />
+            size="sm"
+            @click="$emit('toggle-scenario-footer')"
+            class="whitespace-nowrap"
+          >
+            <Icon name="i-lucide-eye" class="w-4 h-4 mr-2" />
+            Use Scenarios
+          </UIButtonEnhanced>
         </template>
-      </div>
-
-      <!-- Center Section - AI Scenarios and New Scenario buttons -->
-      <div v-if="activeTab === 'consultation' && showScenarioButtons" class="flex items-center gap-2">
-        <!-- AI Scenarios button -->
-        <UButton
-          color="primary"
-          size="sm"
-          @click="$emit('ai-scenarios')"
-        >
-          <template #leading>
-            <UIcon name="i-lucide-zap" class="w-4 h-4" />
-          </template>
-          AI Scenarios
-        </UButton>
-
-        <!-- New Scenario button -->
-        <UButton
-          color="primary"
-          variant="outline"
-          size="sm"
-          @click="$emit('new-scenario')"
-        >
-          <template #leading>
-            <UIcon name="i-lucide-plus" class="w-4 h-4" />
-          </template>
-          New Scenario
-        </UButton>
       </div>
 
       <!-- Right Section -->
@@ -95,83 +83,28 @@
         <!-- Offer/Contract specific actions - Only on offer-contract tab -->
         <template v-if="activeTab === 'offer-contract'">
           <!-- Save Investment Contract Button -->
-          <UButton
+          <UIButtonEnhanced
             v-if="canSaveContract"
-            label="Save Investment Contract"
-            icon="i-lucide-save"
-            color="primary"
             variant="outline"
-            size="md"
+            size="sm"
             @click="$emit('save-investment-contract')"
-          />
+            class="whitespace-nowrap"
+          >
+            <Icon name="i-lucide-save" class="w-4 h-4 mr-2" />
+            Save Investment Contract
+          </UIButtonEnhanced>
 
           <!-- Modify Contract Button -->
-          <UButton
+          <UIButtonEnhanced
             v-if="activeContract"
-            :label="`Modify ${activeContract.name}`"
-            icon="i-lucide-pencil"
-            color="gray"
             variant="outline"
-            size="md"
+            size="sm"
             @click="$emit('modify-contract')"
-          />
-        </template>
-
-        <!-- Property Assessment specific controls -->
-        <template v-if="showPropertyActions">
-          <!-- Marker Mode Toggle -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Marker Mode</span>
-            <USwitch
-              v-model="markerModeEnabled"
-              @update:model-value="$emit('toggle-marker-mode', $event)"
-            />
-          </div>
-
-          <!-- Missing Items Warning -->
-          <UButton
-            :label="`Missing Items (${missingItemsCount})`"
-            :icon="missingItemsCount > 0 ? 'i-heroicons-exclamation-triangle' : undefined"
-            color="orange"
-            variant="outline"
-            size="md"
-            @click="$emit('show-missing-items')"
-          />
-        </template>
-
-        <!-- Consultation specific Container 3 -->
-        <template v-if="activeTab === 'consultation' && activeScenario && showScenarioButtons">
-          <div class="flex items-center gap-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ activeScenario.name }}
-            </span>
-            <div class="flex items-center gap-2">
-              <UButton
-                size="xs"
-                color="gray"
-                variant="outline"
-                @click="$emit('rename-scenario')"
-              >
-                Rename
-              </UButton>
-              <UButton
-                size="xs"
-                color="gray"
-                variant="outline"
-                @click="$emit('duplicate-scenario')"
-              >
-                Duplicate
-              </UButton>
-              <UButton
-                size="xs"
-                color="red"
-                variant="outline"
-                @click="$emit('delete-scenario')"
-              >
-                Delete
-              </UButton>
-            </div>
-          </div>
+            class="whitespace-nowrap"
+          >
+            <Icon name="i-lucide-pencil" class="w-4 h-4 mr-2" />
+            Modify {{ activeContract.name }}
+          </UIButtonEnhanced>
         </template>
 
         <!-- Offer/Contract specific Container - Contract Management - Only on offer-contract tab -->
@@ -181,30 +114,30 @@
               {{ activeContract.name }}
             </span>
             <div class="flex items-center gap-2">
-              <UButton
+              <UIButtonEnhanced
                 size="xs"
-                color="gray"
                 variant="outline"
                 @click="$emit('rename-contract')"
+                class="whitespace-nowrap"
               >
                 Rename
-              </UButton>
-              <UButton
+              </UIButtonEnhanced>
+              <UIButtonEnhanced
                 size="xs"
-                color="gray"
                 variant="outline"
                 @click="$emit('duplicate-contract')"
+                class="whitespace-nowrap"
               >
                 Duplicate
-              </UButton>
-              <UButton
+              </UIButtonEnhanced>
+              <UIButtonEnhanced
                 size="xs"
-                color="red"
                 variant="outline"
                 @click="$emit('delete-contract')"
+                class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 whitespace-nowrap"
               >
                 Delete
-              </UButton>
+              </UIButtonEnhanced>
             </div>
           </div>
         </template>
@@ -212,49 +145,48 @@
         <!-- Summary specific actions - Only on summary tab -->
         <template v-if="activeTab === 'summary'">
           <!-- Save All and Send -->
-          <UButton
-            label="Save All and Send"
-            icon="i-lucide-send"
-            color="primary"
+          <UIButtonEnhanced
             variant="outline"
-            size="lg"
+            size="sm"
             @click="$emit('save-all-and-send')"
-          />
+            class="whitespace-nowrap"
+          >
+            <Icon name="i-lucide-send" class="w-4 h-4 mr-2" />
+            Save All and Send
+          </UIButtonEnhanced>
 
           <!-- Sign All Contracts -->
-          <UButton
-            :label="`Sign All Contracts (${contractCount})`"
-            icon="i-lucide-pen-tool"
-            color="primary"
-            size="lg"
+          <UIButtonEnhanced
+            variant="primary"
+            size="sm"
             @click="$emit('sign-all-contracts')"
-          />
+            class="whitespace-nowrap"
+          >
+            <Icon name="i-lucide-pen-tool" class="w-4 h-4 mr-2" />
+            Sign All Contracts ({{ contractCount }})
+          </UIButtonEnhanced>
         </template>
 
         <!-- Next Button - Visible on all tabs except summary -->
-        <UButton
+        <UIButtonEnhanced
           v-if="activeTab !== 'summary'"
-          label="Next"
-          icon="i-heroicons-arrow-right"
-          trailing
-          color="primary"
-          size="lg"
+          variant="primary"
+          size="sm"
           :disabled="!canProceed"
           @click="$emit('next')"
-        />
+          class="whitespace-nowrap"
+        >
+          Next
+          <Icon name="i-lucide-arrow-right" class="w-4 h-4 ml-2" />
+        </UIButtonEnhanced>
+        </div>
+      </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-
-interface Scenario {
-  id: string
-  name: string
-}
-
 interface Contract {
   id: string
   name: string
@@ -265,10 +197,10 @@ interface Props {
   showPropertyActions?: boolean
   missingItemsCount?: number
   canProceed?: boolean
-  activeScenario?: Scenario | null
   activeContract?: Contract | null
   canSaveContract?: boolean
   contractCount?: number
+  showScenarioFooter?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -276,7 +208,8 @@ withDefaults(defineProps<Props>(), {
   missingItemsCount: 0,
   canProceed: true,
   canSaveContract: false,
-  contractCount: 0
+  contractCount: 0,
+  showScenarioFooter: false
 })
 
 defineEmits<{
@@ -284,15 +217,8 @@ defineEmits<{
   'upload-photos': []
   'fill-all-data': []
   'generate-assessment': []
-  'toggle-marker-mode': [enabled: boolean]
   'show-missing-items': []
-  'consultation-save': []
-  'consultation-preview': []
-  'ai-scenarios': []
-  'new-scenario': []
-  'rename-scenario': []
-  'duplicate-scenario': []
-  'delete-scenario': []
+  'toggle-scenario-footer': []
   'rename-contract': []
   'duplicate-contract': []
   'delete-contract': []
@@ -302,7 +228,22 @@ defineEmits<{
   'sign-all-contracts': []
   next: []
 }>()
-
-const markerModeEnabled = ref(false)
-const showScenarioButtons = ref(true)
 </script>
+
+<style scoped>
+/* Slide in from left animation */
+.slide-in-left-enter-active,
+.slide-in-left-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-in-left-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-in-left-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+</style>

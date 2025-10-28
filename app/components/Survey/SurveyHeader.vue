@@ -1,8 +1,8 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+  <div class="bg-white/20 dark:bg-black/20 border py-1 border-white dark:border-black/10 rounded-full fixed top-3 left-3 backdrop-blur-xs flex h-12 z-30 pr-3 pl-2">
     <div class="flex items-center justify-between">
       <!-- Left Section -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center border-r mr-0 pr-4 border-white dark:border-white/20 h-9">
         <!-- Back Button - Always visible -->
         <UButton
           icon="i-heroicons-arrow-left"
@@ -13,13 +13,16 @@
         />
 
         <!-- Property Assessment specific buttons -->
-        <template v-if="activeTab === 'property-assessment'">
+        <template v-if="activeTab === 'property-assessment'" >
           <!-- Investment Button -->
           <button
-            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="inline-flex items-center gap-2 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-l border-white pl-4 pr-4 h-8"
             @click="$emit('toggle-investment')"
           >
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Investments</span>
+
             <!-- Show all icons if investments are selected, otherwise show plus icon -->
+            <!--
             <template v-if="selectedInvestments && selectedInvestments.length > 0">
               <UIcon
                 v-for="investment in selectedInvestments"
@@ -27,12 +30,11 @@
                 :name="investment.icon"
                 class="w-5 h-5 text-gray-600 dark:text-gray-400"
               />
-            </template>
-            <UIcon v-else name="i-lucide-plus" class="w-5 h-5" />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Investment</span>
+            </template>-->
           </button>
 
           <!-- Edit Client Button -->
+          <!--
           <UButton
             icon="i-heroicons-user"
             label="Edit Client Data"
@@ -40,8 +42,44 @@
             variant="outline"
             size="md"
             @click="$emit('edit-client')"
-          />
+          />-->
         </template>
+
+        <!-- Investment Filter Toggle -->
+        <div class="flex items-center rounded-full gap-1">
+          <!-- Individual Investment Buttons -->
+          <button
+              v-for="investment in selectedInvestments"
+              :key="investment.id"
+              :class="[
+                'px-2 py-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer',
+                activeInvestmentFilter === investment.id
+                  ? 'bg-white dark:bg-gray-600 shadow-sm'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+              ]"
+              @click="handleInvestmentFilterChange(investment.id)"
+          >
+            <UIcon
+                :name="investment.icon"
+                class="w-4 h-4"
+                :class="activeInvestmentFilter === investment.id
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-600 dark:text-gray-400'"
+            />
+          </button>
+          <!-- All Button -->
+          <button
+              :class="[
+                'px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                activeInvestmentFilter === 'all'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              ]"
+              @click="handleInvestmentFilterChange('all')"
+          >
+            All
+          </button>
+        </div>
 
         <!-- Consultation specific buttons -->
         <template v-if="activeTab === 'consultation'">
@@ -128,12 +166,12 @@
         <!-- Property Assessment specific controls -->
         <template v-if="showModeToggle">
           <!-- View Mode Toggle -->
-          <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <div class="flex items-center p-1 border-r border-white/20 pr-3 h-9">
             <button
               v-for="mode in viewModes"
               :key="mode.value"
               :class="[
-                'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
                 currentViewMode === mode.value
                   ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
@@ -141,43 +179,6 @@
               @click="handleViewModeChange(mode.value)"
             >
               {{ mode.label }}
-            </button>
-          </div>
-
-          <!-- Investment Filter Toggle -->
-          <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 gap-1">
-            <!-- All Button -->
-            <button
-              :class="[
-                'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                activeInvestmentFilter === 'all'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              @click="handleInvestmentFilterChange('all')"
-            >
-              All
-            </button>
-
-            <!-- Individual Investment Buttons -->
-            <button
-              v-for="investment in selectedInvestments"
-              :key="investment.id"
-              :class="[
-                'px-2 py-2 rounded-md transition-colors flex items-center gap-1',
-                activeInvestmentFilter === investment.id
-                  ? 'bg-white dark:bg-gray-600 shadow-sm'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-              ]"
-              @click="handleInvestmentFilterChange(investment.id)"
-            >
-              <UIcon
-                :name="investment.icon"
-                class="w-4 h-4"
-                :class="activeInvestmentFilter === investment.id
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-gray-400'"
-              />
             </button>
           </div>
 

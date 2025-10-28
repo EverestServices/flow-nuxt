@@ -1,193 +1,169 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="closeModal"
-  ></div>
+  <UIModal
+    v-model="isOpen"
+    size="xl"
+    :scrollable="true"
+  >
+    <template #header>
+      <div class="flex items-center gap-3">
+        <Icon name="i-lucide-wallet" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+        <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">
+          Financing and Costs
+        </h3>
+      </div>
+    </template>
 
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="closeModal"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div class="space-y-6">
+      <!-- Finanszírozás típusa Section -->
+      <div>
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+          Finanszírozás típusa
+        </h4>
+        <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <UIcon name="i-lucide-wallet" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
-              <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                Financing and Costs
-              </h3>
-            </div>
-            <button
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              @click="closeModal"
-            >
-              <UIcon name="i-lucide-x" class="w-5 h-5" />
-            </button>
+            <label class="text-sm text-gray-700 dark:text-gray-300">Készpénz</label>
+            <USwitch v-model="financing.cash" />
           </div>
-        </div>
-
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-6">
-          <!-- Finanszírozás típusa Section -->
-          <div>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-              Finanszírozás típusa
-            </h4>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <label class="text-sm text-gray-700 dark:text-gray-300">Készpénz</label>
-                <USwitch v-model="financing.cash" />
-              </div>
-              <div class="flex items-center justify-between">
-                <label class="text-sm text-gray-700 dark:text-gray-300">Hitel</label>
-                <USwitch v-model="financing.loan" />
-              </div>
-              <div class="flex items-center justify-between">
-                <label class="text-sm text-gray-700 dark:text-gray-300">Lízing</label>
-                <USwitch v-model="financing.lease" />
-              </div>
-              <div class="flex items-center justify-between">
-                <label class="text-sm text-gray-700 dark:text-gray-300">Támogatás</label>
-                <USwitch v-model="financing.subsidy" />
-              </div>
-            </div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm text-gray-700 dark:text-gray-300">Hitel</label>
+            <USwitch v-model="financing.loan" />
           </div>
-
-          <!-- Divider -->
-          <div class="border-t border-gray-200 dark:border-gray-700"></div>
-
-          <!-- ExtraCost List -->
-          <div v-if="loading" class="flex items-center justify-center py-8">
-            <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400" />
+          <div class="flex items-center justify-between">
+            <label class="text-sm text-gray-700 dark:text-gray-300">Lízing</label>
+            <USwitch v-model="financing.lease" />
           </div>
-
-          <div v-else class="space-y-3">
-            <div
-              v-for="extraCost in extraCosts"
-              :key="extraCost.id"
-              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-            >
-              <!-- ExtraCost Header -->
-              <div class="flex items-center justify-between">
-                <div class="flex-1">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ extraCost.name }}
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {{ formatCurrency(extraCost.price) }}
-                  </div>
-                </div>
-                <USwitch
-                  :model-value="isExtraCostSelected(extraCost.id)"
-                  @update:model-value="handleExtraCostToggle(extraCost.id, $event)"
-                />
-              </div>
-
-              <!-- Comment Textarea - shown when selected -->
-              <Transition name="expand">
-                <div
-                  v-if="isExtraCostSelected(extraCost.id)"
-                  class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
-                >
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Megjegyzés:
-                  </label>
-                  <textarea
-                    :value="getExtraCostComment(extraCost.id)"
-                    @input="handleCommentChange(extraCost.id, ($event.target as HTMLTextAreaElement).value)"
-                    rows="3"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="Add your notes here..."
-                  ></textarea>
-                </div>
-              </Transition>
-            </div>
-          </div>
-
-          <!-- Divider -->
-          <div class="border-t border-gray-200 dark:border-gray-700"></div>
-
-          <!-- Price Section -->
-          <div class="space-y-3">
-            <!-- Price with colored buttons -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Price:</span>
-                <button
-                  class="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
-                  :class="{ 'ring-2 ring-offset-2 ring-red-500': commissionColor === 'red' }"
-                  @click="handlePriceColorClick('red')"
-                ></button>
-                <button
-                  class="w-6 h-6 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors"
-                  :class="{ 'ring-2 ring-offset-2 ring-yellow-500': commissionColor === 'yellow' }"
-                  @click="handlePriceColorClick('yellow')"
-                ></button>
-                <button
-                  class="w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 transition-colors"
-                  :class="{ 'ring-2 ring-offset-2 ring-green-500': commissionColor === 'green' }"
-                  @click="handlePriceColorClick('green')"
-                ></button>
-                <button
-                  class="w-6 h-6 rounded-full bg-black dark:bg-gray-900 hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors border border-gray-300 dark:border-gray-600"
-                  :class="{ 'ring-2 ring-offset-2 ring-black dark:ring-gray-900': commissionColor === 'black' }"
-                  @click="handlePriceColorClick('black')"
-                ></button>
-              </div>
-              <button
-                class="text-sm font-semibold text-gray-900 dark:text-white border-b-2 pb-1 cursor-pointer hover:opacity-80 transition-opacity"
-                :class="priceUnderlineColor"
-                @click="handlePriceClick"
-              >
-                {{ formatCurrency(totalPrice) }}
-              </button>
-            </div>
-
-            <!-- Show Price -->
-            <div class="flex items-center justify-between">
-              <label class="text-sm text-gray-700 dark:text-gray-300">Show Price</label>
-              <USwitch v-model="showPrice" />
-            </div>
-
-            <!-- Show Return Time -->
-            <div class="flex items-center justify-between">
-              <label class="text-sm text-gray-700 dark:text-gray-300">Show return time</label>
-              <USwitch
-                :model-value="showReturnTime"
-                @update:model-value="$emit('update:show-return-time', $event)"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="p-6 border-t border-gray-200 dark:border-gray-700">
-          <div class="flex justify-end gap-3">
-            <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
-              @click="closeModal"
-            >
-              Cancel
-            </button>
-            <button
-              class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
-              @click="handleSave"
-              :disabled="saving"
-            >
-              <UIcon v-if="saving" name="i-lucide-loader-2" class="w-4 h-4 animate-spin" />
-              <span v-else>Save</span>
-            </button>
+          <div class="flex items-center justify-between">
+            <label class="text-sm text-gray-700 dark:text-gray-300">Támogatás</label>
+            <USwitch v-model="financing.subsidy" />
           </div>
         </div>
       </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+      <!-- ExtraCost List -->
+      <div v-if="loading" class="flex items-center justify-center py-8">
+        <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+
+      <div v-else class="space-y-3">
+        <div
+          v-for="extraCost in extraCosts"
+          :key="extraCost.id"
+          class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+        >
+          <!-- ExtraCost Header -->
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ extraCost.name }}
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {{ formatCurrency(extraCost.price) }}
+              </div>
+            </div>
+            <USwitch
+              :model-value="isExtraCostSelected(extraCost.id)"
+              @update:model-value="handleExtraCostToggle(extraCost.id, $event)"
+            />
+          </div>
+
+          <!-- Comment Textarea - shown when selected -->
+          <Transition name="expand">
+            <div
+              v-if="isExtraCostSelected(extraCost.id)"
+              class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
+            >
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Megjegyzés:
+              </label>
+              <textarea
+                :value="getExtraCostComment(extraCost.id)"
+                @input="handleCommentChange(extraCost.id, ($event.target as HTMLTextAreaElement).value)"
+                rows="3"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Add your notes here..."
+              ></textarea>
+            </div>
+          </Transition>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+      <!-- Price Section -->
+      <div class="space-y-3">
+        <!-- Price with colored buttons -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Price:</span>
+            <button
+              class="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+              :class="{ 'ring-2 ring-offset-2 ring-red-500': commissionColor === 'red' }"
+              @click="handlePriceColorClick('red')"
+            ></button>
+            <button
+              class="w-6 h-6 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors"
+              :class="{ 'ring-2 ring-offset-2 ring-yellow-500': commissionColor === 'yellow' }"
+              @click="handlePriceColorClick('yellow')"
+            ></button>
+            <button
+              class="w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 transition-colors"
+              :class="{ 'ring-2 ring-offset-2 ring-green-500': commissionColor === 'green' }"
+              @click="handlePriceColorClick('green')"
+            ></button>
+            <button
+              class="w-6 h-6 rounded-full bg-black dark:bg-gray-900 hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors border border-gray-300 dark:border-gray-600"
+              :class="{ 'ring-2 ring-offset-2 ring-black dark:ring-gray-900': commissionColor === 'black' }"
+              @click="handlePriceColorClick('black')"
+            ></button>
+          </div>
+          <button
+            class="text-sm font-semibold text-gray-900 dark:text-white border-b-2 pb-1 cursor-pointer hover:opacity-80 transition-opacity"
+            :class="priceUnderlineColor"
+            @click="handlePriceClick"
+          >
+            {{ formatCurrency(totalPrice) }}
+          </button>
+        </div>
+
+        <!-- Show Price -->
+        <div class="flex items-center justify-between">
+          <label class="text-sm text-gray-700 dark:text-gray-300">Show Price</label>
+          <USwitch v-model="showPrice" />
+        </div>
+
+        <!-- Show Return Time -->
+        <div class="flex items-center justify-between">
+          <label class="text-sm text-gray-700 dark:text-gray-300">Show return time</label>
+          <USwitch
+            :model-value="showReturnTime"
+            @update:model-value="$emit('update:show-return-time', $event)"
+          />
+        </div>
+      </div>
     </div>
-  </Transition>
+
+    <!-- Footer -->
+    <template #footer>
+      <UIButtonEnhanced
+        variant="outline"
+        @click="closeModal"
+      >
+        Cancel
+      </UIButtonEnhanced>
+      <UIButtonEnhanced
+        variant="primary"
+        :disabled="saving"
+        @click="handleSave"
+      >
+        <Icon v-if="saving" name="i-lucide-loader-2" class="w-4 h-4 mr-2 animate-spin" />
+        Save
+      </UIButtonEnhanced>
+    </template>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
@@ -219,6 +195,16 @@ const emit = defineEmits<{
 }>()
 
 const supabase = useSupabaseClient()
+const isOpen = ref(false)
+
+// Sync isOpen with modelValue
+watch(() => props.modelValue, (newValue) => {
+  isOpen.value = newValue
+})
+
+watch(isOpen, (newValue) => {
+  emit('update:modelValue', newValue)
+})
 
 // Commission rates
 const COMMISSION_RATES = {
@@ -480,11 +466,11 @@ const handleSave = async () => {
 }
 
 const closeModal = () => {
-  emit('update:modelValue', false)
+  isOpen.value = false
 }
 
 // Watch for modal open to load data
-watch(() => props.modelValue, (newValue) => {
+watch(isOpen, (newValue) => {
   if (newValue) {
     loadData()
   }
@@ -492,34 +478,13 @@ watch(() => props.modelValue, (newValue) => {
 
 // Watch for commission rate changes to recalculate price
 watch(() => commissionColor.value, () => {
-  if (props.scenarioId && props.modelValue) {
+  if (props.scenarioId && isOpen.value) {
     calculateTotalPrice()
   }
 })
 </script>
 
 <style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.3s ease;

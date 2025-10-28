@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="flex h-24 items-center justify-between">
+    <div class="flex h-24 items-center justify-between mr-16">
       <div class="text-2xl font-light">Energy <span class="font-black">Consultations</span></div>
       <UIButtonEnhanced
         icon="i-lucide-zap"
@@ -15,18 +15,9 @@
 
     <div class="flex flex-col space-y-8">
       <!-- Welcome Section -->
+      <!--
       <div class="grid grid-cols-1 lg:grid-cols-2 min-h-48">
-        <div class="basis-0 flex flex-col items-start justify-center">
-          <div class="text-5xl font-thin outfit">
-            Manage your <strong class="font-black">energy consultations</strong> and<br />
-            <strong class="font-black">client surveys</strong>
-          </div>
-          <div class="text-2xl outfit font-thin text-gray-600 dark:text-gray-400 mt-4">
-            {{ filteredSurveys.length }} pending consultations
-          </div>
-        </div>
 
-        <!-- Stats Cards -->
         <div class="flex flex-col basis-0 items-start justify-center">
           <div class="grid grid-cols-3 gap-4 w-full">
             <UIBox class="p-4 text-center">
@@ -50,25 +41,41 @@
           </div>
         </div>
       </div>
+        -->
+
 
       <!-- Filters Section -->
-      <UIBox>
-        <div class="flex items-center gap-3 p-4">
-          <div class="flex-1">
-            <UIInput
-              v-model="searchQuery"
-              placeholder="Search clients..."
-              icon="i-lucide-search"
-            />
+      <div class="flex items-start gap-3">
+        <!-- Filter Buttons -->
+        <!--<UIBox class="flex-1">-->
+          <div class=" grow">
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in dateFilterOptions"
+                :key="option.value"
+                @click="selectedDateFilter = option.value"
+                :class="[
+                  'px-4 py-3 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer',
+                  selectedDateFilter === option.value
+                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-black hover:text-white dark:hover:bg-gray-700'
+                ]"
+              >
+                {{ option.label }}
+              </button>
+            </div>
           </div>
-          <UISelect
-            v-model="selectedDateFilter"
-            :options="dateFilterOptions"
-            size="sm"
-            class="w-40"
+        <!--</UIBox>-->
+
+        <!-- Search Input -->
+        <div class="w-64">
+          <UIInput
+            v-model="searchQuery"
+            placeholder="Search clients..."
+            icon="i-lucide-search"
           />
         </div>
-      </UIBox>
+      </div>
 
       <!-- Loading State -->
       <UIBox v-if="loading" class="p-12">
@@ -93,7 +100,7 @@
       </UIBox>
 
       <!-- Survey List -->
-      <div v-else class="grid grid-cols-1 gap-6">
+      <div v-else class="grid grid-cols-1 gap-2">
         <SurveyListItem
           v-for="survey in filteredSurveys"
           :key="survey.id"

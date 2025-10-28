@@ -1,10 +1,10 @@
 <template>
-  <div class="h-full flex bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
-    <!-- System Design Column - Collapsible Left -->
+  <div class="min-h-screen flex relative overflow-hidden">
+    <!-- System Design Column - Floating Left -->
     <Transition name="slide-left">
       <div
         v-if="systemDesignOpen"
-        class="w-1/3 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col"
+        class="fixed left-3 top-20 bottom-20 w-96 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
       >
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
@@ -172,25 +172,14 @@
     <!-- Reopen System Design Button - Left Edge -->
     <button
       v-if="!systemDesignOpen"
-      class="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-r-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-10"
+      class="fixed left-3 top-1/2 -translate-y-1/2 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20 rounded-full p-3 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all shadow-lg z-10 flex cursor-pointer"
       @click="handleSystemDesignToggle(true)"
     >
       <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
     </button>
 
-    <!-- System Visualization Column - Center -->
-    <div :class="[
-      'bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all',
-      systemDesignOpen && consultationOpen ? 'w-1/3' :
-      !systemDesignOpen && !consultationOpen ? 'w-full' :
-      'w-2/3'
-    ]">
-      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
-          <UIcon name="i-lucide-home" class="w-5 h-5" />
-          <span>System Visualization</span>
-        </div>
-      </div>
+    <!-- System Visualization Column - Center (Full Width Background) -->
+    <div class="w-full flex flex-col">
       <div class="flex-1 p-4 flex items-center justify-center overflow-auto">
         <div class="w-full h-full flex items-center justify-center">
           <img
@@ -202,11 +191,11 @@
       </div>
     </div>
 
-    <!-- Consultation Column - Collapsible Right -->
+    <!-- Consultation Column - Floating Right -->
     <Transition name="slide-right">
       <div
         v-if="consultationOpen"
-        class="w-1/3 bg-white dark:bg-gray-800 flex flex-col"
+        class="fixed right-3 top-20 bottom-20 w-96 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
       >
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
@@ -332,7 +321,7 @@
     <!-- Reopen Consultation Button - Right Edge -->
     <button
       v-if="!consultationOpen"
-      class="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-l-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-10"
+      class="fixed right-3 top-1/2 -translate-y-1/2 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20 rounded-full p-3 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all shadow-lg z-10 flex cursor-pointer"
       @click="handleConsultationToggle(true)"
     >
       <UIcon name="i-lucide-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -387,8 +376,6 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:system-design-open': [value: boolean]
   'update:consultation-open': [value: boolean]
-  'ai-scenarios': []
-  'new-scenario': []
 }>()
 
 const scenariosStore = useScenariosStore()
@@ -425,7 +412,6 @@ const commissionRate = ref(0.12) // Default 12%
 
 // Computed
 const activeScenario = computed(() => scenariosStore.activeScenario)
-const hasScenarios = computed(() => scenariosStore.scenarios.length > 0)
 
 // Realtime subscription ref
 const supabase = useSupabaseClient()

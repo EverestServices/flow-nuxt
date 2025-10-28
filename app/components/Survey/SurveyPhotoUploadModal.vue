@@ -1,64 +1,49 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="closeModal"
-  ></div>
-
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="closeModal"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                Upload Photos
-              </h3>
-              <p v-if="investmentTitle" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {{ investmentTitle }}
-              </p>
-            </div>
-            <button
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              @click="closeModal"
-            >
-              <UIcon name="i-lucide-x" class="w-5 h-5" />
-            </button>
-          </div>
-
-          <!-- Overall Progress -->
-          <div class="mt-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Overall Progress
-              </span>
-              <span v-if="!isNaN(overallPercentage)" class="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                {{ overallPercentage }}%
-              </span>
-            </div>
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-xs text-gray-600 dark:text-gray-400">
-                min. {{ totalMinPhotos }} photos
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                class="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                :style="{ width: (isNaN(overallPercentage) ? 0 : overallPercentage) + '%' }"
-              />
-            </div>
+  <UIModal
+    v-model="isOpen"
+    size="xl"
+    :scrollable="true"
+    @close="closeModal"
+  >
+    <template #header>
+      <div class="w-full">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+              Upload Photos
+            </h3>
+            <p v-if="investmentTitle" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {{ investmentTitle }}
+            </p>
           </div>
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-6">
+        <!-- Overall Progress -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Overall Progress
+            </span>
+            <span v-if="!isNaN(overallPercentage)" class="text-sm font-semibold text-primary-600 dark:text-primary-400">
+              {{ overallPercentage }}%
+            </span>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-600 dark:text-gray-400">
+              min. {{ totalMinPhotos }} photos
+            </span>
+          </div>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div
+              class="bg-primary-600 h-2 rounded-full transition-all duration-300"
+              :style="{ width: (isNaN(overallPercentage) ? 0 : overallPercentage) + '%' }"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div>
           <div class="space-y-3">
             <UAccordion
               v-for="category in paginatedCategories"
@@ -152,30 +137,24 @@
 
                   <!-- Upload Buttons -->
                   <div class="flex gap-2">
-                    <UButton
-                      color="primary"
+                    <UIButtonEnhanced
                       variant="outline"
                       size="md"
                       class="flex-1"
                       @click="selectPhoto(category.id)"
                     >
-                      <template #leading>
-                        <UIcon name="i-lucide-image" class="w-4 h-4" />
-                      </template>
+                      <Icon name="i-lucide-image" class="w-4 h-4 mr-2" />
                       Select Photo
-                    </UButton>
-                    <UButton
-                      color="primary"
+                    </UIButtonEnhanced>
+                    <UIButtonEnhanced
                       variant="outline"
                       size="md"
                       class="flex-1"
                       @click="takePhoto(category.id)"
                     >
-                      <template #leading>
-                        <UIcon name="i-lucide-camera" class="w-4 h-4" />
-                      </template>
+                      <Icon name="i-lucide-camera" class="w-4 h-4 mr-2" />
                       Take Photo
-                    </UButton>
+                    </UIButtonEnhanced>
                   </div>
 
                   <!-- Hidden file input -->
@@ -191,41 +170,38 @@
               </template>
             </UAccordion>
           </div>
-        </div>
-
-        <!-- Footer (Pagination only) -->
-        <div v-if="showPagination" class="p-6 border-t border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="currentPage === 0"
-              @click="currentPage--"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
-                <span>Previous</span>
-              </div>
-            </button>
-
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
-              {{ currentPage + 1 }} / {{ totalPages }}
-            </span>
-
-            <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="currentPage === totalPages - 1"
-              @click="currentPage++"
-            >
-              <div class="flex items-center gap-2">
-                <span>Next</span>
-                <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  </Transition>
+
+    <template #footer v-if="showPagination">
+      <div class="flex items-center justify-between w-full">
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="currentPage === 0"
+          @click="currentPage--"
+        >
+          <div class="flex items-center gap-2">
+            <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
+            <span>Previous</span>
+          </div>
+        </button>
+
+        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
+          {{ currentPage + 1 }} / {{ totalPages }}
+        </span>
+
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="currentPage === totalPages - 1"
+          @click="currentPage++"
+        >
+          <div class="flex items-center gap-2">
+            <span>Next</span>
+            <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
+          </div>
+        </button>
+      </div>
+    </template>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
@@ -257,6 +233,24 @@ const emit = defineEmits<{
 }>()
 
 const store = useSurveyInvestmentsStore()
+
+const isOpen = ref(false)
+
+// Sync with parent v-model
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value
+})
+
+watch(isOpen, (value) => {
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+})
+
+const closeModal = () => {
+  isOpen.value = false
+  emit('update:modelValue', false)
+}
 
 // File input refs
 const fileInputRefs = ref<Record<string, HTMLInputElement>>({})
@@ -448,10 +442,6 @@ const deletePhoto = (categoryId: string, index: number) => {
   }
 }
 
-const closeModal = () => {
-  emit('update:modelValue', false)
-}
-
 // Lapozás visszaállítása a felugró ablak megnyitásakor
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
@@ -461,27 +451,6 @@ watch(() => props.modelValue, (newValue) => {
 </script>
 
 <style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-
 /* Make accordion label span full width */
 :deep(.text-start.break-words) {
   flex: 1;

@@ -1,16 +1,16 @@
 <template>
-  <UIBox class="cursor-pointer hover:shadow-xl transition-all duration-200">
+  <UIBox class="cursor-pointer hover:shadow-xl transition-all duration-200 !bg-white dark:!bg-slate-900">
     <div class="p-4">
       <!-- Single Row Layout -->
       <div class="flex items-center justify-between gap-4">
         <!-- Left: Client Info -->
         <div class="flex items-center gap-3 flex-1 min-w-0">
           <!-- Client Avatar/Icon -->
-          <div class="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2 flex-shrink-0">
+          <!--<div class="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2 flex-shrink-0">
             <Icon name="i-lucide-user" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          </div>
+          </div>-->
 
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 pl-3">
             <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
               {{ survey.client?.name || 'Unknown Client' }}
             </h3>
