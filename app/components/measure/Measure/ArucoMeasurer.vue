@@ -176,6 +176,45 @@
             </UButton>
           </div>
 
+          <!-- Top-left: Reference controls (only in calibration mode) -->
+          <div
+            v-if="calibrationMode"
+            class="pointer-events-auto absolute left-2 top-2 flex items-center gap-1 bg-base-100/80 backdrop-blur rounded-full shadow px-2 py-1"
+          >
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
+              @click="onStartNewReference"
+              title="Új referencia hozzáadása"
+            >
+              <Icon name="i-lucide-wand-2" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Új hozzáadása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
+              :disabled="!referenceSet"
+              @click="onChangeReferenceLength"
+              title="Referencia méret módosítása"
+            >
+              <Icon name="i-lucide-ruler" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Méret módosítása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="error"
+              :disabled="!referenceSet"
+              @click="onClearReference"
+              title="Referencia törlése"
+            >
+              <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Törlés</span>
+            </UButton>
+          </div>
+
           <!-- Calibration helper (only message, no buttons) -->
           <div v-if="calibrationMode" class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
             <div class="pointer-events-auto bg-neutral-900/80 text-white text-sm rounded-full px-3 py-1 flex items-center gap-2 shadow">
