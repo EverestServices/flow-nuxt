@@ -229,7 +229,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, unref } from 'vue';
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect, unref } from 'vue';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
@@ -360,6 +360,20 @@ const calibrationMidOverlay = computed(() => {
   // shift by the image's offset inside the wrapper to align with canvas positioning
   return { x: imageRef.value.offsetLeft + mid.x, y: imageRef.value.offsetTop + mid.y };
 });
+
+// Ensure saved reference always applies: compute meterPerPixel from stored reference points + length
+const recalcMeterPerPixelFromReference = (): boolean => {
+  const imgMeta = firstImage.value;
+  const img = imageRef.value;
+  const lengthCm = imgMeta?.referenceLengthCm ?? 0;
+  if (!imgMeta || !img || !imgMeta.referenceStart || !imgMeta.referenceEnd || !(lengthCm > 0)) return false;
+  const dx = (imgMeta.referenceEnd.x - imgMeta.referenceStart.x) * img.naturalWidth;
+  const dy = (imgMeta.referenceEnd.y - imgMeta.referenceStart.y) * img.naturalHeight;
+  const pixelDist = Math.sqrt(dx * dx + dy * dy);
+  if (!(pixelDist > 0)) return false;
+  meterPerPixel.value = (lengthCm / 100) / pixelDist;
+  return true;
+};
 
 const singlePointOverlay = computed(() => {
   if (!editPointsMode.value || selectedPoints.value.size !== 1 || !imageRef.value) return null as { x: number; y: number } | null;
@@ -910,6 +924,9 @@ const setMode = (mode: Mode) => {
   editPointsMode.value = mode === 'edit';
   calibrationMode.value = mode === 'calibrate';
 
+  // Apply saved reference-derived meterPerPixel if available
+  recalcMeterPerPixelFromReference();
+
   void nextTick(() => {
     drawAllPolygons();
   });
@@ -1398,6 +1415,19 @@ watch(zoomScale, () => {
   void nextTick(() => {
     drawAllPolygons();
   });
+});
+// Keep meterPerPixel in sync with saved reference whenever image/meta becomes available
+watchEffect(() => {
+  // Reading these makes them reactive dependencies
+  const _img = imageRef.value;
+  const meta = firstImage.value;
+  const _rs = meta?.referenceStart?.x ?? null;
+  const _re = meta?.referenceEnd?.x ?? null;
+  const _len = meta?.referenceLengthCm ?? null;
+  if (!_img || !meta) return;
+  if (meta.referenceStart && meta.referenceEnd && (meta.referenceLengthCm ?? 0) > 0) {
+    recalcMeterPerPixelFromReference();
+  }
 });
 const restoreCalibration = () => {
   meterPerPixel.value = storedMeterPerPixel.value;
