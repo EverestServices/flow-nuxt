@@ -52,22 +52,6 @@
       <ExtraItemIcoList />
     </div>
     <div class="col-span-3">
-      <div class="flex flex-wrap content-between gap-8 mb-2 w-full">
-        <UButton
-          v-if="meterPerPixel != storedMeterPerPixel"
-          color="primary"
-          @click="restoreCalibration"
-        >
-          Kalibráció visszaállítása
-        </UButton>
-
-        
-
-        <div v-if="calibrationMode && !calibrationStart && !calibrationEnd">
-          <UBadge color="info" size="xs" class="p-2">Szakasz felvétele ...</UBadge>
-        </div>
-      </div>
-
       <div class="relative">
         <div ref="zoomContainerRef" class="overflow-auto border rounded" style="height: 70vh">
           <div
@@ -136,6 +120,9 @@
               <Icon name="i-lucide-zoom-in" class="w-5 h-5" />
             </UButton>
             <UBadge color="neutral" size="sm">{{ pixelPerMeterLabel }}</UBadge>
+            <UBadge v-if="referenceSet" color="success" size="sm" class="px-2 py-1">
+              Referenciapont beállítva
+            </UBadge>
             <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleUndo">
               <Icon name="i-lucide-undo-2" class="w-5 h-5" />
             </UButton>
@@ -174,11 +161,11 @@
             </UButton>
             <UButton
               size="md"
-              :color="calibrationMode ? 'warning' : (referenceSet ? 'success' : 'neutral')"
+              :color="calibrationMode ? 'warning' : 'neutral'"
               variant="soft"
-              @click="() => (referenceSet && !calibrationMode ? toggleSavedReference() : setMode('calibrate'))"
+              @click="() => setMode('calibrate')"
             >
-              {{ calibrationMode ? 'Setup Reference' : (referenceSet ? 'Reference set' : 'Setup Reference') }}
+              Setup Reference
             </UButton>
           </div>
 
@@ -189,11 +176,11 @@
             </UButton>
           </div>
 
-          <!-- Calibration helper banner -->
-          <div v-if="calibrationMode" class="pointer-events-auto absolute left-2 top-2 flex items-center gap-2">
-            <UBadge color="error" size="sm" class="px-2 py-1">Setup Reference</UBadge>
-            <div class="bg-neutral-900/80 text-white text-sm rounded px-3 py-1">
-              {{ calibrationInfoText }}
+          <!-- Calibration helper (only message, no buttons) -->
+          <div v-if="calibrationMode" class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+            <div class="pointer-events-auto bg-neutral-900/80 text-white text-sm rounded-full px-3 py-1 flex items-center gap-2 shadow">
+              <UBadge color="error" size="sm" class="px-2 py-0.5">Setup Reference</UBadge>
+              <span>{{ calibrationInfoText }}</span>
             </div>
           </div>
         </div>
@@ -299,6 +286,7 @@ const calibrationLength = ref<number | null>(null);
 const calibrationMode = ref<boolean>(false);
 const highlightRef = ref<boolean>(false);
 const showSavedReference = ref<boolean>(false);
+const allowRefOverride = ref<boolean>(false);
 
 const referenceSet = computed(() => Boolean(firstImage.value?.referenceStart && firstImage.value?.referenceEnd));
 
@@ -313,8 +301,14 @@ const calibrationPx = computed(() => {
 
 const calibrationInfoText = computed(() => {
   const px = calibrationPx.value;
-  const prefix = px ? `${px.toFixed(0)} px • ` : '';
-  return `${prefix}Írd be a valós hossz centiméterben, majd erősítsd meg a kalibrációt.`;
+  if (!calibrationStart.value) {
+    return '1/2: Érintsd meg az első pontot a képen.';
+  }
+  if (calibrationStart.value && !calibrationEnd.value) {
+    const pxPart = px ? ` • ${px.toFixed(0)} px` : '';
+    return `2/2: Érintsd meg a második pontot.${pxPart}`;
+  }
+  return 'Add meg a referencia hosszát centiméterben, majd kattints az Alkalmaz gombra.';
 });
 
 const calibrationMidOverlay = computed(() => {
@@ -756,13 +750,13 @@ const drawAllPolygons = () => {
     }
   }
 
-  // Highlight stored reference if requested (with length in cm)
-  if ((showSavedReference.value || highlightRef.value) && firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
+  // Draw stored reference if present (always visible). Highlight may adjust style.
+  if (firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
     const ctx = canvasRef.value!.getContext('2d')!;
     const p1 = denormalizePoint(firstImage.value.referenceStart);
     const p2 = denormalizePoint(firstImage.value.referenceEnd);
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = highlightRef.value ? 4 : 3;
     ctx.setLineDash([10, 6]);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
@@ -793,6 +787,11 @@ const applyCalibration = () => {
   )
     return;
 
+  // Do not override an existing saved reference unless explicitly starting a new one
+  if (referenceSet.value && !allowRefOverride.value) {
+    return;
+  }
+
   const naturalWidth = imageRef.value.naturalWidth;
   const naturalHeight = imageRef.value.naturalHeight;
 
@@ -815,6 +814,14 @@ const applyCalibration = () => {
     // Persist mutated image meta into store
     store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
   }
+  allowRefOverride.value = false;
+  // Exit calibration and clear draft/overlay
+  calibrationStart.value = null;
+  calibrationEnd.value = null;
+  calibrationLength.value = null;
+  setMode('view');
+  // Briefly highlight the saved reference so user sees the result
+  highlightStoredReference();
 };
 
 const gotoZoom = (targetScale: number) => {
@@ -854,6 +861,9 @@ const setMode = (mode: Mode) => {
     calibrationStart.value = null;
     calibrationEnd.value = null;
   }
+  if (mode !== 'calibrate') {
+    allowRefOverride.value = false;
+  }
   if (mode !== 'edit') clearSelection();
 
   // Exclusive modes
@@ -877,21 +887,26 @@ const togglePolygonEditing = () => {
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
-  if (calibrationMode.value) {
-    if (!calibrationStart.value || !calibrationEnd.value) {
-      const clickPoint = normalizePoint(getCanvasCoords(event));
-      if (!calibrationStart.value) {
-        calibrationStart.value = clickPoint;
-      } else {
-        calibrationEnd.value = clickPoint;
-      }
-      drawAllPolygons();
-    }
+  const clickPoint = normalizePoint(getCanvasCoords(event));
 
+  // 1) Calibration mode: only allow drawing if explicitly started (override allowed)
+  if (calibrationMode.value) {
+    if (referenceSet.value && !allowRefOverride.value) return;
+    if (!calibrationStart.value) {
+      calibrationStart.value = clickPoint;
+      drawAllPolygons();
+      return;
+    }
+    if (!calibrationEnd.value) {
+      calibrationEnd.value = clickPoint;
+      drawAllPolygons();
+      return;
+    }
     return;
   }
+
+  // 2) Edit points mode: pick topmost closed polygon under cursor
   if (editPointsMode.value) {
-    const clickPoint = normalizePoint(getCanvasCoords(event));
     const list = polygons.value as PolygonSurface[];
     let target: PolygonSurface | null = null;
     if (selectedPolygonId.value) {
@@ -902,10 +917,7 @@ const handleCanvasClick = (event: MouseEvent) => {
         const p = list[idx];
         if (!p) continue;
         if (p.visible === false || !p.closed || p.points.length < 3) continue;
-        if (isPointInPolygon(clickPoint, p.points)) {
-          target = p;
-          break;
-        }
+        if (isPointInPolygon(clickPoint, p.points)) { target = p; break; }
       }
     }
     if (target) {
@@ -914,9 +926,9 @@ const handleCanvasClick = (event: MouseEvent) => {
     }
     return;
   }
+
+  // 3) View mode: select polygon by click (topmost)
   if (!editingMode.value) {
-    const clickPoint = normalizePoint(getCanvasCoords(event));
-    // Legfelül lévő találat preferálása
     for (let idx = polygons.value.length - 1; idx >= 0; idx--) {
       const p = polygons.value[idx] as PolygonSurface | undefined;
       if (!p) continue;
@@ -931,22 +943,19 @@ const handleCanvasClick = (event: MouseEvent) => {
     drawAllPolygons();
     return;
   }
-  const clickPoint = normalizePoint(getCanvasCoords(event));
+
+  // 4) Draw mode: add points / close polygon
   pushHistory();
   if (!currentPolygon.value || currentPolygon.value.closed) {
-    currentPolygon.value = {
-      id: crypto.randomUUID(),
-      points: [],
-      closed: false,
-    };
+    currentPolygon.value = { id: crypto.randomUUID(), points: [], closed: false } as PolygonSurface;
   }
   const existingPoints = currentPolygon.value.points;
   if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
     currentPolygon.value.closed = true;
-    polygons.value.push(currentPolygon.value);
+    polygons.value.push(currentPolygon.value as PolygonSurface);
     currentPolygon.value = null;
   } else {
-    currentPolygon.value.points.push(clickPoint);
+    existingPoints.push(clickPoint);
   }
   drawAllPolygons();
 };
@@ -1102,6 +1111,47 @@ const toggleSavedReference = () => {
     container.scrollLeft = Math.max(0, midX - container.clientWidth / 2);
     container.scrollTop = Math.max(0, midY - container.clientHeight / 2);
   }
+  drawAllPolygons();
+};
+
+// Calibration controls (top-left)
+const onStartNewReference = () => {
+  if (!calibrationMode.value) setMode('calibrate');
+  calibrationStart.value = null;
+  calibrationEnd.value = null;
+  calibrationLength.value = null;
+  showSavedReference.value = false;
+  allowRefOverride.value = true;
+  drawAllPolygons();
+};
+
+const onChangeReferenceLength = () => {
+  const imgMeta = firstImage.value;
+  const img = imageRef.value;
+  if (!imgMeta || !img || !imgMeta.referenceStart || !imgMeta.referenceEnd) return;
+  const current = imgMeta.referenceLengthCm ?? null;
+  const input = typeof window !== 'undefined' ? window.prompt('Referencia hossza (cm)', current ? String(current) : '') : null;
+  if (input === null) return;
+  const lengthCm = Number(input);
+  if (!Number.isFinite(lengthCm) || lengthCm <= 0) return;
+  const dx = (imgMeta.referenceEnd.x - imgMeta.referenceStart.x) * img.naturalWidth;
+  const dy = (imgMeta.referenceEnd.y - imgMeta.referenceStart.y) * img.naturalHeight;
+  const pixelDist = Math.sqrt(dx * dx + dy * dy);
+  if (pixelDist <= 0) return;
+  meterPerPixel.value = (lengthCm / 100) / pixelDist;
+  imgMeta.referenceLengthCm = lengthCm;
+  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  highlightStoredReference();
+};
+
+const onClearReference = () => {
+  const imgMeta = firstImage.value;
+  if (!imgMeta) return;
+  imgMeta.referenceStart = null;
+  imgMeta.referenceEnd = null;
+  imgMeta.referenceLengthCm = null;
+  showSavedReference.value = false;
+  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
   drawAllPolygons();
 };
 
