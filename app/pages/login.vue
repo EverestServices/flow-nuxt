@@ -56,52 +56,124 @@ async function handleLogin() {
 </script>
 
 <template>
-  <!-- Keep your existing template, but you might want to conditionally render based on isClient -->
-  <div class="flex min-h-screen items-center justify-center">
-    <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
-      <!-- Login form content -->
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden">
+    <!-- Background Video -->
+    <div class="absolute inset-0 w-full h-full">
 
-        <div class="text-center">
-          <h1 class="text-2xl font-black">Everest:Flow</h1>
-          <p class="mt-2 text-gray-600">Sign in to your account</p>
+      <!-- Video overlay for better text readability -->
+    </div>
+
+    <!-- Login Card -->
+    <div class="relative z-10 w-full max-w-xl px-6">
+      <!-- Glass Card -->
+      <div class="backdrop-blur-xs bg-white/80 dark:bg-black/80 border border-white/50 dark:border-black dark:border-black-50 rounded-3xl p-8 space-y-8 transform transition-all duration-500 hover:scale-[1.02]">
+
+        <!-- Logo Section -->
+        <div class="text-center space-y-3">
+          <div class="flex justify-center mb-6">
+              <EverestLogo class="w-16 h-16 text-white" />
+          </div>
+          <h1 class="outfit text-4xl font-light text-gray-800 dark:text-white">
+            Everest<span class="font-black text-black dark:text-white bg-clip-text text-transparent">Flow</span>
+          </h1>
+          <p class="outfit text-gray-600 dark:text-gray-400 text-sm">Sign in to continue your journey</p>
         </div>
 
-        <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
-          <div v-if="errorMessage" class="bg-red-100 text-red-700 p-3 rounded">
-            {{ errorMessage }}
+        <!-- Error Message -->
+        <Transition name="slide-down">
+          <div v-if="errorMessage" class="backdrop-blur-sm bg-red-100/80 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded-2xl text-sm">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ errorMessage }}
+            </div>
           </div>
+        </Transition>
 
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-            <input
+        <!-- Login Form -->
+        <form @submit.prevent="handleLogin" class="space-y-6">
+          <!-- Email Input -->
+          <div class="space-y-2">
+            <label for="email" class="outfit block text-sm font-medium text-gray-700 dark:text-gray-300 pl-1">
+              Email Address
+            </label>
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                </svg>
+              </div>
+              <input
                 id="email"
                 v-model="email"
                 type="email"
                 required
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            />
+                class="outfit w-full pl-12 pr-4 py-3 bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="you@example.com"
+              />
+            </div>
           </div>
 
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-            <input
+          <!-- Password Input -->
+          <div class="space-y-2">
+            <label for="password" class="outfit block text-sm font-medium text-gray-700 dark:text-gray-300 pl-1">
+              Password
+            </label>
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <input
                 id="password"
                 v-model="password"
                 type="password"
                 required
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            />
+                class="outfit w-full pl-12 pr-4 py-3 bg-white/50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="Enter your password"
+              />
+            </div>
           </div>
 
+          <!-- Remember Me -->
+          <div class="flex items-center">
+            <input
+              id="remember"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 bg-white/50 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <label for="remember" class="ml-2 outfit block text-sm text-gray-700 dark:text-gray-300">
+              Remember me
+            </label>
+          </div>
+
+          <!-- Submit Button -->
           <button
-              type="submit"
-              :disabled="isLoading"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+            type="submit"
+            :disabled="isLoading"
+            class="relative w-full py-3 px-4 outfit font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 overflow-hidden group"
           >
-            {{ isLoading ? 'Signing in...' : 'Sign in' }}
+            <!-- Button shine effect -->
+            <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 group-hover:translate-x-full transition-all duration-700"></div>
+
+            <span v-if="!isLoading" class="flex items-center justify-center gap-2">
+              Sign in
+              <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </span>
+            <span v-else class="flex items-center justify-center gap-2">
+              <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Signing in...
+            </span>
           </button>
         </form>
-
+      </div>
     </div>
   </div>
 </template>

@@ -1,126 +1,98 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="close"
-  ></div>
+  <UIModal
+    v-model="isOpen"
+    :title="`Szerződések aláírása (${contracts.length})`"
+    size="full"
+    :scrollable="true"
+    @close="close"
+  >
+    <div class="space-y-8">
+      <!-- Contract Previews with individual signature pads -->
+      <div
+        v-for="(contract, index) in contracts"
+        :key="contract.id"
+        class="space-y-4"
+      >
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
+            {{ index + 1 }}
+          </div>
+          <h4 class="text-lg font-semibold text-gray-900 dark:text-white">
+            {{ contract.name }}
+          </h4>
+        </div>
 
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="close"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <ContractPreview
+          :contract="contract"
+          :contract-investments="getContractInvestments(contract.id)"
+          :contract-components="getContractComponents(contract.id)"
+          :contract-extra-costs="getContractExtraCosts(contract.id)"
+          :contract-discounts="getContractDiscounts(contract.id)"
+          :investments="investments"
+          :main-components="mainComponents"
+          :client-data="clientData"
+        />
+
+        <!-- Per-Contract Acceptance and Signature -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 space-y-4">
           <div class="flex items-center justify-between">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-              Szerződések aláírása ({{ contracts.length }})
-            </h3>
-            <button
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              @click="close"
-            >
-              <UIcon name="i-lucide-x" class="w-5 h-5" />
-            </button>
+            <label class="text-sm text-gray-700 dark:text-gray-300">
+              Elfogadom a szerződésben foglaltakat
+            </label>
+            <USwitch v-model="acceptContracts[contract.id]" />
           </div>
+
+          <SignaturePad
+            :ref="(el) => setSignaturePadRef(contract.id, el)"
+            v-model="signatures[contract.id]"
+          />
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-8">
-          <!-- Contract Previews with individual signature pads -->
-          <div
-            v-for="(contract, index) in contracts"
-            :key="contract.id"
-            class="space-y-4"
-          >
-            <div class="flex items-center gap-3 mb-4">
-              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold">
-                {{ index + 1 }}
-              </div>
-              <h4 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ contract.name }}
-              </h4>
-            </div>
+        <!-- Divider -->
+        <div
+          v-if="index < contracts.length - 1"
+          class="border-b-2 border-gray-300 dark:border-gray-600 my-8"
+        ></div>
+      </div>
 
-            <ContractPreview
-              :contract="contract"
-              :contract-investments="getContractInvestments(contract.id)"
-              :contract-components="getContractComponents(contract.id)"
-              :contract-extra-costs="getContractExtraCosts(contract.id)"
-              :contract-discounts="getContractDiscounts(contract.id)"
-              :investments="investments"
-              :main-components="mainComponents"
-              :client-data="clientData"
-            />
-
-            <!-- Per-Contract Acceptance and Signature -->
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 space-y-4">
-              <div class="flex items-center justify-between">
-                <label class="text-sm text-gray-700 dark:text-gray-300">
-                  Elfogadom a szerződésben foglaltakat
-                </label>
-                <USwitch v-model="acceptContracts[contract.id]" />
-              </div>
-
-              <SignaturePad
-                :ref="(el) => setSignaturePadRef(contract.id, el)"
-                v-model="signatures[contract.id]"
-              />
-            </div>
-
-            <!-- Divider -->
-            <div
-              v-if="index < contracts.length - 1"
-              class="border-b-2 border-gray-300 dark:border-gray-600 my-8"
-            ></div>
-          </div>
-
-          <!-- Global Switches -->
-          <div class="border-t-2 border-gray-300 dark:border-gray-600 pt-8 space-y-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
-            <div class="flex items-center justify-between">
-              <label class="text-sm text-gray-700 dark:text-gray-300">
-                Elfogadom az Adatkezelési Tájékoztatót
-              </label>
-              <USwitch v-model="acceptPrivacyPolicy" />
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="text-sm text-gray-700 dark:text-gray-300">
-                Szerződés elküldése e-mailben
-                <span class="text-gray-500 dark:text-gray-400 ml-2">
-                  ({{ clientEmail }})
-                </span>
-              </div>
-              <USwitch v-model="sendByEmail" />
-            </div>
-          </div>
+      <!-- Global Switches -->
+      <div class="border-t-2 border-gray-300 dark:border-gray-600 pt-8 space-y-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+        <div class="flex items-center justify-between">
+          <label class="text-sm text-gray-700 dark:text-gray-300">
+            Elfogadom az Adatkezelési Tájékoztatót
+          </label>
+          <USwitch v-model="acceptPrivacyPolicy" />
         </div>
 
-        <!-- Footer -->
-        <div class="p-6 border-t border-gray-200 dark:border-gray-700">
-          <div class="flex justify-end space-x-3">
-            <UButton
-              label="Mégse"
-              color="gray"
-              variant="outline"
-              @click="close"
-            />
-            <UButton
-              label="Összes aláírása"
-              icon="i-lucide-pen-tool"
-              color="primary"
-              :disabled="!canSignAll"
-              @click="handleSignAll"
-            />
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Szerződés elküldése e-mailben
+            <span class="text-gray-500 dark:text-gray-400 ml-2">
+              ({{ clientEmail }})
+            </span>
           </div>
+          <USwitch v-model="sendByEmail" />
         </div>
       </div>
     </div>
-  </Transition>
+
+    <template #footer>
+      <UIButtonEnhanced
+        variant="outline"
+        @click="close"
+      >
+        Mégse
+      </UIButtonEnhanced>
+      <UIButtonEnhanced
+        variant="primary"
+        :disabled="!canSignAll"
+        @click="handleSignAll"
+      >
+        <Icon name="i-lucide-pen-tool" class="w-4 h-4 mr-2" />
+        Összes aláírása
+      </UIButtonEnhanced>
+    </template>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
@@ -151,6 +123,7 @@ const emit = defineEmits<{
   }]
 }>()
 
+const isOpen = ref(false)
 const signaturePadRefs = ref<Record<string, InstanceType<typeof SignaturePad>>>({})
 const acceptContracts = reactive<Record<string, boolean>>({})
 const signatures = reactive<Record<string, string>>({})
@@ -203,8 +176,10 @@ const getContractDiscounts = (contractId: string): any[] => {
   return props.contractDiscounts[contractId] || []
 }
 
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
+// Sync with parent v-model
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value
+  if (value) {
     // Reset form when modal opens
     acceptPrivacyPolicy.value = false
     sendByEmail.value = false
@@ -221,7 +196,14 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
+watch(isOpen, (value) => {
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+})
+
 const close = () => {
+  isOpen.value = false
   emit('update:modelValue', false)
 }
 
@@ -237,26 +219,3 @@ const handleSignAll = () => {
   close()
 }
 </script>
-
-<style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-</style>

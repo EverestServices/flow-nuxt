@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen flex flex-col overflow-hidden">
+  <div class="min-h-screen flex flex-col overflow-hidden">
     <!-- Header -->
     <SurveyHeader
       :active-tab="activeTab"
@@ -24,14 +24,15 @@
       @select-contract="handleSelectContract"
     />
 
-    <!-- Navigation Tabs -->
+    <!-- Navigation Tabs (hidden when in marker mode/measure route) -->
     <SurveyNavigation
+      v-if="!isMeasureRoute"
       v-model="activeTab"
       :tabs="tabs"
     />
 
     <!-- Main Content Area -->
-    <div class="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div class="flex-1">
       <!-- Render nested /measure pages inside the dark content area -->
       <NuxtPage v-if="isMeasureRoute" />
 
@@ -52,17 +53,15 @@
           @open-camera="handleOpenCamera"
         />
 
-      <!-- Consultation Tab -->
-      <SurveyConsultation
-        v-else-if="activeTab === 'consultation'"
-        :survey-id="surveyId"
-        :system-design-open="consultationSystemDesignOpen"
-        :consultation-open="consultationPanelOpen"
-        @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
-        @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
-        @ai-scenarios="handleAIScenarios"
-        @new-scenario="handleNewScenario"
-      />
+        <!-- Consultation Tab -->
+        <SurveyConsultation
+          v-else-if="activeTab === 'consultation'"
+          :survey-id="surveyId"
+          :system-design-open="consultationSystemDesignOpen"
+          :consultation-open="consultationPanelOpen"
+          @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
+          @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
+        />
 
         <!-- Offer/Contract Tab -->
         <SurveyOfferContract
@@ -97,23 +96,16 @@
       :show-property-actions="activeTab === 'property-assessment'"
       :missing-items-count="missingItemsCount"
       :can-proceed="canProceed"
-      :active-scenario="activeScenario"
       :active-contract="activeContract"
       :can-save-contract="canSaveContract"
       :contract-count="contracts.length"
+      :show-scenario-footer="scenarioFooterVisible"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
       @generate-assessment="handleGenerateAssessment"
-      @toggle-marker-mode="handleToggleMarkerMode"
       @show-missing-items="handleShowMissingItems"
-      @consultation-save="handleConsultationSave"
-      @consultation-preview="handleConsultationPreview"
-      @ai-scenarios="handleAIScenarios"
-      @new-scenario="handleNewScenario"
-      @rename-scenario="handleRenameScenario"
-      @duplicate-scenario="handleDuplicateScenario"
-      @delete-scenario="handleDeleteScenario"
+      @toggle-scenario-footer="handleToggleScenarioFooter"
       @rename-contract="handleRenameContract"
       @duplicate-contract="handleDuplicateContract"
       @delete-contract="handleDeleteContract"
@@ -122,7 +114,135 @@
       @save-all-and-send="handleSaveAllAndSend"
       @sign-all-contracts="handleSignAllContracts"
       @next="handleNext"
-    />
+    >
+      <!-- Scenario Footer Content -->
+      <template #scenario-footer>
+        <div class="flex items-center gap-3">
+          <!-- AI Scenarios & New Scenario buttons -->
+          <div class="flex items-center gap-2">
+            <UIButtonEnhanced
+              variant="primary"
+              size="sm"
+              @click="handleAIScenarios"
+              class="whitespace-nowrap"
+            >
+              <Icon name="i-lucide-zap" class="w-4 h-4 mr-2" />
+              AI Scenarios
+            </UIButtonEnhanced>
+
+            <UIButtonEnhanced
+              variant="outline"
+              size="sm"
+              @click="handleNewScenario"
+              class="whitespace-nowrap"
+            >
+              <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
+              New Scenario
+            </UIButtonEnhanced>
+          </div>
+
+          <!-- Scenario List Dropdown with Management -->
+          <div v-if="scenarios.length > 0" class="relative">
+            <button
+              @click="scenarioDropdownOpen = !scenarioDropdownOpen"
+              class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <span class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ activeScenario?.name || 'Select Scenario' }}
+              </span>
+              <Icon name="i-lucide-chevron-down" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            </button>
+
+            <!-- Dropdown Menu -->
+            <Transition name="fade">
+              <div
+                v-if="scenarioDropdownOpen"
+                class="absolute bottom-full mb-2 right-0 w-64 backdrop-blur-md bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-white/20 dark:border-gray-700/20 shadow-2xl overflow-hidden"
+              >
+                <div class="max-h-64 overflow-y-auto">
+                  <button
+                    v-for="scenario in scenarios"
+                    :key="scenario.id"
+                    @click="handleSelectScenario(scenario.id); scenarioDropdownOpen = false"
+                    class="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-200 dark:border-gray-700 last:border-0"
+                    :class="{ 'bg-primary-50 dark:bg-primary-900/20': scenario.id === activeScenario?.id }"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ scenario.name }}
+                      </span>
+                      <Icon
+                        v-if="scenario.id === activeScenario?.id"
+                        name="i-lucide-check"
+                        class="w-4 h-4 text-primary-600 dark:text-primary-400"
+                      />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Active Scenario Management Buttons -->
+          <div v-if="activeScenario" class="flex items-center gap-2 pl-3 border-l border-gray-300 dark:border-gray-600">
+            <UIButtonEnhanced
+              size="xs"
+              variant="outline"
+              @click="handleRenameScenario"
+              class="whitespace-nowrap"
+            >
+              Rename
+            </UIButtonEnhanced>
+            <UIButtonEnhanced
+              size="xs"
+              variant="outline"
+              @click="handleDuplicateScenario"
+              class="whitespace-nowrap"
+            >
+              Duplicate
+            </UIButtonEnhanced>
+            <UIButtonEnhanced
+              size="xs"
+              variant="outline"
+              @click="handleDeleteScenario"
+              class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 whitespace-nowrap"
+            >
+              Delete
+            </UIButtonEnhanced>
+          </div>
+        </div>
+      </template>
+    </SurveyFooter>
+
+    <!-- Missing Items Floating Icon - Only visible on property-assessment tab -->
+    <button
+      v-if="activeTab === 'property-assessment' && missingItemsCount > 0"
+      class="fixed bottom-3 right-3 w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group z-50"
+      @click="handleShowMissingItems"
+    >
+      <div class="relative">
+        <Icon name="i-lucide-alert-triangle" class="w-6 h-6" />
+        <span class="absolute -top-3 -right-3 bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          {{ missingItemsCount }}
+        </span>
+      </div>
+    </button>
+
+    <!-- Mode Selector Dropdown - Bottom Left (Only on property-assessment tab) -->
+    <div
+      v-if="activeTab === 'property-assessment'"
+      class="fixed bottom-3 left-3 z-30"
+    >
+      <UISelect
+        v-model="displayMode"
+        :options="[
+          { label: 'Graphic Mode', value: 'graphic' },
+          { label: 'Marker Mode', value: 'marker' }
+        ]"
+        size="md"
+        class="w-48 rounded-full"
+      />
+    </div>
 
     <!-- Fotó feltöltési felugró ablak -->
     <SurveyPhotoUploadModal
@@ -347,6 +467,19 @@ const viewMode = ref<'photos' | 'data' | 'all'>('all')
 const investmentFilter = ref<string>('all')
 const showVisualization = ref<boolean>(true)
 
+// Display mode - graphic or marker
+const displayMode = ref<'graphic' | 'marker'>('graphic')
+
+// Watch displayMode changes and trigger marker mode toggle
+watch(displayMode, (newMode) => {
+  handleToggleMarkerMode(newMode === 'marker')
+})
+
+// Sync displayMode with route
+watch(isMeasureRoute, (isMeasure) => {
+  displayMode.value = isMeasure ? 'marker' : 'graphic'
+}, { immediate: true })
+
 // Page display mode - 'single' | 'investment' | 'all'
 const pageDisplayMode = ref<'single' | 'investment' | 'all'>('single')
 
@@ -375,6 +508,8 @@ const photoUploadInvestmentId = ref<string | undefined>()
 // Consultation panel states
 const consultationSystemDesignOpen = ref(true)
 const consultationPanelOpen = ref(false)
+const scenarioFooterVisible = ref(false)
+const scenarioDropdownOpen = ref(false)
 
 // Check if we can save contract (scenario must be selected in offer contract tab)
 const canSaveContract = computed(() => {
@@ -562,14 +697,6 @@ const handleNext = () => {
 // Consultation handlers
 const handleSelectScenario = (scenarioId: string) => {
   scenariosStore.setActiveScenario(scenarioId)
-}
-
-const handleConsultationSave = () => {
-  console.log('Consultation save')
-}
-
-const handleConsultationPreview = () => {
-  console.log('Consultation preview')
 }
 
 const handleAIScenarios = () => {
@@ -782,6 +909,10 @@ const handleRenameComplete = async (newName: string) => {
   }
 }
 
+const handleToggleScenarioFooter = () => {
+  scenarioFooterVisible.value = !scenarioFooterVisible.value
+}
+
 const handleConsultationPanelToggle = async (panelName: 'systemDesign' | 'consultation', isOpen: boolean) => {
   const supabase = useSupabaseClient()
 
@@ -940,4 +1071,8 @@ const handleSignAllContractsComplete = (data: any) => {
   console.log('Sign all contracts:', data)
   // TODO: Implement - Save all signatures and update contract statuses
 }
+
+definePageMeta({
+  layout: 'fullwidth'
+})
 </script>

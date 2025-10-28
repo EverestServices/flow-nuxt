@@ -1,37 +1,12 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="close"
-  ></div>
-
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="close"
-    >
-      <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-        @click.stop
-      >
-      <!-- Header -->
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-          Hiányzó elemek listája
-        </h2>
-        <button
-          class="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-          @click="close"
-        >
-          <UIcon name="i-heroicons-x-mark" class="w-6 h-6 text-gray-500" />
-        </button>
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+  <UIModal
+    v-model="isOpen"
+    title="Hiányzó elemek listája"
+    size="lg"
+    :scrollable="true"
+    @close="close"
+  >
+    <div class="space-y-6">
         <!-- Hiányos fotó kategóriák -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -94,14 +69,12 @@
             </button>
           </div>
         </div>
-      </div>
-      </div>
     </div>
-  </Transition>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 
 interface MissingPhotoCategory {
@@ -139,7 +112,21 @@ const emit = defineEmits<{
 const store = useSurveyInvestmentsStore()
 const { translatePage, translateField } = useI18n()
 
+const isOpen = ref(false)
+
+// Sync with parent v-model
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value
+})
+
+watch(isOpen, (value) => {
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+})
+
 const close = () => {
+  isOpen.value = false
   emit('update:modelValue', false)
 }
 
@@ -219,26 +206,3 @@ const handleQuestionClick = (pageId: string) => {
   emit('open-survey-page', pageId)
 }
 </script>
-
-<style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-</style>

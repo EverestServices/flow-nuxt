@@ -22,21 +22,29 @@
           <div class="flex items-center gap-6">
             <div class="relative">
               <img
-                :src="profileData.avatar_url || 'https://github.com/benjamincanac.png'"
+                :src="profileData.avatar_url || user?.user_metadata?.avatar_url || 'https://github.com/benjamincanac.png'"
                 alt="Profile Avatar"
                 class="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-700"
               />
               <label
                 for="avatar-upload"
-                class="absolute bottom-0 right-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-green-600 transition"
+                :class="[
+                  'absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center transition',
+                  uploadingAvatar ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 cursor-pointer hover:bg-green-600'
+                ]"
               >
-                <Icon name="i-lucide-camera" class="w-4 h-4 text-white" />
+                <Icon v-if="!uploadingAvatar" name="i-lucide-camera" class="w-4 h-4 text-white" />
+                <svg v-else class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               </label>
               <input
                 id="avatar-upload"
                 type="file"
                 accept="image/*"
                 class="hidden"
+                :disabled="uploadingAvatar"
                 @change="handleAvatarUpload"
               />
             </div>
@@ -47,6 +55,9 @@
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
                 JPG, PNG or GIF. Max size 5MB.
+              </p>
+              <p v-if="uploadingAvatar" class="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
+                Uploading...
               </p>
             </div>
           </div>
@@ -520,19 +531,37 @@ const fetchProfile = async () => {
   if (!user.value) return
 
   try {
+    // Set email from user object
+    profileData.value.email = user.value.email || ''
+
     const { data, error } = await client
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.value.id)
-      .single()
+      .maybeSingle()
 
-    if (error) {
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
       console.error('Error fetching profile:', error)
       return
     }
 
     if (data) {
-      profileData.value = { ...profileData.value, ...data }
+      profileData.value = { ...profileData.value, ...data, email: user.value.email }
+    } else {
+      // Profile doesn't exist yet, create it
+      const { error: insertError } = await client
+        .from('user_profiles')
+        .insert({
+          user_id: user.value.id,
+          email: user.value.email,
+          company_id: '550e8400-e29b-41d4-a716-446655440000', // Default company ID
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError)
+      }
     }
   } catch (err) {
     console.error('Error:', err)
@@ -696,6 +725,8 @@ const savePrivacySettings = async () => {
   }
 }
 
+const uploadingAvatar = ref(false)
+
 const handleAvatarUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -723,48 +754,130 @@ const handleAvatarUpload = async (event: Event) => {
     return
   }
 
+  uploadingAvatar.value = true
+
   try {
+    // Show uploading toast
+    toast.add({
+      title: 'Uploading...',
+      description: 'Please wait while we upload your avatar',
+      color: 'blue',
+    })
+
     // Create unique file name
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.value?.id}/${Date.now()}.${fileExt}`
 
+    console.log('Uploading file:', fileName)
+
     // Upload to Supabase Storage
-    const { data, error } = await client.storage
+    const { data: uploadData, error: uploadError } = await client.storage
       .from('avatars')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false,
+        upsert: true, // Changed to true to allow overwriting
       })
 
-    if (error) throw error
+    if (uploadError) {
+      console.error('Upload error:', uploadError)
+      throw uploadError
+    }
+
+    console.log('Upload successful:', uploadData)
 
     // Get public URL
-    const { data: { publicUrl } } = client.storage
+    const { data: urlData } = client.storage
       .from('avatars')
       .getPublicUrl(fileName)
 
-    // Update profile with new avatar URL
-    const { error: updateError } = await client
+    const publicUrl = urlData.publicUrl
+    console.log('Public URL:', publicUrl)
+
+    // First check if user profile exists
+    const { data: existingProfile, error: checkError } = await client
       .from('user_profiles')
-      .update({ avatar_url: publicUrl })
+      .select('*')
       .eq('user_id', user.value?.id)
+      .maybeSingle()
 
-    if (updateError) throw updateError
+    console.log('Existing profile:', existingProfile)
 
+    if (checkError) {
+      console.error('Check error:', checkError)
+    }
+
+    let profileUpdate, updateError
+
+    if (existingProfile) {
+      // Profile exists - UPDATE only
+      console.log('Updating existing profile...')
+      const result = await client
+        .from('user_profiles')
+        .update({
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.value?.id)
+        .select()
+
+      profileUpdate = result.data
+      updateError = result.error
+    } else {
+      // Profile doesn't exist - INSERT
+      console.log('Creating new profile...')
+      const result = await client
+        .from('user_profiles')
+        .insert({
+          user_id: user.value?.id,
+          avatar_url: publicUrl,
+          email: user.value?.email,
+          company_id: '550e8400-e29b-41d4-a716-446655440000', // Default company ID
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+
+      profileUpdate = result.data
+      updateError = result.error
+    }
+
+    if (updateError) {
+      console.error('Update error:', updateError)
+      throw updateError
+    }
+
+    console.log('Profile updated:', profileUpdate)
+
+    // Update local state
     profileData.value.avatar_url = publicUrl
+
+    // Also update Supabase auth user metadata
+    const { error: metadataError } = await client.auth.updateUser({
+      data: {
+        avatar_url: publicUrl
+      }
+    })
+
+    if (metadataError) {
+      console.warn('Metadata update error:', metadataError)
+    }
 
     toast.add({
       title: 'Success',
       description: 'Avatar uploaded successfully',
       color: 'green',
     })
-  } catch (error) {
-    console.error('Upload error:', error)
+  } catch (error: any) {
+    console.error('Avatar upload error:', error)
     toast.add({
       title: 'Error',
-      description: 'Failed to upload avatar',
+      description: error.message || 'Failed to upload avatar',
       color: 'red',
     })
+  } finally {
+    uploadingAvatar.value = false
+    // Reset input
+    target.value = ''
   }
 }
 

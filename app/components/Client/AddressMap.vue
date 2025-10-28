@@ -19,6 +19,148 @@ const mapContainer = ref<HTMLElement>()
 const map = ref<any>(null)
 const marker = ref<any>(null)
 const geocoder = ref<any>(null)
+const infoWindow = ref<any>(null)
+
+// Dark mode map styles
+const darkMapStyles = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b9a76" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#38414e" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#746855" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1f2835" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f3d19c" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2f3948" }],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#17263c" }],
+  },
+]
+
+// Check if dark mode is enabled
+const isDarkMode = computed(() => {
+  if (process.client) {
+    return document.documentElement.classList.contains('dark')
+  }
+  return false
+})
+
+// Create styled InfoWindow content
+const createInfoWindowContent = (address: string) => {
+  const isDark = isDarkMode.value
+  return `
+    <div class="custom-info-window ${isDark ? 'dark' : 'light'}" style="
+      padding: 12px 16px;
+      color: ${isDark ? '#e5e7eb' : '#1f2937'};
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      min-width: 150px;
+      font-weight: 500;
+    ">
+      ${address}
+    </div>
+  `
+}
+
+// Apply InfoWindow styling
+const applyInfoWindowStyling = () => {
+  if (!infoWindow.value) return
+
+  // Wait for InfoWindow to render in DOM
+  setTimeout(() => {
+    const infoWindowElement = document.querySelector('.gm-style-iw')
+    const infoWindowContainer = document.querySelector('.gm-style-iw-d')
+    const closeButton = document.querySelector('.gm-style-iw-tc')
+
+    if (infoWindowElement) {
+      const isDark = isDarkMode.value
+      // Style the main container
+      infoWindowElement.style.backgroundColor = isDark ? '#1f2937' : '#ffffff'
+      infoWindowElement.style.borderRadius = '12px'
+      infoWindowElement.style.boxShadow = isDark
+        ? '0 10px 25px rgba(0, 0, 0, 0.5)'
+        : '0 4px 12px rgba(0, 0, 0, 0.15)'
+
+      // Style the content container
+      if (infoWindowContainer) {
+        infoWindowContainer.style.backgroundColor = isDark ? '#1f2937' : '#ffffff'
+        infoWindowContainer.style.overflow = 'visible'
+      }
+
+      // Style the close button container (arrow)
+      if (closeButton) {
+        closeButton.style.backgroundColor = isDark ? '#1f2937' : '#ffffff'
+      }
+    }
+  }, 50)
+}
 
 // Initialize map
 const initMap = () => {
@@ -31,7 +173,8 @@ const initMap = () => {
     center: { lat: 47.497912, lng: 19.040235 },
     zoom: 13,
     mapTypeId: 'roadmap',
-    mapTypeControl: false
+    mapTypeControl: false,
+    styles: isDarkMode.value ? darkMapStyles : []
   })
 
   // Add initial marker
@@ -166,11 +309,18 @@ const updateMapLocation = async () => {
       }
     }
 
-    // Add popup with address
-    const infoWindow = new window.google.maps.InfoWindow({
-      content: props.address
-    })
-    infoWindow.open(map.value, marker.value)
+    // Create or update InfoWindow with styled content
+    if (infoWindow.value) {
+      infoWindow.value.setContent(createInfoWindowContent(props.address))
+    } else {
+      infoWindow.value = new window.google.maps.InfoWindow({
+        content: createInfoWindowContent(props.address)
+      })
+    }
+    infoWindow.value.open(map.value, marker.value)
+
+    // Apply custom styling to InfoWindow wrapper
+    applyInfoWindowStyling()
   }
 }
 
@@ -178,6 +328,21 @@ const updateMapLocation = async () => {
 watch(() => props.address, async () => {
   await updateMapLocation()
 }, { immediate: false })
+
+// Watch dark mode changes and update map style and InfoWindow
+watch(isDarkMode, (newValue) => {
+  if (map.value) {
+    map.value.setOptions({
+      styles: newValue ? darkMapStyles : []
+    })
+  }
+
+  // Update InfoWindow styling when dark mode changes
+  if (infoWindow.value && props.address) {
+    infoWindow.value.setContent(createInfoWindowContent(props.address))
+    applyInfoWindowStyling()
+  }
+})
 
 // Lifecycle
 onMounted(async () => {

@@ -1,80 +1,61 @@
 <template>
-  <div class="h-full bg-gray-50 dark:bg-gray-900">
-    <div class="h-full grid gap-6 p-6" :class="showVisualization ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'">
-      <!-- Left Side: Investment Selection or Survey Questions -->
-      <div class="flex flex-col h-full overflow-hidden">
-        <!-- Empty State (No investments selected) -->
-        <div v-if="!hasInvestments" class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm">
-          <!-- Message -->
-          <p class="text-center text-gray-600 dark:text-gray-400 mb-8">
-            Please select at least one service by clicking the "Add Investment" button.
-          </p>
+  <div class="h-full grid gap-6 " :class="showVisualization ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'">
+    <!-- Left Side: Investment Selection or Survey Questions -->
+    <div class="flex flex-col items-center justify-center min-h-screen z-20">
+      <!-- Empty State (No investments selected) -->
+      <div v-if="!hasInvestments" class="bg-white/50 border-white dark:bg-black/20 dark:border-black/20 rounded-3xl p-8 w-full ">
+        <!-- Message -->
+        <p class="text-center text-gray-600 dark:text-white mb-8">
+          Please select at least one service by clicking the "Add Investment" button.
+        </p>
 
-          <!-- Random Investment Icons -->
-          <div class="flex items-center justify-center gap-6 mb-8">
-            <div
-              v-for="icon in randomIcons"
-              :key="icon"
-              class="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
-            >
-              <UIcon
-                :name="icon"
-                class="w-8 h-8 text-gray-400 dark:text-gray-500"
-              />
-            </div>
-          </div>
-
-          <!-- Add Investment Button -->
-          <div class="flex justify-center">
-            <UButton
-              icon="i-lucide-plus"
-              label="Add Investment"
-              color="primary"
-              size="lg"
-              @click="openInvestmentModal"
+        <!-- Random Investment Icons -->
+        <div class="flex items-center justify-center gap-6 mb-8">
+          <div
+            v-for="icon in randomIcons"
+            :key="icon"
+            class="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center"
+          >
+            <UIcon
+              :name="icon"
+              class="w-8 h-8 text-gray-400 dark:text-gray-500"
             />
           </div>
         </div>
 
-        <!-- Survey Page Content (When investments are selected) -->
-        <div v-else class="h-full flex flex-col overflow-y-auto space-y-4 pr-2">
-          <!-- Loop through displayed investments -->
-          <div
-            v-for="investment in displayedInvestments"
-            :key="investment.id"
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col"
+        <!-- Add Investment Button -->
+        <div class="flex justify-center">
+          <UIButtonEnhanced
+            variant="primary"
+            size="lg"
+            @click="openInvestmentModal"
           >
-            <!-- Investment Header -->
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <!-- Investment Navigation with Arrows (csak ha több investment van ÉS nem 'all' módban vagyunk) -->
-              <div v-if="showInvestmentNavigation" class="flex items-center justify-center gap-2">
-                <button
-                  :disabled="!hasPreviousInvestment"
-                  class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                  @click="goToPreviousInvestment"
-                >
-                  <UIcon name="i-lucide-chevron-left" class="w-5 h-5" />
-                </button>
-                <div class="flex items-center gap-2 min-w-[200px] justify-center">
-                  <UIcon
-                    :name="investment.icon"
-                    class="w-5 h-5 text-gray-600 dark:text-gray-400"
-                  />
-                  <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ investment.name }}
-                  </span>
-                </div>
-                <button
-                  :disabled="!hasNextInvestment"
-                  class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                  @click="goToNextInvestment"
-                >
-                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5" />
-                </button>
-              </div>
+            <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
+            Add Investment
+          </UIButtonEnhanced>
+        </div>
+      </div>
 
-              <!-- Investment címe (ha nincs navigáció) -->
-              <div v-else class="flex items-center justify-center gap-2">
+      <!-- Survey Page Content (When investments are selected) -->
+      <div v-else class="h-full flex flex-col w-full space-y-4 pr-2 my-18">
+        <!-- Loop through displayed investments -->
+        <div
+          v-for="investment in displayedInvestments"
+          :key="investment.id"
+          class="bg-white dark:bg-black/30 rounded-3xl flex flex-col"
+        >
+          <!-- Investment Header -->
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <!-- Investment Navigation with Arrows (csak ha több investment van ÉS nem 'all' módban vagyunk) -->
+            <div v-if="showInvestmentNavigation" class="flex items-center justify-center gap-2">
+              <button
+                :disabled="!hasPreviousInvestment"
+                class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                @click="goToPreviousInvestment"
+              >
+                <UIcon name="i-lucide-chevron-left" class="w-5 h-5" />
+              </button>
+              <div class="flex items-center gap-2 min-w-[200px] justify-center">
                 <UIcon
                   :name="investment.icon"
                   class="w-5 h-5 text-gray-600 dark:text-gray-400"
@@ -83,240 +64,258 @@
                   {{ investment.name }}
                 </span>
               </div>
+              <button
+                :disabled="!hasNextInvestment"
+                class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                @click="goToNextInvestment"
+              >
+                <UIcon name="i-lucide-chevron-right" class="w-5 h-5" />
+              </button>
             </div>
 
-            <!-- Loop through displayed pages for this investment -->
-            <div
-              v-for="page in getDisplayedPagesForInvestment(investment.id)"
-              :key="page.id"
-              class="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
-            >
-              <!-- Page Navigation Header (csak 'single' módban, ha több page van) -->
-              <div v-if="showPageNavigation" class="p-3 bg-gray-50 dark:bg-gray-900 flex items-center justify-center gap-2">
-                <button
-                  :disabled="!hasPreviousPage"
-                  class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                  @click="goToPreviousPage"
+            <!-- Investment címe (ha nincs navigáció) -->
+            <div v-else class="flex items-center justify-center gap-2">
+              <UIcon
+                :name="investment.icon"
+                class="w-5 h-5 text-gray-600 dark:text-gray-400"
+              />
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ investment.name }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Loop through displayed pages for this investment -->
+          <div
+            v-for="page in getDisplayedPagesForInvestment(investment.id)"
+            :key="page.id"
+            class="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+          >
+            <!-- Page Navigation Header (csak 'single' módban, ha több page van) -->
+            <div v-if="showPageNavigation" class="p-3 bg-gray-50 dark:bg-gray-900 flex items-center justify-center gap-2">
+              <button
+                :disabled="!hasPreviousPage"
+                class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                @click="goToPreviousPage"
+              >
+                <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
+              </button>
+              <span class="text-xs font-medium text-gray-600 dark:text-gray-400 min-w-[150px] text-center">
+                {{ translatePage(page.name) }}
+              </span>
+              <button
+                :disabled="!hasNextPage"
+                class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                @click="goToNextPage"
+              >
+                <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
+              </button>
+            </div>
+
+            <!-- Page címe (ha nincs single mód) -->
+            <div v-else class="p-3 bg-gray-50 dark:bg-gray-900">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+                {{ translatePage(page.name) }}
+              </h4>
+            </div>
+
+            <!-- Survey Questions -->
+            <div class="p-6">
+              <!-- Allow Multiple: Accordion-based instances -->
+              <div v-if="page.allow_multiple" class="space-y-3">
+                <!-- Empty state message when no instances -->
+                <div v-if="getPageInstances(page.id).length === 0" class="text-center text-gray-500 dark:text-gray-400 py-6">
+                  <p class="text-sm">Nincs még hozzáadott elem.</p>
+                  <p class="text-xs mt-1">Kattints az alábbi gombra új hozzáadásához.</p>
+                </div>
+
+                <UAccordion
+                  v-for="(instance, index) in getPageInstances(page.id)"
+                  :key="index"
+                  :items="[{
+                    label: getInstanceName(page, index),
+                    slot: `instance-${page.id}-${index}`,
+                    defaultOpen: index === 0
+                  }]"
                 >
-                  <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
-                </button>
-                <span class="text-xs font-medium text-gray-600 dark:text-gray-400 min-w-[150px] text-center">
-                  {{ translatePage(page.name) }}
-                </span>
-                <button
-                  :disabled="!hasNextPage"
-                  class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                  @click="goToNextPage"
-                >
-                  <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
-                </button>
-              </div>
+                  <template #default="{ item, open }">
+                    <div class="flex items-center justify-between w-full">
+                      <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ getInstanceName(page, index) }}
+                      </span>
+                      <!-- Delete button -->
+                      <button
+                        v-if="canDeleteInstance(page, index)"
+                        class="ml-2 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400"
+                        @click.stop="deleteInstance(page, index)"
+                      >
+                        <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </template>
 
-              <!-- Page címe (ha nincs single mód) -->
-              <div v-else class="p-3 bg-gray-50 dark:bg-gray-900">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
-                  {{ translatePage(page.name) }}
-                </h4>
-              </div>
-
-              <!-- Survey Questions -->
-              <div class="p-6">
-                <!-- Allow Multiple: Accordion-based instances -->
-                <div v-if="page.allow_multiple" class="space-y-3">
-                  <!-- Empty state message when no instances -->
-                  <div v-if="getPageInstances(page.id).length === 0" class="text-center text-gray-500 dark:text-gray-400 py-6">
-                    <p class="text-sm">Nincs még hozzáadott elem.</p>
-                    <p class="text-xs mt-1">Kattints az alábbi gombra új hozzáadásához.</p>
-                  </div>
-
-                  <UAccordion
-                    v-for="(instance, index) in getPageInstances(page.id)"
-                    :key="index"
-                    :items="[{
-                      label: getInstanceName(page, index),
-                      slot: `instance-${page.id}-${index}`,
-                      defaultOpen: index === 0
-                    }]"
-                  >
-                    <template #default="{ item, open }">
-                      <div class="flex items-center justify-between w-full">
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">
-                          {{ getInstanceName(page, index) }}
-                        </span>
-                        <!-- Delete button -->
-                        <button
-                          v-if="canDeleteInstance(page, index)"
-                          class="ml-2 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400"
-                          @click.stop="deleteInstance(page, index)"
-                        >
-                          <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
-                        </button>
+                  <template #[`instance-${page.id}-${index}`]>
+                    <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                      <!-- Normal Questions -->
+                      <div
+                        v-for="question in getNormalQuestions(page.id)"
+                        :key="question.id"
+                        class="space-y-2"
+                      >
+                        <SurveyQuestionRenderer
+                          :question="question"
+                          :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                          @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                        />
                       </div>
-                    </template>
 
-                    <template #[`instance-${page.id}-${index}`]>
-                      <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                        <!-- Normal Questions -->
-                        <div
-                          v-for="question in getNormalQuestions(page.id)"
-                          :key="question.id"
-                          class="space-y-2"
+                      <!-- Special Questions Accordion -->
+                      <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
+                        <UAccordion
+                          :items="[{
+                            label: 'Egyéb kérdések',
+                            slot: `special-${page.id}-${index}`,
+                            defaultOpen: false
+                          }]"
                         >
-                          <SurveyQuestionRenderer
-                            :question="question"
-                            :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                            @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                          />
-                        </div>
-
-                        <!-- Special Questions Accordion -->
-                        <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
-                          <UAccordion
-                            :items="[{
-                              label: 'Egyéb kérdések',
-                              slot: `special-${page.id}-${index}`,
-                              defaultOpen: false
-                            }]"
-                          >
-                            <template #[`special-${page.id}-${index}`]>
-                              <div class="p-4 space-y-6 bg-white dark:bg-gray-900 rounded-b-lg">
-                                <div
-                                  v-for="question in getSpecialQuestions(page.id)"
-                                  :key="question.id"
-                                  class="space-y-2"
-                                >
-                                  <SurveyQuestionRenderer
-                                    :question="question"
-                                    :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                                    @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                                  />
-                                </div>
-                                <!-- Close Button -->
-                                <div class="flex justify-end pt-2">
-                                  <UButton
-                                    label="Becsuk"
-                                    color="gray"
-                                    variant="outline"
-                                    size="sm"
-                                    @click="closeAccordion"
-                                  />
-                                </div>
+                          <template #[`special-${page.id}-${index}`]>
+                            <div class="p-4 space-y-6 bg-white dark:bg-gray-900 rounded-b-lg">
+                              <div
+                                v-for="question in getSpecialQuestions(page.id)"
+                                :key="question.id"
+                                class="space-y-2"
+                              >
+                                <SurveyQuestionRenderer
+                                  :question="question"
+                                  :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                                  @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                                />
                               </div>
-                            </template>
-                          </UAccordion>
-                        </div>
+                              <!-- Close Button -->
+                              <div class="flex justify-end pt-2">
+                                <UButton
+                                  label="Becsuk"
+                                  color="gray"
+                                  variant="outline"
+                                  size="sm"
+                                  @click="closeAccordion"
+                                />
+                              </div>
+                            </div>
+                          </template>
+                        </UAccordion>
                       </div>
-                    </template>
-                  </UAccordion>
+                    </div>
+                  </template>
+                </UAccordion>
 
-                  <!-- Add Instance Button -->
-                  <div class="flex justify-center pt-2">
-                    <UButton
-                      :label="`${page.name} hozzáadása`"
-                      icon="i-lucide-plus"
-                      color="primary"
-                      variant="outline"
-                      size="sm"
-                      @click="addInstance(page.id)"
+                <!-- Add Instance Button -->
+                <div class="flex justify-center pt-2">
+                  <UButton
+                    :label="`${page.name} hozzáadása`"
+                    icon="i-lucide-plus"
+                    color="primary"
+                    variant="outline"
+                    size="sm"
+                    @click="addInstance(page.id)"
+                  />
+                </div>
+              </div>
+
+              <!-- No Allow Multiple: Regular question rendering -->
+              <div v-else>
+                <div v-if="store.surveyQuestions[page.id]?.length > 0" class="space-y-6">
+                  <!-- Normal Questions -->
+                  <div
+                    v-for="question in getNormalQuestions(page.id)"
+                    :key="question.id"
+                    class="space-y-2"
+                  >
+                    <SurveyQuestionRenderer
+                      :question="question"
+                      :model-value="getQuestionValue(question.name)"
+                      @update:model-value="updateQuestionValue(question.name, $event)"
                     />
                   </div>
-                </div>
 
-                <!-- No Allow Multiple: Regular question rendering -->
-                <div v-else>
-                  <div v-if="store.surveyQuestions[page.id]?.length > 0" class="space-y-6">
-                    <!-- Normal Questions -->
-                    <div
-                      v-for="question in getNormalQuestions(page.id)"
-                      :key="question.id"
-                      class="space-y-2"
+                  <!-- Special Questions Accordion -->
+                  <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
+                    <UAccordion
+                      :items="[{
+                        label: 'Egyéb kérdések',
+                        slot: `special-${page.id}`,
+                        defaultOpen: false
+                      }]"
                     >
-                      <SurveyQuestionRenderer
-                        :question="question"
-                        :model-value="getQuestionValue(question.name)"
-                        @update:model-value="updateQuestionValue(question.name, $event)"
-                      />
-                    </div>
-
-                    <!-- Special Questions Accordion -->
-                    <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
-                      <UAccordion
-                        :items="[{
-                          label: 'Egyéb kérdések',
-                          slot: `special-${page.id}`,
-                          defaultOpen: false
-                        }]"
-                      >
-                        <template #[`special-${page.id}`]>
-                          <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                            <div
-                              v-for="question in getSpecialQuestions(page.id)"
-                              :key="question.id"
-                              class="space-y-2"
-                            >
-                              <SurveyQuestionRenderer
-                                :question="question"
-                                :model-value="getQuestionValue(question.name)"
-                                @update:model-value="updateQuestionValue(question.name, $event)"
-                              />
-                            </div>
-                            <!-- Close Button -->
-                            <div class="flex justify-end pt-2">
-                              <UButton
-                                label="Becsuk"
-                                color="gray"
-                                variant="outline"
-                                size="sm"
-                                @click="closeAccordion"
-                              />
-                            </div>
+                      <template #[`special-${page.id}`]>
+                        <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                          <div
+                            v-for="question in getSpecialQuestions(page.id)"
+                            :key="question.id"
+                            class="space-y-2"
+                          >
+                            <SurveyQuestionRenderer
+                              :question="question"
+                              :model-value="getQuestionValue(question.name)"
+                              @update:model-value="updateQuestionValue(question.name, $event)"
+                            />
                           </div>
-                        </template>
-                      </UAccordion>
-                    </div>
-                  </div>
-                  <div v-else class="text-center text-gray-500 dark:text-gray-400">
-                    No questions available for this page.
+                          <!-- Close Button -->
+                          <div class="flex justify-end pt-2">
+                            <UButton
+                              label="Becsuk"
+                              color="gray"
+                              variant="outline"
+                              size="sm"
+                              @click="closeAccordion"
+                            />
+                          </div>
+                        </div>
+                      </template>
+                    </UAccordion>
                   </div>
                 </div>
+                <div v-else class="text-center text-gray-500 dark:text-gray-400">
+                  No questions available for this page.
+                </div>
               </div>
+            </div>
 
-              <!-- Camera Button (csak 'single' vagy 'investment' módban) -->
-              <div v-if="props.pageDisplayMode !== 'all'" class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-center">
-                <button
-                  class="p-2 rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  @click="handleCameraClick"
-                >
-                  <UIcon name="i-lucide-camera" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
+            <!-- Camera Button (csak 'single' vagy 'investment' módban) -->
+            <div v-if="props.pageDisplayMode !== 'all'" class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-center">
+              <button
+                class="p-2 rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                @click="handleCameraClick"
+              >
+                <UIcon name="i-lucide-camera" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Right Side: House Visualization -->
-      <div v-if="showVisualization" class="flex items-center justify-center">
-        <SurveyHouseVisualization
-          :survey-id="surveyId"
-          :selected-investments="selectedInvestments"
-          :survey-pages="allSurveyPages"
-          :document-categories="allDocumentCategories"
-          :view-mode="viewMode"
-          :investment-filter="investmentFilter"
-          @page-click="handlePageClick"
-          @category-click="handleCategoryClick"
-          @toggle-list-view="emit('toggle-list-view')"
-        />
-      </div>
     </div>
 
-    <!-- Investment kiválasztási felugró ablak -->
-    <SurveyInvestmentModal
-      v-model="showInvestmentModal"
-      :survey-id="surveyId"
-    />
+    <!-- Right Side: House Visualization -->
+    <div v-if="showVisualization" class="flex items-center justify-center h-screen fixed top-0 right-0 w-[1000px]">
+      <SurveyHouseVisualization
+        :survey-id="surveyId"
+        :selected-investments="selectedInvestments"
+        :survey-pages="allSurveyPages"
+        :document-categories="allDocumentCategories"
+        :view-mode="viewMode"
+        :investment-filter="investmentFilter"
+        @page-click="handlePageClick"
+        @category-click="handleCategoryClick"
+        @toggle-list-view="emit('toggle-list-view')"
+      />
+    </div>
   </div>
+
+  <!-- Investment kiválasztási felugró ablak -->
+  <SurveyInvestmentModal
+    v-model="showInvestmentModal"
+    :survey-id="surveyId"
+  />
 </template>
 
 <script setup lang="ts">

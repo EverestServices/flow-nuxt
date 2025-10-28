@@ -154,12 +154,20 @@
           <div
             v-for="menu in items"
             :key="menu.label"
-            class="flex items-center hover:bg-white/30 dark:hover:bg-white/10 w-full transition transition-all rounded-4xl px-4 py-2 cursor-pointer"
+            :class="[
+              'flex items-center w-full transition transition-all rounded-4xl px-4 py-2 cursor-pointer',
+              menu.label === 'Logout' ? 'hover:bg-red-500/20' : 'hover:bg-white/30 dark:hover:bg-white/10'
+            ]"
             @mouseenter="menu.children ? showSubmenu(menu.label) : null"
             @mouseleave="menu.children ? scheduleHideSubmenu() : null"
           >
             <button
-                class="border border-white dark:border-black/50 bg-white/40 dark:bg-black/30 backdrop-blur-sm w-14 h-14 rounded-full flex items-center justify-center mr-4 text-black dark:text-white"
+                :class="[
+                  'border backdrop-blur-sm w-14 h-14 rounded-full flex items-center justify-center mr-4',
+                  menu.label === 'Logout'
+                    ? 'border-red-300 dark:border-red-900/50 bg-red-100/40 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                    : 'border-white dark:border-black/50 bg-white/40 dark:bg-black/30 text-black dark:text-white'
+                ]"
                 @click="handleMenuItemClick(menu)"
             >
               <IconDashboard class="w-6 h-6" v-if="menu.label === 'Dashboard'" />
@@ -168,13 +176,23 @@
               <IconAcademy class="w-6 h-6" v-else-if="menu.label === 'Academy'" />
               <IconLocation class="w-6 h-6" v-else-if="menu.label === 'Location'" />
               <IconSettings class="w-6 h-6" v-else-if="menu.label === 'Settings'" />
+              <svg v-else-if="menu.label === 'Logout'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
             </button>
 
             <div v-if="menu.children" class="outfit font-medium text-xl text-black dark:text-white cursor-pointer">
               {{ menu.label }}
             </div>
-            <div class="outfit font-medium text-xl text-black dark:text-white" v-else>
-              <NuxtLink :to="menu.to" @click="closeMenu" class="">{{ menu.label }}</NuxtLink>
+            <div
+              v-else
+              :class="[
+                'outfit font-medium text-xl cursor-pointer',
+                menu.label === 'Logout' ? 'text-red-600 dark:text-red-400' : 'text-black dark:text-white'
+              ]"
+            >
+              <NuxtLink v-if="menu.to !== '#'" :to="menu.to" @click="closeMenu">{{ menu.label }}</NuxtLink>
+              <span v-else>{{ menu.label }}</span>
             </div>
           </div>
         </div>
@@ -323,8 +341,19 @@ const currentSubmenuItems = computed(() => {
 
 // Logout function
 const handleLogout = async () => {
-  await authStore.logout();
-  await navigateTo('/login');
+  try {
+    const supabaseClient = useSupabaseClient();
+    await supabaseClient.auth.signOut();
+
+    // Also clear the old auth store if it exists
+    await authStore.logout();
+
+    // Close menu and navigate to login
+    closeMenu();
+    await navigateTo('/login');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
 };
 
 // Function to open menu with specific section
@@ -352,6 +381,12 @@ const handleLocationClick = async () => {
 
 // Handle menu item click in slide panel
 const handleMenuItemClick = (menu: any) => {
+  // Handle logout specifically
+  if (menu.label === 'Logout') {
+    handleLogout();
+    return;
+  }
+
   if (!menu.children || menu.children.length === 0) {
     // If no children, navigate directly and close menu
     navigateTo(menu.to);
@@ -455,6 +490,11 @@ const items: NavigationMenuItem[] = [
     label: 'Settings',
     to: '/settings'
   },
+  {
+    label: 'Logout',
+    to: '#',
+    icon: 'logout'
+  }
 ]
 
 // Computed properties

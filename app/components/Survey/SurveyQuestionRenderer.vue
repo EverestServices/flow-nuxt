@@ -12,7 +12,7 @@
         <span v-if="question.is_required" class="text-red-500">*</span>
       </label>
       <div class="flex items-center space-x-2">
-        <UInput
+        <UIInput
           :model-value="modelValue || question.default_value"
           :type="question.type === 'number' ? 'number' : 'text'"
           :placeholder="question.placeholder_value"
@@ -34,7 +34,7 @@
         {{ questionLabel }}
         <span v-if="question.is_required" class="text-red-500">*</span>
       </label>
-      <UTextarea
+      <UITextarea
         :model-value="modelValue || question.default_value"
         :placeholder="question.placeholder_value"
         :required="question.is_required"
