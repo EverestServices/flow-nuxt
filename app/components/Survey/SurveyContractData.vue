@@ -3,7 +3,7 @@
     <!-- Contract Selector Section -->
     <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
       <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-        Select contracts (maximum 3):
+        {{ $t('survey.contractData.selectContracts') }}
       </h3>
 
       <!-- Contract Buttons -->
@@ -46,7 +46,7 @@
 
       <!-- No contracts message -->
       <p v-if="contracts.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-        No contracts available. Please create contracts in the Offer/Contract tab first.
+        {{ $t('survey.contractData.noContracts') }}
       </p>
     </div>
 
@@ -73,9 +73,9 @@
             <!-- Client Data Section -->
             <div>
               <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">Client Data</h5>
+                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.clientData') }}</h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">Copy to:</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
                     <UButton
                       v-for="otherContract in getOtherContracts(contract.id)"
@@ -98,7 +98,7 @@
                   <UInput
                     v-model="contractsData[contract.id].client_name"
                     size="sm"
-                    placeholder="Client name"
+                    :placeholder="$t('survey.contractData.clientName')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -111,7 +111,7 @@
                   <UInput
                     v-model="contractsData[contract.id].client_address"
                     size="sm"
-                    placeholder="Client address"
+                    :placeholder="$t('survey.contractData.clientAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -124,7 +124,7 @@
                   <UInput
                     v-model="contractsData[contract.id].client_phone"
                     size="sm"
-                    placeholder="Phone number"
+                    :placeholder="$t('survey.contractData.phoneNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -138,7 +138,7 @@
                     v-model="contractsData[contract.id].client_email"
                     type="email"
                     size="sm"
-                    placeholder="Email address"
+                    :placeholder="$t('survey.contractData.emailAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -149,9 +149,9 @@
             <!-- Personal Details Section -->
             <div>
               <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">Personal Details</h5>
+                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.personalDetails') }}</h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">Copy to:</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
                     <UButton
                       v-for="otherContract in getOtherContracts(contract.id)"
@@ -174,7 +174,7 @@
                   <UInput
                     v-model="contractsData[contract.id].birth_place"
                     size="sm"
-                    placeholder="Birth place"
+                    :placeholder="$t('survey.contractData.birthPlace')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -200,7 +200,7 @@
                   <UInput
                     v-model="contractsData[contract.id].id_card_number"
                     size="sm"
-                    placeholder="ID card number"
+                    :placeholder="$t('survey.contractData.idCardNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -213,7 +213,7 @@
                   <UInput
                     v-model="contractsData[contract.id].tax_id"
                     size="sm"
-                    placeholder="Tax ID"
+                    :placeholder="$t('survey.contractData.taxId')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -226,7 +226,7 @@
                   <UInput
                     v-model="contractsData[contract.id].mother_birth_name"
                     size="sm"
-                    placeholder="Mother's birth name"
+                    :placeholder="$t('survey.contractData.motherBirthName')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -239,7 +239,7 @@
                   <UInput
                     v-model="contractsData[contract.id].bank_account_number"
                     size="sm"
-                    placeholder="Bank account number"
+                    :placeholder="$t('survey.contractData.bankAccountNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -252,7 +252,7 @@
                   <UInput
                     v-model="contractsData[contract.id].citizenship"
                     size="sm"
-                    placeholder="Citizenship"
+                    :placeholder="$t('survey.contractData.citizenship')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -265,7 +265,7 @@
                   <UInput
                     v-model="contractsData[contract.id].marital_status"
                     size="sm"
-                    placeholder="Marital status"
+                    :placeholder="$t('survey.contractData.maritalStatus')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -278,7 +278,7 @@
                   <UInput
                     v-model="contractsData[contract.id].residence_card_number"
                     size="sm"
-                    placeholder="Residence card number"
+                    :placeholder="$t('survey.contractData.residenceCardNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -291,7 +291,7 @@
                   <UInput
                     v-model="contractsData[contract.id].mailing_address"
                     size="sm"
-                    placeholder="Mailing address"
+                    :placeholder="$t('survey.contractData.mailingAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />

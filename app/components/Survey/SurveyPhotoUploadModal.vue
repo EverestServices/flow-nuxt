@@ -10,7 +10,7 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-              Upload Photos
+              {{ $t('survey.photos.uploadPhotos') }}
             </h3>
             <p v-if="investmentTitle" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {{ investmentTitle }}
@@ -22,7 +22,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Overall Progress
+                {{ $t('survey.photos.overallProgress') }}
             </span>
             <span v-if="!isNaN(overallPercentage)" class="text-sm font-semibold text-primary-600 dark:text-primary-400">
               {{ overallPercentage }}%
@@ -30,7 +30,7 @@
           </div>
           <div class="flex items-center gap-2 mb-2">
             <span class="text-xs text-gray-600 dark:text-gray-400">
-              min. {{ totalMinPhotos }} photos
+                {{ $t('survey.photos.minPhotos', { count: totalMinPhotos }) }}
             </span>
           </div>
           <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -98,10 +98,10 @@
                   <!-- Progress -->
                   <div class="flex items-center justify-between mb-3">
                     <span class="text-xs text-gray-600 dark:text-gray-400">
-                      min. {{ category.min_photos }} photos
+                      {{ $t('survey.photos.minPhotos', { count: category.min_photos }) }}
                     </span>
                     <span class="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                      {{ getCategoryUploadedCount(category.id) }} / {{ category.min_photos }} uploaded
+                      {{ getCategoryUploadedCount(category.id) }} / {{ category.min_photos }} {{ $t('survey.photos.uploaded') }}
                     </span>
                   </div>
                   <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4">
@@ -121,7 +121,7 @@
                       >
                         <img
                           :src="photo.url"
-                          :alt="`Photo ${index + 1}`"
+                          :alt="$t('survey.photos.photo', { number: index + 1 })"
                           class="w-full h-full object-cover"
                         >
                         <!-- Delete button -->
@@ -144,7 +144,7 @@
                       @click="selectPhoto(category.id)"
                     >
                       <Icon name="i-lucide-image" class="w-4 h-4 mr-2" />
-                      Select Photo
+                      {{ $t('survey.photos.selectPhoto') }}
                     </UIButtonEnhanced>
                     <UIButtonEnhanced
                       variant="outline"
@@ -153,7 +153,7 @@
                       @click="takePhoto(category.id)"
                     >
                       <Icon name="i-lucide-camera" class="w-4 h-4 mr-2" />
-                      Take Photo
+                      {{ $t('survey.photos.takePhoto') }}
                     </UIButtonEnhanced>
                   </div>
 
@@ -181,7 +181,7 @@
         >
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
-            <span>Previous</span>
+            <span>{{ $t('survey.photos.previous') }}</span>
           </div>
         </button>
 
@@ -195,7 +195,7 @@
           @click="currentPage++"
         >
           <div class="flex items-center gap-2">
-            <span>Next</span>
+            <span>{{ $t('survey.photos.next') }}</span>
             <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
           </div>
         </button>
@@ -208,6 +208,9 @@
 import { ref, computed, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { DocumentCategory } from '~/stores/surveyInvestments'
+
+const { t } = useI18n()
+const { translate } = useTranslatableField()
 
 interface PhotoData {
   url: string
@@ -311,9 +314,10 @@ const investmentTitle = computed(() => {
   if (props.mode === 'investment') {
     // In mode 2, show the current page's investment name
     const currentGroup = investmentGroups.value[currentPage.value]
-    return currentGroup?.investment.name || ''
+    if (!currentGroup) return ''
+    return translate(currentGroup.investment.name_translations, currentGroup.investment.name)
   } else if (props.mode === 'all') {
-    return 'All Investments'
+    return t('survey.photos.allInvestments')
   }
   return ''
 })
@@ -418,7 +422,7 @@ const handleFileSelect = async (event: Event, categoryId: string) => {
 const takePhoto = async (categoryId: string) => {
   // Check if camera is available
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Camera not available on this device')
+    alert(t('survey.photos.cameraNotAvailable'))
     return
   }
 

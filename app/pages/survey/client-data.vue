@@ -18,7 +18,7 @@
                 <div class="flex-1">
                   <div class="flex items-center justify-between mb-2">
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-                      {{ progressPercentage < 100 ? (isEditMode ? 'Editing Client' : 'Creating New Client') : 'All Data Filled!' }}
+                      {{ progressPercentage < 100 ? (isEditMode ? $t('client.form.editingClient') : $t('client.form.creatingClient')) : $t('client.form.allDataFilled') }}
                     </h2>
                     <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
                       {{ Math.round(progressPercentage) }}%
@@ -46,41 +46,41 @@
                 <div class="bg-blue-500 rounded-full p-2">
                   <Icon name="i-lucide-user" class="w-5 h-5 text-white" />
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('client.form.personalInformation') }}</h3>
               </div>
 
               <div class="space-y-4 w-full">
                 <div class="w-full">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Name <span class="text-red-500">*</span>
+                    {{ $t('client.form.name') }} <span class="text-red-500">*</span>
                   </label>
                   <UIInput
                     v-model="form.name"
-                    placeholder="Enter client name"
+                    :placeholder="$t('client.form.enterName')"
                     icon="i-lucide-user"
                   />
                 </div>
 
                 <div class="w-full">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email
+                    {{ $t('client.form.email') }}
                   </label>
                   <UIInput
                     v-model="form.email"
                     type="email"
-                    placeholder="Enter email address"
+                    :placeholder="$t('client.form.enterEmail')"
                     icon="i-lucide-mail"
                   />
                 </div>
 
                 <div class="w-full">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Phone
+                    {{ $t('client.form.phone') }}
                   </label>
                   <UIInput
                     v-model="form.phone"
                     type="tel"
-                    placeholder="Enter phone number"
+                    :placeholder="$t('client.form.enterPhone')"
                     icon="i-lucide-phone"
                   />
                 </div>
@@ -95,7 +95,7 @@
                 <div class="bg-blue-500 rounded-full p-2">
                   <Icon name="i-lucide-map-pin" class="w-5 h-5 text-white" />
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Address Information</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('client.form.addressInformation') }}</h3>
               </div>
 
               <div class="space-y-4 w-full">
@@ -103,7 +103,7 @@
                 <div class="flex gap-4 w-full">
                   <div class="w-1/3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Postal Code <span class="text-red-500">*</span>
+                      {{ $t('client.form.postalCode') }} <span class="text-red-500">*</span>
                     </label>
                     <UIInput
                       v-model="form.postalCode"
@@ -114,11 +114,11 @@
 
                   <div class="w-2/3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      City <span class="text-red-500">*</span>
+                      {{ $t('client.form.city') }} <span class="text-red-500">*</span>
                     </label>
                     <UIInput
                       v-model="form.city"
-                      placeholder="Enter city"
+                      :placeholder="$t('client.form.enterCity')"
                       icon="i-lucide-building"
                     />
                   </div>
@@ -128,18 +128,18 @@
                 <div class="flex gap-4 w-full">
                   <div class="w-2/3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Street <span class="text-red-500">*</span>
+                      {{ $t('client.form.street') }} <span class="text-red-500">*</span>
                     </label>
                     <UIInput
                       v-model="form.street"
-                      placeholder="Enter street name"
+                      :placeholder="$t('client.form.enterStreet')"
                       icon="i-lucide-map"
                     />
                   </div>
 
                   <div class="w-1/3">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      House Number <span class="text-red-500">*</span>
+                      {{ $t('client.form.houseNumber') }} <span class="text-red-500">*</span>
                     </label>
                     <UIInput
                       v-model="form.houseNumber"
@@ -172,7 +172,7 @@
               @click="handleCancel"
               :disabled="isLoading"
             >
-              Cancel
+              {{ $t('client.form.cancel') }}
             </UIButtonEnhanced>
             <UIButtonEnhanced
               type="submit"
@@ -182,7 +182,7 @@
             >
               <Icon v-if="isLoading" name="i-lucide-loader-2" class="w-4 h-4 mr-2 animate-spin" />
               <Icon v-else name="i-lucide-zap" class="w-4 h-4 mr-2" />
-              {{ isLoading ? 'Saving...' : (isEditMode ? 'Save and Continue' : 'Save and Start') }}
+              {{ isLoading ? 'Saving...' : (isEditMode ? $t('client.form.saveAndContinue') : $t('client.form.saveAndStart')) }}
             </UIButtonEnhanced>
           </div>
         </form>

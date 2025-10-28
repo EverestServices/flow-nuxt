@@ -8,7 +8,7 @@
       <div class="flex items-center gap-3">
         <Icon name="i-lucide-wallet" class="w-6 h-6 text-primary-600 dark:text-primary-400" />
         <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">
-          Financing and Costs
+          {{ $t('survey.financing.title') }}
         </h3>
       </div>
     </template>
@@ -17,23 +17,23 @@
       <!-- Finanszírozás típusa Section -->
       <div>
         <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-          Finanszírozás típusa
+          {{ $t('survey.financing.financingType') }}
         </h4>
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <label class="text-sm text-gray-700 dark:text-gray-300">Készpénz</label>
+            <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.cash') }}</label>
             <USwitch v-model="financing.cash" />
           </div>
           <div class="flex items-center justify-between">
-            <label class="text-sm text-gray-700 dark:text-gray-300">Hitel</label>
+            <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.loan') }}</label>
             <USwitch v-model="financing.loan" />
           </div>
           <div class="flex items-center justify-between">
-            <label class="text-sm text-gray-700 dark:text-gray-300">Lízing</label>
+            <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.lease') }}</label>
             <USwitch v-model="financing.lease" />
           </div>
           <div class="flex items-center justify-between">
-            <label class="text-sm text-gray-700 dark:text-gray-300">Támogatás</label>
+            <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.subsidy') }}</label>
             <USwitch v-model="financing.subsidy" />
           </div>
         </div>
@@ -76,14 +76,14 @@
               class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
             >
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Megjegyzés:
+                {{ $t('survey.financing.note') }}
               </label>
               <textarea
                 :value="getExtraCostComment(extraCost.id)"
                 @input="handleCommentChange(extraCost.id, ($event.target as HTMLTextAreaElement).value)"
                 rows="3"
                 class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Add your notes here..."
+                placeholder="$t('survey.financing.notePlaceholder')"
               ></textarea>
             </div>
           </Transition>
@@ -98,7 +98,7 @@
         <!-- Price with colored buttons -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Price:</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('survey.financing.price') }}</span>
             <button
               class="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
               :class="{ 'ring-2 ring-offset-2 ring-red-500': commissionColor === 'red' }"
@@ -131,13 +131,13 @@
 
         <!-- Show Price -->
         <div class="flex items-center justify-between">
-          <label class="text-sm text-gray-700 dark:text-gray-300">Show Price</label>
+          <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.showPrice') }}</label>
           <USwitch v-model="showPrice" />
         </div>
 
         <!-- Show Return Time -->
         <div class="flex items-center justify-between">
-          <label class="text-sm text-gray-700 dark:text-gray-300">Show return time</label>
+          <label class="text-sm text-gray-700 dark:text-gray-300">{{ $t('survey.financing.showReturnTime') }}</label>
           <USwitch
             :model-value="showReturnTime"
             @update:model-value="$emit('update:show-return-time', $event)"
@@ -152,7 +152,7 @@
         variant="outline"
         @click="closeModal"
       >
-        Cancel
+        {{ $t('survey.financing.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced
         variant="primary"
@@ -160,7 +160,7 @@
         @click="handleSave"
       >
         <Icon v-if="saving" name="i-lucide-loader-2" class="w-4 h-4 mr-2 animate-spin" />
-        Save
+        {{ $t('survey.financing.save') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>

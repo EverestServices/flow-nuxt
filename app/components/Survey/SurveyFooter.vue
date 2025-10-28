@@ -27,7 +27,7 @@
           @click="$emit('save-exit')"
           class="grow whitespace-nowrap"
         >
-          Save and Exit
+          {{ t('survey.footer.saveAndExit')}}
         </UIButtonEnhanced>
 
         <!-- Property Assessment specific actions -->
@@ -39,7 +39,7 @@
             @click="$emit('upload-photos')"
             class="whitespace-nowrap"
           >
-            Upload All Photos
+            {{ t('survey.footer.uploadPhotos') }}
           </UIButtonEnhanced>
 
           <!-- Fill All Data -->
@@ -49,7 +49,7 @@
             @click="$emit('fill-all-data')"
             class="whitespace-nowrap"
           >
-            Fill All Data
+            {{ t('survey.footer.fillData') }}
           </UIButtonEnhanced>
 
           <!-- Generate Assessment Sheet -->
@@ -59,7 +59,7 @@
             @click="$emit('generate-assessment')"
             class="whitespace-nowrap"
           >
-            Generate Assessment Sheet
+            {{ t('survey.footer.generateAssessment') }}
           </UIButtonEnhanced>
         </template>
 
@@ -91,7 +91,7 @@
             class="whitespace-nowrap"
           >
             <Icon name="i-lucide-save" class="w-4 h-4 mr-2" />
-            Save Investment Contract
+            {{ t('survey.footer.saveContract') }}
           </UIButtonEnhanced>
 
           <!-- Modify Contract Button -->
@@ -103,7 +103,7 @@
             class="whitespace-nowrap"
           >
             <Icon name="i-lucide-pencil" class="w-4 h-4 mr-2" />
-            Modify {{ activeContract.name }}
+            {{ t('survey.footer.modifyContract', { name: activeContract.name }) }}
           </UIButtonEnhanced>
         </template>
 
@@ -120,7 +120,7 @@
                 @click="$emit('rename-contract')"
                 class="whitespace-nowrap"
               >
-                Rename
+                {{ t('survey.footer.rename') }}
               </UIButtonEnhanced>
               <UIButtonEnhanced
                 size="xs"
@@ -128,7 +128,7 @@
                 @click="$emit('duplicate-contract')"
                 class="whitespace-nowrap"
               >
-                Duplicate
+                {{ t('survey.footer.duplicate') }}
               </UIButtonEnhanced>
               <UIButtonEnhanced
                 size="xs"
@@ -136,7 +136,7 @@
                 @click="$emit('delete-contract')"
                 class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 whitespace-nowrap"
               >
-                Delete
+                {{ t('survey.footer.delete') }}
               </UIButtonEnhanced>
             </div>
           </div>
@@ -152,7 +152,7 @@
             class="whitespace-nowrap"
           >
             <Icon name="i-lucide-send" class="w-4 h-4 mr-2" />
-            Save All and Send
+            {{ t('survey.footer.saveAllAndSend') }}
           </UIButtonEnhanced>
 
           <!-- Sign All Contracts -->
@@ -163,7 +163,7 @@
             class="whitespace-nowrap"
           >
             <Icon name="i-lucide-pen-tool" class="w-4 h-4 mr-2" />
-            Sign All Contracts ({{ contractCount }})
+            {{ t('survey.footer.signAllContracts', { count: contractCount }) }}
           </UIButtonEnhanced>
         </template>
 
@@ -176,7 +176,7 @@
           @click="$emit('next')"
           class="whitespace-nowrap"
         >
-          Next
+          {{ t('survey.footer.next') }}
           <Icon name="i-lucide-arrow-right" class="w-4 h-4 ml-2" />
         </UIButtonEnhanced>
         </div>
@@ -187,6 +187,13 @@
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n()
+
+interface Scenario {
+  id: string
+  name: string
+}
+
 interface Contract {
   id: string
   name: string

@@ -110,7 +110,8 @@ const emit = defineEmits<{
 }>()
 
 const store = useSurveyInvestmentsStore()
-const { translatePage, translateField } = useI18n()
+const { translatePage, translateField } = useSurveyTranslations()
+const { translate } = useTranslatableField()
 
 const isOpen = ref(false)
 
@@ -183,7 +184,7 @@ const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
                 pageId: page.id,
                 pageName: translatePage(page.name),
                 investmentId: investment.id,
-                investmentName: investment.name,
+                investmentName: translate(investment.name_translations, investment.name),
                 investmentIcon: investment.icon
               })
             }

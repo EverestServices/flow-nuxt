@@ -9,7 +9,7 @@
         size="md"
         to="/survey/client-data"
       >
-        Energy Consultation for new Client
+        {{ $t('survey.list.newConsultation') }}
       </UIButtonEnhanced>
     </div>
 
@@ -24,19 +24,19 @@
               <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
                 {{ surveys.length }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Surveys</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.totalSurveys') }}</div>
             </UIBox>
             <UIBox class="p-4 text-center">
               <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
                 {{ todayCount }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Today</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.today') }}</div>
             </UIBox>
             <UIBox class="p-4 text-center">
               <div class="text-3xl font-bold text-green-600 dark:text-green-400">
                 {{ thisWeekCount }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">This Week</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.thisWeek') }}</div>
             </UIBox>
           </div>
         </div>
@@ -71,7 +71,7 @@
         <div class="w-64">
           <UIInput
             v-model="searchQuery"
-            placeholder="Search clients..."
+            :placeholder="$t('survey.list.searchPlaceholder')"
             icon="i-lucide-search"
           />
         </div>
@@ -88,13 +88,13 @@
       <UIBox v-else-if="filteredSurveys.length === 0" class="p-12">
         <div class="text-center">
           <Icon name="i-lucide-clipboard-list" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No consultations found</h3>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">{{ $t('survey.list.noConsultationsFound') }}</h3>
           <p class="text-gray-500 dark:text-gray-400 mb-4">
-            {{ selectedDateFilter !== 'all' ? 'No clients found for selected filter' : 'Start by creating a new energy consultation' }}
+            {{ selectedDateFilter !== 'all' ? $t('survey.list.noClientsForFilter') : $t('survey.list.startByCreating') }}
           </p>
           <UIButtonEnhanced to="/survey/client-data">
             <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-            Energy Consultation for new Client
+            {{ $t('survey.list.newConsultation') }}
           </UIButtonEnhanced>
         </div>
       </UIBox>
@@ -115,6 +115,8 @@
 import { computed, ref } from 'vue'
 import type { Survey, Contract } from '~/types/survey-new'
 
+const { t } = useI18n()
+
 interface SurveyWithContracts extends Survey {
   contracts?: Pick<Contract, 'id' | 'first_sent_at' | 'first_signed_at'>[]
 }
@@ -124,14 +126,24 @@ const selectedDateFilter = ref<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' |
 const searchQuery = ref('')
 
 // Filter options
-const dateFilterOptions = [
-  { label: 'All Time', value: 'all' },
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'This Week', value: 'thisWeek' },
-  { label: 'Last Week', value: 'lastWeek' },
-  { label: 'Pending', value: 'pending' }
-]
+const dateFilterOptions = computed(() => [
+  { label: t('survey.list.filters.allTime'), value: 'all' },
+  { label: t('survey.list.filters.today'), value: 'today' },
+  { label: t('survey.list.filters.yesterday'), value: 'yesterday' },
+  { label: t('survey.list.filters.thisWeek'), value: 'thisWeek' },
+  { label: t('survey.list.filters.lastWeek'), value: 'lastWeek' },
+  { label: t('survey.list.filters.pending'), value: 'pending' }
+])
+
+// Welcome title with HTML formatting
+const welcomeTitleHtml = computed(() => {
+  const bold1 = t('survey.list.welcomeTitleBold1')
+  const bold2 = t('survey.list.welcomeTitleBold2')
+  const prefix = t('survey.list.welcomeTitle')
+    .replace('@:survey.list.welcomeTitleBold1', `<strong class="font-black">${bold1}</strong>`)
+    .replace('@:survey.list.welcomeTitleBold2', `<br /><strong class="font-black">${bold2}</strong>`)
+  return prefix
+})
 
 // Fetch surveys with client data
 const supabase = useSupabaseClient()

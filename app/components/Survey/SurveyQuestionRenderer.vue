@@ -15,15 +15,15 @@
         <UIInput
           :model-value="modelValue || question.default_value"
           :type="question.type === 'number' ? 'number' : 'text'"
-          :placeholder="question.placeholder_value"
+          :placeholder="questionPlaceholder"
           :required="question.is_required"
           :min="question.min"
           :max="question.max"
           class="flex-1"
           @update:model-value="$emit('update:modelValue', $event)"
         />
-        <span v-if="question.unit" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ question.unit }}
+        <span v-if="questionUnit" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ questionUnit }}
         </span>
       </div>
     </div>
@@ -36,7 +36,7 @@
       </label>
       <UITextarea
         :model-value="modelValue || question.default_value"
-        :placeholder="question.placeholder_value"
+        :placeholder="questionPlaceholder"
         :required="question.is_required"
         :rows="4"
         class="w-full"
@@ -49,8 +49,8 @@
       <UISelect
         :model-value="modelValue || question.default_value"
         :label="questionLabel"
-        :options="question.options || []"
-        :placeholder="question.placeholder_value || 'Select an option'"
+        :options="translatedOptions.map(opt => opt.value)"
+        :placeholder="questionPlaceholder || 'Select an option'"
         :required="question.is_required"
         size="md"
         @update:model-value="$emit('update:modelValue', $event)"
@@ -85,7 +85,7 @@
           @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         />
         <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[60px] text-right">
-          {{ modelValue || question.default_value || question.min || 0 }}{{ question.unit || '' }}
+          {{ modelValue || question.default_value || question.min || 0 }}{{ questionUnit || '' }}
         </span>
       </div>
     </div>
@@ -98,15 +98,15 @@
       </label>
       <div class="flex items-center space-x-2">
         <button
-          v-for="option in question.options"
-          :key="option"
+          v-for="option in translatedOptions"
+          :key="option.value"
           class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          :class="(modelValue || question.default_value) === option
+          :class="(modelValue || question.default_value) === option.value
             ? 'bg-primary-500 text-white'
             : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-          @click="$emit('update:modelValue', option)"
+          @click="$emit('update:modelValue', option.value)"
         >
-          {{ option }}
+          {{ option.label }}
         </button>
       </div>
     </div>
@@ -119,15 +119,15 @@
       </label>
       <div class="flex items-center space-x-2">
         <button
-          v-for="option in question.options"
-          :key="option"
+          v-for="option in translatedOptions"
+          :key="option.value"
           class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          :class="(modelValue || question.default_value) === option
+          :class="(modelValue || question.default_value) === option.value
             ? 'bg-primary-500 text-white'
             : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-          @click="$emit('update:modelValue', option)"
+          @click="$emit('update:modelValue', option.value)"
         >
-          {{ option }} fázis
+          {{ option.label }}
         </button>
       </div>
     </div>
@@ -140,20 +140,20 @@
       </label>
       <div class="flex flex-wrap gap-2">
         <button
-          v-for="option in question.options"
-          :key="option"
+          v-for="option in translatedOptions"
+          :key="option.value"
           class="w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative"
-          :class="(modelValue || question.default_value) === option
+          :class="(modelValue || question.default_value) === option.value
             ? 'bg-primary-500 text-white shadow-md'
             : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'"
-          @click="$emit('update:modelValue', option)"
+          @click="$emit('update:modelValue', option.value)"
         >
           <UIcon
             name="i-lucide-navigation"
             class="w-6 h-6 transition-transform"
-            :style="{ transform: `rotate(${getOrientationAngle(option)}deg)` }"
+            :style="{ transform: `rotate(${getOrientationAngle(option.value)}deg)` }"
           />
-          <span class="text-xs font-medium mt-0.5">{{ option }}</span>
+          <span class="text-xs font-medium mt-0.5">{{ option.label }}</span>
         </button>
       </div>
     </div>
@@ -180,12 +180,39 @@ const emit = defineEmits<{
   'update:modelValue': [value: any]
 }>()
 
-// Translations
-const { translateField } = useI18n()
+// Translations composables
+const { translateField } = useSurveyTranslations()
+const { translate, translateOptions } = useTranslatableField()
 
 // Get translated label for the question
 const questionLabel = computed(() => {
-  return props.question.placeholder_value || translateField(props.question.name)
+  // Priority: name_translations > translateField > name
+  return translate(props.question.name_translations, translateField(props.question.name))
+})
+
+// Get translated placeholder
+const questionPlaceholder = computed(() => {
+  return translate(props.question.placeholder_translations, props.question.placeholder_value)
+})
+
+// Get translated unit (post-text)
+const questionUnit = computed(() => {
+  return translate(props.question.unit_translations, props.question.unit)
+})
+
+// Get translated options for dropdowns and toggles
+const translatedOptions = computed(() => {
+  // If we have translated options, use those
+  if (props.question.options_translations && props.question.options_translations.length > 0) {
+    return translateOptions(props.question.options_translations)
+  }
+
+  // Fallback to old options array (string[])
+  if (props.question.options && props.question.options.length > 0) {
+    return props.question.options.map(opt => ({ value: opt, label: opt }))
+  }
+
+  return []
 })
 
 // Create a computed v-model for the toggle

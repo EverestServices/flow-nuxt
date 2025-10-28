@@ -1,0 +1,467 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "yes": "Yes",
+    "no": "No",
+    "search": "Search",
+    "filter": "Filter",
+    "select": "Select",
+    "all": "All"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "clients": "Clients",
+    "surveys": "Surveys",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "settings": {
+    "title": "Profile Settings",
+    "subtitle": "Keep your information up to date",
+    "personalInfo": {
+      "title": "Personal Information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "emailNote": "Email cannot be changed",
+      "phone": "Phone",
+      "jobTitle": "Job Title",
+      "department": "Department",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell us about yourself...",
+      "location": "Location",
+      "save": "Save Personal Information",
+      "saveSuccess": "Personal information updated successfully",
+      "saveError": "Failed to update personal information"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "timezone": "Timezone",
+      "language": "Language",
+      "dateFormat": "Date Format",
+      "timeFormat": "Time Format",
+      "theme": "Theme",
+      "save": "Save Preferences",
+      "saveSuccess": "Preferences updated successfully",
+      "saveError": "Failed to update preferences"
+    },
+    "avatar": {
+      "title": "Profile Photo",
+      "description": "Click the camera icon to upload a new photo",
+      "requirements": "JPG, PNG or GIF. Max size 5MB.",
+      "invalidType": "Please upload a JPEG, PNG, GIF, or WebP image",
+      "tooLarge": "Maximum file size is 5MB",
+      "uploadSuccess": "Avatar uploaded successfully",
+      "uploadError": "Failed to upload avatar"
+    },
+    "socialLinks": {
+      "title": "Social Links",
+      "linkedin": "LinkedIn",
+      "twitter": "Twitter",
+      "github": "GitHub",
+      "save": "Save Social Links",
+      "saveSuccess": "Social links updated successfully",
+      "saveError": "Failed to update social links"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "email": "Email Notifications",
+      "emailDesc": "Receive notifications via email",
+      "push": "Push Notifications",
+      "pushDesc": "Receive push notifications in browser",
+      "sms": "SMS Notifications",
+      "smsDesc": "Receive notifications via SMS",
+      "save": "Save Notification Settings",
+      "saveSuccess": "Notification settings updated successfully",
+      "saveError": "Failed to update notification settings"
+    },
+    "privacy": {
+      "title": "Privacy Settings",
+      "showEmail": "Show Email",
+      "showEmailDesc": "Make email visible to others",
+      "showPhone": "Show Phone",
+      "showPhoneDesc": "Make phone visible to others",
+      "showOnlineStatus": "Show Online Status",
+      "showOnlineStatusDesc": "Display when you're online",
+      "save": "Save Privacy Settings",
+      "saveSuccess": "Privacy settings updated successfully",
+      "saveError": "Failed to update privacy settings"
+    }
+  },
+  "investments": {
+    "modal": {
+      "title": "Available Services",
+      "residential": "Residential",
+      "corporate": "Corporate",
+      "done": "Done"
+    }
+  },
+  "household": {
+    "monthlyGasBill": "Monthly Gas Bill",
+    "consumptionProfiles": "Consumption Profiles",
+    "profiles": {
+      "workFromHome": "Work from home",
+      "traditionalHours": "Traditional hours (9-17)",
+      "shiftWork": "Shift work",
+      "retiredStayAtHome": "Retired/Stay at home",
+      "youngFamily": "Young family with children"
+    }
+  },
+  "energy": {
+    "selectedInvestments": "Selected Investments",
+    "electricityImpact": "Electricity Impact",
+    "naturalGasImpact": "Natural Gas Impact",
+    "monthlyElectricityImpact": "Monthly Electricity Impact",
+    "monthlyNaturalGasImpact": "Monthly Natural Gas Impact",
+    "totalCO2Reduction": "Total CO₂ Reduction",
+    "co2PerYear": "kg CO₂ / year",
+    "years": "years",
+    "ftPerYear": "Ft / year",
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    }
+  },
+  "survey": {
+    "title": "Survey",
+    "list": {
+      "title": "Energy Consultations",
+      "newConsultation": "Energy Consultation for new Client",
+      "welcomeTitle": "Manage your @:survey.list.welcomeTitleBold1 and@:survey.list.welcomeTitleBold2",
+      "welcomeTitleBold1": "energy consultations",
+      "welcomeTitleBold2": "client surveys",
+      "pendingConsultations": "pending consultations",
+      "totalSurveys": "Total Surveys",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "searchPlaceholder": "Search clients...",
+      "noConsultationsFound": "No consultations found",
+      "noClientsForFilter": "No clients found for selected filter",
+      "startByCreating": "Start by creating a new energy consultation",
+      "filters": {
+        "allTime": "All Time",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "lastWeek": "Last Week",
+        "pending": "Pending"
+      }
+    },
+    "tabs": {
+      "propertyAssessment": "Property Assessment",
+      "consultation": "Consultation",
+      "offerContract": "Offer/Contract",
+      "contractData": "Contract Data",
+      "summary": "Summary"
+    },
+    "header": {
+      "investment": "Investment",
+      "editClient": "Edit Client Data",
+      "offer": "Offer",
+      "contract": "Contract",
+      "all": "All"
+    },
+    "footer": {
+      "saveAndExit": "Save and Exit",
+      "uploadPhotos": "Upload All Photos",
+      "fillData": "Fill All Data",
+      "generateAssessment": "Generate Assessment Sheet",
+      "save": "Save",
+      "saveContract": "Save Investment Contract",
+      "modifyContract": "Modify {name}",
+      "missingItems": "Missing Items ({count})",
+      "markerMode": "Marker Mode",
+      "next": "Next",
+      "aiScenarios": "AI Scenarios",
+      "newScenario": "New Scenario",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "saveAllAndSend": "Save All and Send",
+      "signAllContracts": "Sign All Contracts ({count})"
+    },
+    "offerContract": {
+      "selectScenario": "Select a scenario for generating a contract:",
+      "noScenarios": "No scenarios available. Please create scenarios in the Consultation tab first.",
+      "technicalDetails": "Technical Details",
+      "roofConfiguration": "Roof Configuration",
+      "compatibilityCheck": "Compatibility Check",
+      "solarExtraCosts": "Solar Panel System Additional Costs",
+      "extraCosts": "Extra Costs",
+      "discounts": "Discounts",
+      "contractDetails": "Contract Details",
+      "prices": "Prices",
+      "saveSuccess": "Contract saved successfully!",
+      "modifySuccess": "Contract updated successfully!",
+      "selectScenarioFirst": "Please select a scenario first",
+      "saveError": "Error saving contract. Please try again.",
+      "modifyError": "Error modifying contract. Please try again."
+    },
+    "scenarios": {
+      "title": "Scenarios",
+      "new": "New Scenario",
+      "rename": "Rename Scenario",
+      "duplicate": "Duplicate Scenario",
+      "delete": "Delete Scenario",
+      "save": "Save",
+      "cancel": "Cancel",
+      "enterName": "Enter scenario name",
+      "deleteConfirm": "Are you sure you want to delete this scenario?"
+    },
+    "contracts": {
+      "title": "Contracts",
+      "new": "New Contract",
+      "rename": "Rename Contract",
+      "duplicate": "Duplicate Contract",
+      "delete": "Delete Contract",
+      "save": "Save",
+      "cancel": "Cancel",
+      "enterName": "Enter contract name",
+      "deleteConfirm": "Are you sure you want to delete this contract?"
+    },
+    "labels": {
+      "offer": "Offer",
+      "offerData": "Offer Data",
+      "contract": "Contract",
+      "contractData": "Contract Data"
+    },
+    "page": {
+      "loading": "Loading...",
+      "unknownClient": "Unknown Client",
+      "errorLoading": "Error Loading"
+    },
+    "summary": {
+      "view": "View:",
+      "list": "List",
+      "card": "Card",
+      "loadingContracts": "Loading contracts...",
+      "noContracts": "No contracts available",
+      "clientInformation": "Client Information",
+      "noClientInfo": "No client information available",
+      "contractDetails": "Contract Details",
+      "selectedInvestments": "Selected Investments:",
+      "noInvestments": "No investments selected",
+      "implementationFee": "Implementation Fee:",
+      "saveWithoutSend": "Save without send",
+      "saveAndSend": "Save and Send",
+      "signNow": "Sign Now"
+    },
+    "photos": {
+      "uploadPhotos": "Upload Photos",
+      "overallProgress": "Overall Progress",
+      "minPhotos": "min. {count} photos",
+      "uploaded": "uploaded",
+      "photo": "Photo {number}",
+      "selectPhoto": "Select Photo",
+      "takePhoto": "Take Photo",
+      "previous": "Previous",
+      "next": "Next",
+      "allInvestments": "All Investments",
+      "cameraNotAvailable": "Camera not available on this device"
+    },
+    "consultation": {
+      "systemDesign": "System Design",
+      "aiScenarios": "AI Scenarios",
+      "newScenario": "New Scenario",
+      "noScenariosYet": "No scenarios created yet. Use the buttons above to create scenarios.",
+      "subsidy": "Subsidy",
+      "subsidiesAvailable": "Subsidies are available",
+      "householdData": "Household Data",
+      "electricCarSettings": "Electric Car Settings",
+      "heavyConsumerSettings": "Heavy Consumer Settings",
+      "systemVisualization": "System Visualization",
+      "consultation": "Consultation",
+      "investmentDetails": "Investment Details",
+      "information": "Information",
+      "contractDetails": "Contract Details",
+      "financingSettings": "Financing Settings"
+    },
+    "consultationData": {
+      "energyEfficiency": "Energy Efficiency Improvement",
+      "zeroPercent": "0%",
+      "hundredPercent": "100%",
+      "returnOnInvestment": "Return on Investment",
+      "returnTime": "Return Time",
+      "monthlySavings": "Monthly Savings",
+      "annualSavings": "Annual Savings",
+      "currentState": "Current State",
+      "tenYearSavings": "10-year Savings",
+      "twentyYearSavings": "20-year Savings",
+      "plannedInflation": "Planned Inflation Rate"
+    },
+    "costs": {
+      "costs": "Costs",
+      "noComponents": "No components added to this scenario yet. Add investments and components to see cost breakdown.",
+      "extraCosts": "Extra Costs",
+      "implementationFee": "Implementation Fee",
+      "total": "Total"
+    },
+    "financing": {
+      "title": "Financing and Costs",
+      "financingType": "Financing Type",
+      "cash": "Cash",
+      "loan": "Loan",
+      "lease": "Lease",
+      "subsidy": "Subsidy",
+      "note": "Note:",
+      "notePlaceholder": "Add your notes here...",
+      "price": "Price:",
+      "showPrice": "Show Price",
+      "showReturnTime": "Show return time",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "monthly": {
+      "annualTotal": "Annual Total",
+      "close": "Close"
+    },
+    "contractData": {
+      "selectContracts": "Select contracts (maximum 3):",
+      "noContracts": "No contracts available. Please create contracts in the Offer/Contract tab first.",
+      "clientData": "Client Data",
+      "copyTo": "Copy to:",
+      "personalDetails": "Personal Details",
+      "clientName": "Client name",
+      "clientAddress": "Client address",
+      "phoneNumber": "Phone number",
+      "emailAddress": "Email address",
+      "birthPlace": "Birth place",
+      "idCardNumber": "ID card number",
+      "taxId": "Tax ID",
+      "motherBirthName": "Mother's birth name",
+      "bankAccountNumber": "Bank account number",
+      "citizenship": "Citizenship",
+      "maritalStatus": "Marital status",
+      "residenceCardNumber": "Residence card number",
+      "mailingAddress": "Mailing address"
+    },
+    "extraCosts": {
+      "loading": "Loading extra costs...",
+      "general": "General",
+      "connections": "Connections",
+      "electricMeter": "Electric Meter",
+      "lightningProtection": "Lightning Protection",
+      "cables": "Cables",
+      "backup": "Backup",
+      "internet": "Internet",
+      "total": "Total",
+      "currency": " Ft"
+    },
+    "technicalDetails": {
+      "title": "Technical Details",
+      "noInvestments": "No investments in this scenario.",
+      "solarExtraCosts": "Solar Panel System Additional Costs"
+    },
+    "propertyAssessment": {
+      "selectServicePrompt": "Please select at least one service by clicking the \"Add Investment\" button.",
+      "addInvestment": "Add Investment",
+      "noItemsAdded": "No items added yet.",
+      "clickToAdd": "Click the button below to add a new one.",
+      "otherQuestions": "Other Questions",
+      "collapse": "Collapse",
+      "addItem": "Add {name}",
+      "noQuestionsAvailable": "No questions available for this page."
+    }
+  },
+  "client": {
+    "header": {
+      "back": "Back",
+      "edit": "Edit"
+    },
+    "page": {
+      "loading": "Loading...",
+      "clientNotFound": "Client not found",
+      "followUp": "Follow up",
+      "noNotesAvailable": "No notes available"
+    },
+    "tabs": {
+      "basicInfo": "Basic Info",
+      "surveys": "Surveys",
+      "contracts": "Contracts",
+      "projects": "Projects",
+      "events": "Events",
+      "emails": "Emails",
+      "logs": "Logs"
+    },
+    "address": {
+      "primary": "Primary Address"
+    },
+    "basicInfo": {
+      "personalData": "Personal Data",
+      "individual": "Individual",
+      "emailAddress": "Email Address",
+      "phoneNumber": "Phone Number",
+      "company": "Company",
+      "joinDate": "Join Date",
+      "status": "Status",
+      "currentStatus": "Current Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "statusChangeDate": "Status Change Date",
+      "lastContact": "Last Contact",
+      "nextAction": "Next Action",
+      "daysInStatus": "Days in Status",
+      "priority": "Priority",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "addresses": "Addresses",
+      "notes": "Notes"
+    },
+    "form": {
+      "editingClient": "Editing Client",
+      "creatingClient": "Creating New Client",
+      "allDataFilled": "All Data Filled!",
+      "personalInformation": "Personal Information",
+      "name": "Name",
+      "enterName": "Enter client name",
+      "email": "Email",
+      "enterEmail": "Enter email address",
+      "phone": "Phone",
+      "enterPhone": "Enter phone number",
+      "address": "Address",
+      "enterAddress": "Enter address",
+      "addressInformation": "Address Information",
+      "postalCode": "Postal Code",
+      "city": "City",
+      "enterCity": "Enter city",
+      "street": "Street",
+      "enterStreet": "Enter street name",
+      "houseNumber": "House Number",
+      "birthDate": "Birth Date",
+      "enterBirthDate": "Enter birth date",
+      "cancel": "Cancel",
+      "saveAndContinue": "Save and Continue Consultation",
+      "saveAndStart": "Save and Start Consultation"
+    }
+  }
+}

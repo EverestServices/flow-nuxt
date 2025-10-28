@@ -19,7 +19,7 @@
             class="inline-flex items-center gap-2 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-l border-white pl-4 pr-4 h-8"
             @click="$emit('toggle-investment')"
           >
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Investments</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('survey.header.investment') }}</span>
 
             <!-- Show all icons if investments are selected, otherwise show plus icon -->
             <!--
@@ -37,7 +37,7 @@
           <!--
           <UButton
             icon="i-heroicons-user"
-            label="Edit Client Data"
+            :label="t('survey.header.editClient')"
             color="gray"
             variant="outline"
             size="md"
@@ -120,7 +120,7 @@
               ]"
               @click="handleContractModeChange('offer')"
             >
-              Offer
+              {{ t('survey.header.offer') }}
             </button>
             <button
               :class="[
@@ -131,7 +131,7 @@
               ]"
               @click="handleContractModeChange('contract')"
             >
-              Contract
+              {{ t('survey.header.contract') }}
             </button>
           </div>
 
@@ -205,6 +205,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+
+const { t } = useI18n()
 
 interface Investment {
   id: string

@@ -1,6 +1,6 @@
-import huTranslations from '~/locales/hu'
+import huTranslations from '../locales/hu'
 
-export const useI18n = () => {
+export const useSurveyTranslations = () => {
   const t = (key: string, fallback?: string): string => {
     const keys = key.split('.')
     let value: any = huTranslations

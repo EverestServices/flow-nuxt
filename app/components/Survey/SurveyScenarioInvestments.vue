@@ -15,7 +15,7 @@
     >
       <template #[item.slot]>
         <div class="p-3">
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Technikai adatok</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ $t('survey.technicalDetails.title') }}</p>
 
           <!-- Main Component Categories -->
           <SurveyScenarioCategories
@@ -28,7 +28,7 @@
 
     <!-- No investments message -->
     <p v-if="scenarioInvestments.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-      No investments in this scenario.
+      {{ $t('survey.technicalDetails.noInvestments') }}
     </p>
   </div>
 </template>
@@ -38,6 +38,8 @@ import { computed } from 'vue'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { getTechnicalDataSummary } from '~/utils/technicalDataSummary'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -115,11 +117,13 @@ const getTechnicalSummaryForInvestment = (investmentId: string, investmentType: 
 
 // Build accordion items with technical summaries
 const investmentAccordionItems = computed(() => {
+  const { translate } = useTranslatableField()
+
   return scenarioInvestments.value.map(investment => {
     const technicalSummary = getTechnicalSummaryForInvestment(investment.id, investment.persist_name)
 
     return {
-      label: investment.name,
+      label: translate(investment.name_translations, investment.name),
       icon: investment.icon,
       slot: `investment-${investment.id}`,
       defaultOpen: false,

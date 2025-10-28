@@ -352,6 +352,8 @@ import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useContractsStore } from '~/stores/contracts'
 
+const { t } = useI18n()
+
 const route = useRoute()
 const router = useRouter()
 const investmentsStore = useSurveyInvestmentsStore()
@@ -392,33 +394,33 @@ const hasContracts = computed(() => contracts.value.length > 0)
 // Tab configuration with dynamic status
 const tabs = computed(() => {
   // Determine tab 3 and 4 labels based on contractMode
-  let tab3Label = 'Offer/Contract'
-  let tab4Label = 'Contract Data'
+  let tab3Label = t('survey.tabs.offerContract')
+  let tab4Label = t('survey.tabs.contractData')
 
   if (contractMode.value === 'offer') {
-    tab3Label = 'Offer'
-    tab4Label = 'Offer Data'
+    tab3Label = t('survey.labels.offer')
+    tab4Label = t('survey.labels.offerData')
   } else if (contractMode.value === 'contract') {
-    tab3Label = 'Contract'
-    tab4Label = 'Contract Data'
+    tab3Label = t('survey.labels.contract')
+    tab4Label = t('survey.labels.contractData')
   }
 
   return [
     {
       id: 'property-assessment',
-      label: 'Property Assessment',
+      label: t('survey.tabs.propertyAssessment'),
       number: 1,
       status: missingItemsCount.value === 0 ? 'completed' as const : 'warning' as const
     },
-    { id: 'consultation', label: 'Consultation', number: 2 },
+    { id: 'consultation', label: t('survey.tabs.consultation'), number: 2 },
     { id: 'offer-contract', label: tab3Label, number: 3 },
     { id: 'contract-data', label: tab4Label, number: 4, disabled: !hasContracts.value },
-    { id: 'summary', label: 'Summary', number: 5, disabled: !hasContracts.value }
+    { id: 'summary', label: t('survey.tabs.summary'), number: 5, disabled: !hasContracts.value }
   ]
 })
 
 // Survey data
-const clientName = ref('Loading...')
+const clientName = ref(t('survey.page.loading'))
 const clientData = ref<any>(null)
 
 // Can proceed logic per tab
@@ -588,13 +590,13 @@ const loadSurveyData = async () => {
         }
       }
     } else {
-      clientName.value = 'Unknown Client'
+      clientName.value = t('survey.page.unknownClient')
       clientData.value = null
     }
 
   } catch (error) {
     console.error('Error loading survey data:', error)
-    clientName.value = 'Error Loading'
+    clientName.value = t('survey.page.errorLoading')
     // TODO: Show error toast and redirect
   }
 }
@@ -811,7 +813,7 @@ const handleDeleteScenario = async () => {
   if (!activeScenario.value) return
 
   // TODO: Add confirmation dialog
-  if (!confirm(`Are you sure you want to delete "${activeScenario.value.name}"?`)) {
+  if (!confirm(t('survey.scenarios.deleteConfirm'))) {
     return
   }
 
@@ -1033,7 +1035,7 @@ const handleDeleteContract = async () => {
   if (!activeContract.value) return
 
   // TODO: Add confirmation dialog
-  if (!confirm(`Are you sure you want to delete "${activeContract.value.name}"?`)) {
+  if (!confirm(t('survey.contracts.deleteConfirm'))) {
     return
   }
 
