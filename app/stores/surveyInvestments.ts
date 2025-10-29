@@ -58,6 +58,7 @@ export interface SurveyQuestion {
   info_message?: string
   info_message_translations?: { en: string; hu: string }
   display_conditions?: DisplayCondition
+  sequence?: number
 }
 
 export interface DocumentCategory {
@@ -297,7 +298,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_questions')
             .select('*')
             .in('survey_page_id', pageIds)
-            .order('created_at')
+            .order('sequence', { ascending: true, nullsFirst: false })
+            .order('created_at', { ascending: true })
 
           if (questionsError) throw questionsError
 
