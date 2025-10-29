@@ -518,6 +518,23 @@ const getQuestionValue = (questionName: string) => {
 
 const updateQuestionValue = async (questionName: string, value: any) => {
   await store.saveResponse(questionName, value)
+
+  // When phase_count changes to "3", copy phase_1 value to phase_2 and phase_3 if they're empty
+  if (questionName === 'phase_count' && value === '3') {
+    const phase1Value = store.getResponse('phase_1')
+    const phase2Value = store.getResponse('phase_2')
+    const phase3Value = store.getResponse('phase_3')
+
+    // Copy phase_1 to phase_2 if phase_2 is empty and phase_1 has a value
+    if (phase1Value && (!phase2Value || phase2Value === '' || phase2Value === null)) {
+      await store.saveResponse('phase_2', phase1Value)
+    }
+
+    // Copy phase_1 to phase_3 if phase_3 is empty and phase_1 has a value
+    if (phase1Value && (!phase3Value || phase3Value === '' || phase3Value === null)) {
+      await store.saveResponse('phase_3', phase1Value)
+    }
+  }
 }
 
 const handlePageClick = (pageId: string) => {
