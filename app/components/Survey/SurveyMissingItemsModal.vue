@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpen"
-    title="Hiányzó elemek listája"
+    :title="$t('survey.missingItems.title')"
     size="lg"
     :scrollable="true"
     @close="close"
@@ -10,10 +10,10 @@
         <!-- Hiányos fotó kategóriák -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Hiányos fotó kategóriák ({{ missingPhotoCategories.length }})
+            {{ $t('survey.missingItems.missingPhotoCategories') }} ({{ missingPhotoCategories.length }})
           </h3>
           <div v-if="missingPhotoCategories.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
-            Minden fotó kategória kitöltve
+            {{ $t('survey.missingItems.allPhotoCategoriesFilled') }}
           </div>
           <div v-else class="space-y-3">
             <button
@@ -33,7 +33,7 @@
                 </span>
               </div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
-                {{ category.uploadedCount }}/{{ category.minPhotos }} fénykép feltöltve
+                {{ category.uploadedCount }}/{{ category.minPhotos }} {{ $t('survey.missingItems.photosUploaded') }}
               </div>
             </button>
           </div>
@@ -42,10 +42,10 @@
         <!-- Megválaszolatlan kérdések -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Megválaszolatlan kérdések ({{ unansweredQuestions.length }})
+            {{ $t('survey.missingItems.unansweredQuestions') }} ({{ unansweredQuestions.length }})
           </h3>
           <div v-if="unansweredQuestions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
-            Minden kérdés megválaszolva
+            {{ $t('survey.missingItems.allQuestionsAnswered') }}
           </div>
           <div v-else class="space-y-3">
             <button
@@ -180,7 +180,7 @@ const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
               seenQuestions.add(questionKey)
               unanswered.push({
                 id: question.id,
-                label: translateField(question.name),
+                label: translate(question.name_translations, translateField(question.name)),
                 pageId: page.id,
                 pageName: translatePage(page.name),
                 investmentId: investment.id,

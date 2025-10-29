@@ -127,7 +127,7 @@
               class="whitespace-nowrap"
             >
               <Icon name="i-lucide-zap" class="w-4 h-4 mr-2" />
-              AI Scenarios
+              {{ t('survey.footer.aiScenarios') }}
             </UIButtonEnhanced>
 
             <UIButtonEnhanced
@@ -137,7 +137,7 @@
               class="whitespace-nowrap"
             >
               <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-              New Scenario
+              {{ t('survey.footer.newScenario') }}
             </UIButtonEnhanced>
           </div>
 
@@ -148,7 +148,7 @@
               class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               <span class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ activeScenario?.name || 'Select Scenario' }}
+                {{ activeScenario?.name || t('survey.header.selectScenario') }}
               </span>
               <Icon name="i-lucide-chevron-down" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
@@ -191,7 +191,7 @@
               @click="handleRenameScenario"
               class="whitespace-nowrap"
             >
-              Rename
+              {{ t('survey.footer.rename') }}
             </UIButtonEnhanced>
             <UIButtonEnhanced
               size="xs"
@@ -199,7 +199,7 @@
               @click="handleDuplicateScenario"
               class="whitespace-nowrap"
             >
-              Duplicate
+              {{ t('survey.footer.duplicate') }}
             </UIButtonEnhanced>
             <UIButtonEnhanced
               size="xs"
@@ -207,7 +207,7 @@
               @click="handleDeleteScenario"
               class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 whitespace-nowrap"
             >
-              Delete
+              {{ t('survey.footer.delete') }}
             </UIButtonEnhanced>
           </div>
         </div>
@@ -236,8 +236,8 @@
       <UISelect
         v-model="displayMode"
         :options="[
-          { label: 'Graphic Mode', value: 'graphic' },
-          { label: 'Marker Mode', value: 'marker' }
+          { label: t('survey.header.graphicMode'), value: 'graphic' },
+          { label: t('survey.header.markerMode'), value: 'marker' }
         ]"
         size="md"
         class="w-48 rounded-full"

@@ -161,6 +161,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+const { translate } = useTranslatableField()
+
 interface Contract {
   id: string
   name: string
@@ -221,7 +223,8 @@ const clientAddress = computed(() => {
 
 const getInvestmentName = (investmentId: string): string => {
   const investment = props.investments.find(inv => inv.id === investmentId)
-  return investment?.name || 'Unknown'
+  if (!investment) return 'Unknown'
+  return translate(investment.name_translations, investment.name)
 }
 
 const getInvestmentIcon = (investmentId: string): string => {

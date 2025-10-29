@@ -149,6 +149,20 @@
       "october": "Október",
       "november": "November",
       "december": "December"
+    },
+    "monthsShort": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Már",
+      "apr": "Ápr",
+      "may": "Máj",
+      "jun": "Jún",
+      "jul": "Júl",
+      "aug": "Aug",
+      "sep": "Szep",
+      "oct": "Okt",
+      "nov": "Nov",
+      "dec": "Dec"
     }
   },
   "survey": {
@@ -167,6 +181,9 @@
       "noConsultationsFound": "Nincs konzultáció",
       "noClientsForFilter": "Nincs ügyfél a kiválasztott szűrőhöz",
       "startByCreating": "Kezdjen egy új energia konzultáció létrehozásával",
+      "unknownClient": "Ismeretlen ügyfél",
+      "start": "Indítás",
+      "noDate": "Nincs dátum",
       "filters": {
         "allTime": "Összes",
         "today": "Ma",
@@ -188,7 +205,12 @@
       "editClient": "Ügyfél adatok szerkesztése",
       "offer": "Ajánlat",
       "contract": "Szerződés",
-      "all": "Összes"
+      "all": "Összes",
+      "photos": "Fotók",
+      "data": "Adatok",
+      "graphicMode": "Grafikus mód",
+      "markerMode": "Jelölő mód",
+      "selectScenario": "Forgatókönyv kiválasztása"
     },
     "footer": {
       "saveAndExit": "Mentés és kilépés",
@@ -207,7 +229,8 @@
       "duplicate": "Duplikálás",
       "delete": "Törlés",
       "saveAllAndSend": "Összes mentése és küldés",
-      "signAllContracts": "Összes szerződés aláírása ({count})"
+      "signAllContracts": "Összes szerződés aláírása ({count})",
+      "useScenarios": "Forgatókönyvek használata"
     },
     "offerContract": {
       "selectScenario": "Válasszon forgatókönyvet a szerződés generálásához:",
@@ -224,7 +247,16 @@
       "modifySuccess": "Szerződés sikeresen frissítve!",
       "selectScenarioFirst": "Kérem először válasszon egy forgatókönyvet",
       "saveError": "Hiba történt a szerződés mentése során. Kérem próbálja újra.",
-      "modifyError": "Hiba történt a szerződés módosítása során. Kérem próbálja újra."
+      "modifyError": "Hiba történt a szerződés módosítása során. Kérem próbálja újra.",
+      "disableCompatibilityCheck": "Kompatibilitás ellenőrzés kikapcsolása",
+      "panelNumber": "Panel darabszám",
+      "inverterNumber": "Inverter darabszám",
+      "installPower": "Telepítési teljesítmény",
+      "inverterKwp": "Inverter kWp",
+      "panelKwp": "Panel kWp",
+      "selectedValues": "Kiválasztott értékek",
+      "compatibleValues": "Kompatibilis értékek",
+      "compatibilityDisabledWarning": "A kompatibilitás ellenőrzés ki van kapcsolva. Az értékek nem biztos, hogy kompatibilisek."
     },
     "scenarios": {
       "title": "Forgatókönyvek",
@@ -235,7 +267,9 @@
       "save": "Mentés",
       "cancel": "Mégse",
       "enterName": "Adja meg a forgatókönyv nevét",
-      "deleteConfirm": "Biztosan törölni szeretné ezt a forgatókönyvet?"
+      "deleteConfirm": "Biztosan törölni szeretné ezt a forgatókönyvet?",
+      "renameScenario": "Forgatókönyv átnevezése",
+      "scenarioName": "Forgatókönyv neve"
     },
     "contracts": {
       "title": "Szerződések",
@@ -275,6 +309,11 @@
       "saveAndSend": "Mentés és küldés",
       "signNow": "Aláírás most"
     },
+    "sendContracts": {
+      "title": "Szerződések küldése ({count})",
+      "cancel": "Mégse",
+      "send": "Küldés"
+    },
     "photos": {
       "uploadPhotos": "Fotók feltöltése",
       "overallProgress": "Összesített előrehaladás",
@@ -303,7 +342,12 @@
       "investmentDetails": "Beruházás részletei",
       "information": "Információ",
       "contractDetails": "Szerződés részletei",
-      "financingSettings": "Finanszírozási beállítások"
+      "financingSettings": "Finanszírozási beállítások",
+      "infoModalTitle": "Energia Konzultáció Információ",
+      "infoModalText": "Ez a szekció az energia hatékonyság javulását, havi villany és gáz számlákat jeleníti meg. Ezeket az értékeket módosíthatja, hogy lássa, hogyan befolyásolják az energia megtakarításokat és költségeket. Az itt megjelenített adatok a kiválasztott beruházások és ingatlan jellemzők alapján kerülnek kiszámításra.",
+      "contractDetailsInfoTitle": "Szerződés Részletek Információ",
+      "contractDetailsInfoText": "Ez a szekció a kiválasztott beruházások részletes költségeit és árképzését mutatja. Tartalmazza a támogatási programokat, árkalkulációkat és a teljes költségeket. Használja a fogaskerék ikont a finanszírozási modal megnyitásához további költségelemzésért és fizetési lehetőségekért.",
+      "close": "Bezárás"
     },
     "consultationData": {
       "energyEfficiency": "Energia hatékonyság javulás",
@@ -316,7 +360,9 @@
       "currentState": "Jelenlegi állapot",
       "tenYearSavings": "10 éves megtakarítás",
       "twentyYearSavings": "20 éves megtakarítás",
-      "plannedInflation": "Tervezett infláció"
+      "plannedInflation": "Tervezett infláció",
+      "years": "év",
+      "perYear": "Ft/év"
     },
     "costs": {
       "costs": "Költségek",
@@ -355,14 +401,20 @@
       "phoneNumber": "Telefonszám",
       "emailAddress": "E-mail cím",
       "birthPlace": "Születési hely",
+      "dateOfBirth": "Születési dátum",
       "idCardNumber": "Személyi igazolvány szám",
       "taxId": "Adóazonosító",
       "motherBirthName": "Anyja születési neve",
+      "motherName": "Anyja neve",
       "bankAccountNumber": "Bankszámlaszám",
       "citizenship": "Állampolgárság",
       "maritalStatus": "Családi állapot",
       "residenceCardNumber": "Lakcímkártya szám",
-      "mailingAddress": "Levelezési cím"
+      "mailingAddress": "Levelezési cím",
+      "name": "Név",
+      "address": "Cím",
+      "phone": "Telefon",
+      "email": "E-mail"
     },
     "extraCosts": {
       "loading": "Extra költségek betöltése...",
@@ -390,6 +442,18 @@
       "collapse": "Becsuk",
       "addItem": "{name} hozzáadása",
       "noQuestionsAvailable": "Nincs elérhető kérdés ezen az oldalon."
+    },
+    "missingItems": {
+      "title": "Hiányzó elemek listája",
+      "missingPhotoCategories": "Hiányos fotó kategóriák",
+      "allPhotoCategoriesFilled": "Minden fotó kategória kitöltve",
+      "photosUploaded": "fénykép feltöltve",
+      "unansweredQuestions": "Megválaszolatlan kérdések",
+      "allQuestionsAnswered": "Minden kérdés megválaszolva"
+    },
+    "categories": {
+      "addComponent": "Komponens hozzáadása",
+      "noComponentsAdded": "Még nincsenek komponensek hozzáadva. Kattints a \"Komponens hozzáadása\" gombra komponensek hozzáadásához."
     }
   },
   "client": {

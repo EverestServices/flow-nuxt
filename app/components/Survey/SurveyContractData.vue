@@ -93,7 +93,7 @@
               <div class="space-y-3">
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
+                    {{ $t('survey.contractData.name') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_name"
@@ -106,7 +106,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Address
+                    {{ $t('survey.contractData.address') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_address"
@@ -119,7 +119,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone
+                    {{ $t('survey.contractData.phone') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_phone"
@@ -132,7 +132,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
+                    {{ $t('survey.contractData.email') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_email"
@@ -169,7 +169,7 @@
               <div class="space-y-3">
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Birth Place
+                    {{ $t('survey.contractData.birthPlace') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].birth_place"
@@ -182,7 +182,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Date of Birth
+                    {{ $t('survey.contractData.dateOfBirth') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].date_of_birth"
@@ -195,7 +195,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    ID Card Number
+                    {{ $t('survey.contractData.idCardNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].id_card_number"
@@ -208,7 +208,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tax ID
+                    {{ $t('survey.contractData.taxId') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].tax_id"
@@ -221,7 +221,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mother's Name
+                    {{ $t('survey.contractData.motherBirthName') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].mother_birth_name"
@@ -234,7 +234,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bank Account Number
+                    {{ $t('survey.contractData.bankAccountNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].bank_account_number"
@@ -247,7 +247,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Citizenship
+                    {{ $t('survey.contractData.citizenship') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].citizenship"
@@ -260,7 +260,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Marital Status
+                    {{ $t('survey.contractData.maritalStatus') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].marital_status"
@@ -273,7 +273,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Residence Card Number
+                    {{ $t('survey.contractData.residenceCardNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].residence_card_number"
@@ -286,7 +286,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mailing Address
+                    {{ $t('survey.contractData.mailingAddress') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].mailing_address"

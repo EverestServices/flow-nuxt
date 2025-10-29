@@ -149,6 +149,20 @@
       "october": "October",
       "november": "November",
       "december": "December"
+    },
+    "monthsShort": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Mar",
+      "apr": "Apr",
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct",
+      "nov": "Nov",
+      "dec": "Dec"
     }
   },
   "survey": {
@@ -167,6 +181,9 @@
       "noConsultationsFound": "No consultations found",
       "noClientsForFilter": "No clients found for selected filter",
       "startByCreating": "Start by creating a new energy consultation",
+      "unknownClient": "Unknown Client",
+      "start": "Start",
+      "noDate": "No date",
       "filters": {
         "allTime": "All Time",
         "today": "Today",
@@ -188,7 +205,12 @@
       "editClient": "Edit Client Data",
       "offer": "Offer",
       "contract": "Contract",
-      "all": "All"
+      "all": "All",
+      "photos": "Photos",
+      "data": "Data",
+      "graphicMode": "Graphic Mode",
+      "markerMode": "Marker Mode",
+      "selectScenario": "Select Scenario"
     },
     "footer": {
       "saveAndExit": "Save and Exit",
@@ -207,7 +229,8 @@
       "duplicate": "Duplicate",
       "delete": "Delete",
       "saveAllAndSend": "Save All and Send",
-      "signAllContracts": "Sign All Contracts ({count})"
+      "signAllContracts": "Sign All Contracts ({count})",
+      "useScenarios": "Use Scenarios"
     },
     "offerContract": {
       "selectScenario": "Select a scenario for generating a contract:",
@@ -224,7 +247,16 @@
       "modifySuccess": "Contract updated successfully!",
       "selectScenarioFirst": "Please select a scenario first",
       "saveError": "Error saving contract. Please try again.",
-      "modifyError": "Error modifying contract. Please try again."
+      "modifyError": "Error modifying contract. Please try again.",
+      "disableCompatibilityCheck": "Disable compatibility check",
+      "panelNumber": "Panel number",
+      "inverterNumber": "Inverter number",
+      "installPower": "Install power",
+      "inverterKwp": "Inverter kWp",
+      "panelKwp": "Panel kWp",
+      "selectedValues": "Selected values",
+      "compatibleValues": "Compatible values",
+      "compatibilityDisabledWarning": "Compatibility check is disabled. Values may be incompatible."
     },
     "scenarios": {
       "title": "Scenarios",
@@ -235,7 +267,9 @@
       "save": "Save",
       "cancel": "Cancel",
       "enterName": "Enter scenario name",
-      "deleteConfirm": "Are you sure you want to delete this scenario?"
+      "deleteConfirm": "Are you sure you want to delete this scenario?",
+      "renameScenario": "Rename Scenario",
+      "scenarioName": "Scenario Name"
     },
     "contracts": {
       "title": "Contracts",
@@ -275,6 +309,11 @@
       "saveAndSend": "Save and Send",
       "signNow": "Sign Now"
     },
+    "sendContracts": {
+      "title": "Send Contracts ({count})",
+      "cancel": "Cancel",
+      "send": "Send"
+    },
     "photos": {
       "uploadPhotos": "Upload Photos",
       "overallProgress": "Overall Progress",
@@ -303,7 +342,12 @@
       "investmentDetails": "Investment Details",
       "information": "Information",
       "contractDetails": "Contract Details",
-      "financingSettings": "Financing Settings"
+      "financingSettings": "Financing Settings",
+      "infoModalTitle": "Energy Consultation Information",
+      "infoModalText": "This section displays energy efficiency improvements, monthly electricity and gas bills. You can adjust these values to see how they affect your energy savings and costs. The data shown here is calculated based on your selected investments and property characteristics.",
+      "contractDetailsInfoTitle": "Contract Details Information",
+      "contractDetailsInfoText": "This section shows the detailed costs and pricing for your selected investments. It includes support programs, price calculations, and total costs. Use the gear icon to open the financing modal for additional cost analysis and payment options.",
+      "close": "Close"
     },
     "consultationData": {
       "energyEfficiency": "Energy Efficiency Improvement",
@@ -316,7 +360,9 @@
       "currentState": "Current State",
       "tenYearSavings": "10-year Savings",
       "twentyYearSavings": "20-year Savings",
-      "plannedInflation": "Planned Inflation Rate"
+      "plannedInflation": "Planned Inflation Rate",
+      "years": "years",
+      "perYear": "Ft/yr"
     },
     "costs": {
       "costs": "Costs",
@@ -355,14 +401,20 @@
       "phoneNumber": "Phone number",
       "emailAddress": "Email address",
       "birthPlace": "Birth place",
+      "dateOfBirth": "Date of Birth",
       "idCardNumber": "ID card number",
       "taxId": "Tax ID",
       "motherBirthName": "Mother's birth name",
+      "motherName": "Mother's Name",
       "bankAccountNumber": "Bank account number",
       "citizenship": "Citizenship",
       "maritalStatus": "Marital status",
       "residenceCardNumber": "Residence card number",
-      "mailingAddress": "Mailing address"
+      "mailingAddress": "Mailing address",
+      "name": "Name",
+      "address": "Address",
+      "phone": "Phone",
+      "email": "Email"
     },
     "extraCosts": {
       "loading": "Loading extra costs...",
@@ -390,6 +442,18 @@
       "collapse": "Collapse",
       "addItem": "Add {name}",
       "noQuestionsAvailable": "No questions available for this page."
+    },
+    "missingItems": {
+      "title": "Missing Items List",
+      "missingPhotoCategories": "Missing Photo Categories",
+      "allPhotoCategoriesFilled": "All photo categories filled",
+      "photosUploaded": "photos uploaded",
+      "unansweredQuestions": "Unanswered Questions",
+      "allQuestionsAnswered": "All questions answered"
+    },
+    "categories": {
+      "addComponent": "Add Component",
+      "noComponentsAdded": "No components added yet. Click \"Add Component\" to add components."
     }
   },
   "client": {

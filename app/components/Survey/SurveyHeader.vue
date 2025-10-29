@@ -77,7 +77,7 @@
               ]"
               @click="handleInvestmentFilterChange('all')"
           >
-            All
+            {{ t('survey.header.all') }}
           </button>
         </div>
 
@@ -261,11 +261,11 @@ const emit = defineEmits<{
   'select-contract': [contractId: string]
 }>()
 
-const viewModes = [
-  { value: 'photos', label: 'Photos' },
-  { value: 'data', label: 'Data' },
-  { value: 'all', label: 'All' }
-] as const
+const viewModes = computed(() => [
+  { value: 'photos', label: t('survey.header.photos') },
+  { value: 'data', label: t('survey.header.data') },
+  { value: 'all', label: t('survey.header.all') }
+] as const)
 
 const currentViewMode = ref<'photos' | 'data' | 'all'>('all')
 const activeInvestmentFilter = ref<string>('all')

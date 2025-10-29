@@ -51,7 +51,7 @@
           >
             <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.returnTime') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ formatYears(roiData.returnTime) }}
+              {{ roiData.returnTime.toFixed(1) }} {{ $t('survey.consultationData.years') }}
             </div>
           </div>
 
@@ -75,7 +75,7 @@
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.currentState') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/yr
+              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/{{ $t('survey.consultationData.perYear').split('/')[1] }}
             </div>
           </div>
 

@@ -1,18 +1,18 @@
 <template>
   <UIModal
     v-model="isOpen"
-    title="Rename Scenario"
+    :title="$t('survey.scenarios.renameScenario')"
     size="md"
     @close="closeModal"
   >
     <div class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Scenario Name
+          {{ $t('survey.scenarios.scenarioName') }}
         </label>
         <UInput
           v-model="newName"
-          placeholder="Enter scenario name"
+          :placeholder="$t('survey.scenarios.scenarioName')"
           @keyup.enter="handleRename"
         />
       </div>
@@ -23,14 +23,14 @@
         variant="outline"
         @click="closeModal"
       >
-        Cancel
+        {{ $t('common.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced
         variant="primary"
         :disabled="!newName.trim()"
         @click="handleRename"
       >
-        Rename
+        {{ $t('survey.footer.rename') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>

@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpen"
-    :title="`Szerződések aláírása (${contracts.length})`"
+    :title="$t('survey.footer.signAllContracts', { count: contracts.length })"
     size="full"
     :scrollable="true"
     @close="close"

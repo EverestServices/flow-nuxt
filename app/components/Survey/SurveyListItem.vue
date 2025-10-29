@@ -12,7 +12,7 @@
 
           <div class="min-w-0 flex-1 pl-3">
             <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
-              {{ survey.client?.name || 'Unknown Client' }}
+              {{ survey.client?.name || t('survey.list.unknownClient') }}
             </h3>
             <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
               <span v-if="clientAddress" class="flex items-center gap-1 truncate">
@@ -67,7 +67,7 @@
             :to="`/survey/${survey.id}`"
           >
             <Icon name="i-lucide-zap" class="w-3.5 h-3.5 mr-1.5" />
-            Start
+            {{ t('survey.list.start') }}
           </UIButtonEnhanced>
         </div>
       </div>
@@ -78,6 +78,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Survey, Contract } from '~/types/survey-new'
+
+const { t, locale } = useI18n()
 
 const props = defineProps<{
   survey: Survey & {
@@ -97,10 +99,10 @@ const props = defineProps<{
 
 // Format survey date with time
 const formattedDate = computed(() => {
-  if (!props.survey.at) return 'No date'
+  if (!props.survey.at) return t('survey.list.noDate')
 
   const date = new Date(props.survey.at)
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale.value, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -112,10 +114,10 @@ const formattedDate = computed(() => {
 
 // Shorter date format for compact view
 const formattedDateShort = computed(() => {
-  if (!props.survey.at) return 'No date'
+  if (!props.survey.at) return t('survey.list.noDate')
 
   const date = new Date(props.survey.at)
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale.value, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -157,7 +159,7 @@ const firstContractSentDate = computed(() => {
 const formattedContractSentDate = computed(() => {
   if (!firstContractSentDate.value) return ''
 
-  return firstContractSentDate.value.toLocaleString('en-US', {
+  return firstContractSentDate.value.toLocaleString(locale.value, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -184,7 +186,7 @@ const firstContractSignedDate = computed(() => {
 const formattedContractSignedDate = computed(() => {
   if (!firstContractSignedDate.value) return ''
 
-  return firstContractSignedDate.value.toLocaleString('en-US', {
+  return firstContractSignedDate.value.toLocaleString(locale.value, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

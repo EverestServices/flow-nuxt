@@ -73,7 +73,7 @@
             class="whitespace-nowrap"
           >
             <Icon name="i-lucide-eye" class="w-4 h-4 mr-2" />
-            Use Scenarios
+            {{ t('survey.footer.useScenarios') }}
           </UIButtonEnhanced>
         </template>
       </div>

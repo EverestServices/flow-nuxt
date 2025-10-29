@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex h-24 items-center justify-between mr-16">
-      <div class="text-2xl font-light">Energy <span class="font-black">Consultations</span></div>
+      <div class="text-2xl font-light"><span class="font-black">{{ $t('survey.list.title') }}</span></div>
       <UIButtonEnhanced
         icon="i-lucide-zap"
         variant="primary"
