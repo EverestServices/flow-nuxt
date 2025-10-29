@@ -1,14 +1,12 @@
 <template>
   <UIModal
     v-model="isOpen"
-    title="Energy Consultation Information"
+    :title="$t('survey.consultation.infoModalTitle')"
     size="lg"
     @close="closeModal"
   >
     <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-      This section displays energy efficiency improvements, monthly electricity and gas bills.
-      You can adjust these values to see how they affect your energy savings and costs.
-      The data shown here is calculated based on your selected investments and property characteristics.
+      {{ $t('survey.consultation.infoModalText') }}
     </p>
 
     <template #footer>
@@ -16,7 +14,7 @@
         variant="primary"
         @click="closeModal"
       >
-        Close
+        {{ $t('survey.consultation.close') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>

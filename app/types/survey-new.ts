@@ -54,6 +54,7 @@ export interface Survey {
   user_id: string | null
   company_id: string
   at: string | null // DATE type
+  first_opened_at: string | null // TIMESTAMPTZ type
 }
 
 export interface Investment {
@@ -123,6 +124,8 @@ export interface Contract {
   marital_status: string | null
   residence_card_number: string | null
   mailing_address: string | null
+  first_sent_at: string | null // TIMESTAMPTZ type
+  first_signed_at: string | null // TIMESTAMPTZ type
 }
 
 export interface ContractInvestment {

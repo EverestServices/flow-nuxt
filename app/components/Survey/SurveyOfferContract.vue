@@ -6,7 +6,7 @@
         <!-- Scenario Selector Section -->
         <div class="mb-6">
           <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-            Select a scenario for generating a contract:
+            {{ t('survey.offerContract.selectScenario') }}
           </h3>
 
           <!-- Scenario Buttons -->
@@ -15,7 +15,7 @@
               v-for="scenario in scenarios"
               :key="scenario.id"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap"
-              :class="selectedScenarioId === scenario.id
+              :class="selectedScenarioId === scenario.id && !contractsStore.activeContractId
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
               @click="handleSelectScenario(scenario.id)"
@@ -35,7 +35,7 @@
 
           <!-- No scenarios message -->
           <p v-if="scenarios.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-            No scenarios available. Please create scenarios in the Consultation tab first.
+            {{ t('survey.offerContract.noScenarios') }}
           </p>
         </div>
 
@@ -48,7 +48,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-settings" class="w-5 h-5" />
-              <span>Technical Details</span>
+              <span>{{ t('survey.offerContract.technicalDetails') }}</span>
             </div>
             <UIcon
               :name="technicalDetailsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -79,7 +79,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-home" class="w-5 h-5" />
-              <span>Tető konfiguráció</span>
+              <span>{{ t('survey.offerContract.roofConfiguration') }}</span>
             </div>
             <UIcon
               :name="roofConfigurationOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -110,7 +110,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-check-circle" class="w-5 h-5" />
-              <span>Compatibility Check</span>
+              <span>{{ t('survey.offerContract.compatibilityCheck') }}</span>
             </div>
             <UIcon
               :name="compatibilityCheckOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -140,7 +140,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-coins" class="w-5 h-5" />
-              <span>Napelem rendszer járulékos költségei</span>
+              <span>{{ t('survey.offerContract.solarExtraCosts') }}</span>
             </div>
             <UIcon
               :name="extraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -171,7 +171,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-dollar-sign" class="w-5 h-5" />
-              <span>Extra Costs</span>
+              <span>{{ t('survey.offerContract.extraCosts') }}</span>
             </div>
             <UIcon
               :name="generalExtraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -202,7 +202,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-badge-percent" class="w-5 h-5" />
-              <span>Kedvezmények</span>
+              <span>{{ t('survey.offerContract.discounts') }}</span>
             </div>
             <UIcon
               :name="discountsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -238,7 +238,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-file-text" class="w-5 h-5" />
-              <span>Contract Details</span>
+              <span>{{ t('survey.offerContract.contractDetails') }}</span>
             </div>
             <UIcon
               :name="contractDetailsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -270,7 +270,7 @@
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-receipt" class="w-5 h-5" />
-              <span>Prices</span>
+              <span>{{ t('survey.offerContract.prices') }}</span>
             </div>
             <UIcon
               :name="pricesOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
@@ -305,6 +305,8 @@ import { ref, computed, provide, inject, watch } from 'vue'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useContractsStore } from '~/stores/contracts'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -371,6 +373,8 @@ const getScenarioInvestmentIcons = (scenarioId: string) => {
 // Handle scenario selection
 const handleSelectScenario = (scenarioId: string) => {
   selectedScenarioId.value = scenarioId
+  // Clear active contract when selecting a scenario for exclusive selection
+  contractsStore.activeContractId = null
 }
 
 // ===================================================================
@@ -541,7 +545,7 @@ const collectContractData = () => {
 // Save new contract
 const handleSaveContract = async () => {
   if (!selectedScenarioId.value) {
-    alert('Please select a scenario first')
+    alert(t('survey.offerContract.selectScenarioFirst'))
     return
   }
 
@@ -556,11 +560,9 @@ const handleSaveContract = async () => {
       ...contractData,
       name: contractName
     })
-
-    alert('Contract saved successfully!')
   } catch (error) {
     console.error('Error saving contract:', error)
-    alert(`Error saving contract: ${error.message}`)
+    alert(t('survey.offerContract.saveError'))
   }
 }
 
@@ -577,10 +579,10 @@ const handleModifyContract = async () => {
       name: contractsStore.activeContract?.name
     })
 
-    alert('Contract updated successfully!')
+    alert(t('survey.offerContract.modifySuccess'))
   } catch (error) {
     console.error('Error modifying contract:', error)
-    alert('Error modifying contract. Please try again.')
+    alert(t('survey.offerContract.modifyError'))
   }
 }
 

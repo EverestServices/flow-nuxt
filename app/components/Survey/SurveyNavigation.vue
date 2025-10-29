@@ -4,15 +4,18 @@
       <button
         v-for="tab in tabs"
         :key="tab.id"
+        :disabled="tab.disabled"
         :class="[
           'flex items-center gap-2 px-2 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
-          modelValue === tab.id
-            ? 'bg-primary-500 text-white'
-            : tab.status === 'warning'
-              ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          tab.disabled
+            ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
+            : modelValue === tab.id
+              ? 'bg-primary-500 text-white'
+              : tab.status === 'warning'
+                ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
         ]"
-        @click="$emit('update:modelValue', tab.id)"
+        @click="!tab.disabled && $emit('update:modelValue', tab.id)"
       >
         <!-- Tab Number/Icon -->
         <span
@@ -45,6 +48,7 @@ interface Tab {
   label: string
   number: number
   status?: 'pending' | 'warning' | 'completed'
+  disabled?: boolean
 }
 
 interface Props {

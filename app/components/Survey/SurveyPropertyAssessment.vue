@@ -6,7 +6,7 @@
       <div v-if="!hasInvestments" class="bg-white/50 border-white dark:bg-black/20 dark:border-black/20 rounded-3xl p-8 w-full ">
         <!-- Message -->
         <p class="text-center text-gray-600 dark:text-white mb-8">
-          Please select at least one service by clicking the "Add Investment" button.
+          {{ $t('survey.propertyAssessment.selectServicePrompt') }}
         </p>
 
         <!-- Random Investment Icons -->
@@ -31,7 +31,7 @@
             @click="openInvestmentModal"
           >
             <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-            Add Investment
+            {{ $t('survey.propertyAssessment.addInvestment') }}
           </UIButtonEnhanced>
         </div>
       </div>
@@ -61,7 +61,7 @@
                   class="w-5 h-5 text-gray-600 dark:text-gray-400"
                 />
                 <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ investment.name }}
+                  {{ translate(investment.name_translations, investment.name) }}
                 </span>
               </div>
               <button
@@ -80,7 +80,7 @@
                 class="w-5 h-5 text-gray-600 dark:text-gray-400"
               />
               <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ investment.name }}
+                {{ translate(investment.name_translations, investment.name) }}
               </span>
             </div>
           </div>
@@ -125,8 +125,8 @@
               <div v-if="page.allow_multiple" class="space-y-3">
                 <!-- Empty state message when no instances -->
                 <div v-if="getPageInstances(page.id).length === 0" class="text-center text-gray-500 dark:text-gray-400 py-6">
-                  <p class="text-sm">Nincs még hozzáadott elem.</p>
-                  <p class="text-xs mt-1">Kattints az alábbi gombra új hozzáadásához.</p>
+                  <p class="text-sm">{{ $t('survey.propertyAssessment.noItemsAdded') }}</p>
+                  <p class="text-xs mt-1">{{ $t('survey.propertyAssessment.clickToAdd') }}</p>
                 </div>
 
                 <UAccordion
@@ -158,7 +158,7 @@
                     <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
                       <!-- Normal Questions -->
                       <div
-                        v-for="question in getNormalQuestions(page.id)"
+                        v-for="question in getNormalQuestions(page.id, index)"
                         :key="question.id"
                         class="space-y-2"
                       >
@@ -170,10 +170,10 @@
                       </div>
 
                       <!-- Special Questions Accordion -->
-                      <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
+                      <div v-if="getSpecialQuestions(page.id, index).length > 0" class="mt-4">
                         <UAccordion
                           :items="[{
-                            label: 'Egyéb kérdések',
+                            label: $t('survey.propertyAssessment.otherQuestions'),
                             slot: `special-${page.id}-${index}`,
                             defaultOpen: false
                           }]"
@@ -181,7 +181,7 @@
                           <template #[`special-${page.id}-${index}`]>
                             <div class="p-4 space-y-6 bg-white dark:bg-gray-900 rounded-b-lg">
                               <div
-                                v-for="question in getSpecialQuestions(page.id)"
+                                v-for="question in getSpecialQuestions(page.id, index)"
                                 :key="question.id"
                                 class="space-y-2"
                               >
@@ -194,7 +194,7 @@
                               <!-- Close Button -->
                               <div class="flex justify-end pt-2">
                                 <UButton
-                                  label="Becsuk"
+                                  :label="$t('survey.propertyAssessment.collapse')"
                                   color="gray"
                                   variant="outline"
                                   size="sm"
@@ -212,7 +212,7 @@
                 <!-- Add Instance Button -->
                 <div class="flex justify-center pt-2">
                   <UButton
-                    :label="`${page.name} hozzáadása`"
+                    :label="$t('survey.propertyAssessment.addItem', { name: translatePage(page.name) })"
                     icon="i-lucide-plus"
                     color="primary"
                     variant="outline"
@@ -242,7 +242,7 @@
                   <div v-if="getSpecialQuestions(page.id).length > 0" class="mt-4">
                     <UAccordion
                       :items="[{
-                        label: 'Egyéb kérdések',
+                        label: $t('survey.propertyAssessment.otherQuestions'),
                         slot: `special-${page.id}`,
                         defaultOpen: false
                       }]"
@@ -263,7 +263,7 @@
                           <!-- Close Button -->
                           <div class="flex justify-end pt-2">
                             <UButton
-                              label="Becsuk"
+                              :label="$t('survey.propertyAssessment.collapse')"
                               color="gray"
                               variant="outline"
                               size="sm"
@@ -276,7 +276,7 @@
                   </div>
                 </div>
                 <div v-else class="text-center text-gray-500 dark:text-gray-400">
-                  No questions available for this page.
+                  {{ $t('survey.propertyAssessment.noQuestionsAvailable') }}
                 </div>
               </div>
             </div>
@@ -348,7 +348,8 @@ const emit = defineEmits<{
 }>()
 
 // Translations
-const { translatePage } = useI18n()
+const { translatePage } = useSurveyTranslations()
+const { translate } = useTranslatableField()
 
 // Store
 const store = useSurveyInvestmentsStore()
@@ -579,17 +580,62 @@ const updateInstanceQuestionValue = async (pageId: string, instanceIndex: number
 }
 
 // ========================================================================
+// Conditional Display Logic
+// ========================================================================
+
+const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?: number): boolean => {
+  // If no display conditions, always show
+  if (!question.display_conditions) {
+    return true
+  }
+
+  const condition = question.display_conditions
+
+  // Get the value of the controlling field
+  let fieldValue: any
+  if (instanceIndex !== undefined) {
+    fieldValue = store.getInstanceResponse(pageId, instanceIndex, condition.field)
+  } else {
+    fieldValue = store.getResponse(condition.field)
+  }
+
+  // Evaluate the condition based on operator
+  switch (condition.operator) {
+    case 'equals':
+      return fieldValue == condition.value
+    case 'not_equals':
+      return fieldValue != condition.value
+    case 'greater_than':
+      return Number(fieldValue) > Number(condition.value)
+    case 'less_than':
+      return Number(fieldValue) < Number(condition.value)
+    case 'greater_or_equal':
+      return Number(fieldValue) >= Number(condition.value)
+    case 'less_or_equal':
+      return Number(fieldValue) <= Number(condition.value)
+    case 'contains':
+      return String(fieldValue || '').includes(String(condition.value))
+    default:
+      return true
+  }
+}
+
+// ========================================================================
 // Special Questions Handling
 // ========================================================================
 
-const getNormalQuestions = (pageId: string) => {
+const getNormalQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
-  return questions.filter(q => !q.is_special)
+  return questions
+    .filter(q => !q.is_special)
+    .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 
-const getSpecialQuestions = (pageId: string) => {
+const getSpecialQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
-  return questions.filter(q => q.is_special === true)
+  return questions
+    .filter(q => q.is_special === true)
+    .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 
 const closeAccordion = (event: MouseEvent) => {
@@ -602,8 +648,9 @@ const closeAccordion = (event: MouseEvent) => {
     // Look for the accordion header button - it should be a sibling of the content area
     const buttons = current.querySelectorAll('button')
     for (const button of Array.from(buttons)) {
-      // Find the button that contains "Egyéb kérdések" text or is an accordion header
-      if (button.textContent?.includes('Egyéb kérdések')) {
+      // Find the first button in the accordion structure (likely the header toggle)
+      // We use a more generic approach instead of checking for specific text
+      if (button.getAttribute('aria-expanded') === 'true') {
         button.click()
         return
       }

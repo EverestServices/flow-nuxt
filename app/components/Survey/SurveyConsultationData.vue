@@ -9,7 +9,7 @@
       <div>
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-medium text-gray-900 dark:text-white">
-            Energy Efficiency Improvement
+            {{ $t('survey.consultationData.energyEfficiency') }}
           </label>
           <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
             {{ formatPercentage(roiData.energyEfficiencyImprovement) }}
@@ -28,8 +28,8 @@
             }"
           />
           <div class="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-            <span>0%</span>
-            <span>100%</span>
+            <span>{{ $t('survey.consultationData.zeroPercent') }}</span>
+            <span>{{ $t('survey.consultationData.hundredPercent') }}</span>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
       <!-- Return on Investment -->
       <div class="space-y-3">
         <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Return on Investment
+          {{ $t('survey.consultationData.returnOnInvestment') }}
         </h4>
 
         <div class="grid grid-cols-2 gap-3">
@@ -49,15 +49,15 @@
             v-if="showReturnTime"
             class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
           >
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Return Time</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.returnTime') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ formatYears(roiData.returnTime) }}
+              {{ roiData.returnTime.toFixed(1) }} {{ $t('survey.consultationData.years') }}
             </div>
           </div>
 
           <!-- Monthly Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Monthly Savings</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.monthlySavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.monthlySavings) }}
             </div>
@@ -65,7 +65,7 @@
 
           <!-- Annual Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Annual Savings</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.annualSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.annualSavings) }}
             </div>
@@ -73,15 +73,15 @@
 
           <!-- Current State -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Current State</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.currentState') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/yr
+              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/{{ $t('survey.consultationData.perYear').split('/')[1] }}
             </div>
           </div>
 
           <!-- 10-year Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">10-year Savings</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.tenYearSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.savings10Year) }}
             </div>
@@ -89,7 +89,7 @@
 
           <!-- 20-year Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">20-year Savings</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.twentyYearSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.savings20Year) }}
             </div>
@@ -103,7 +103,7 @@
       <!-- Planned Inflation Rate -->
       <div>
         <label class="block text-sm font-medium text-gray-900 dark:text-white mb-3">
-          Planned Inflation Rate
+          {{ $t('survey.consultationData.plannedInflation') }}
         </label>
         <div class="grid grid-cols-4 gap-2">
           <button

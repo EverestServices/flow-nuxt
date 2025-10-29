@@ -10,7 +10,7 @@
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ getCategoryDisplayName(category.persist_name) }}
+            {{ getCategoryDisplayName(category) }}
           </span>
           <UButton
             icon="i-lucide-info"
@@ -21,6 +21,7 @@
           />
         </div>
         <UButton
+          v-if="!readOnly"
           icon="i-lucide-plus"
           color="primary"
           variant="outline"
@@ -29,7 +30,7 @@
           :disabled="loadingCategories[category.id]"
           @click="handleAddRow(category.id)"
         >
-          Add Component
+          {{ $t('survey.categories.addComponent') }}
         </UButton>
       </div>
 
@@ -44,6 +45,7 @@
           <UISelect
             :model-value="scenarioComponent.main_component_id"
             :options="getComponentOptions(category.id)"
+            :disabled="readOnly"
             class="flex-1"
             size="sm"
             @update:model-value="(value) => handleComponentChange(scenarioComponent.id, value)"
@@ -52,6 +54,7 @@
           <!-- Quantity Input -->
           <UInput
             :model-value="scenarioComponent.quantity"
+            :disabled="readOnly"
             type="number"
             min="1"
             size="sm"
@@ -61,6 +64,7 @@
 
           <!-- Delete Button -->
           <UButton
+            v-if="!readOnly"
             icon="i-lucide-trash-2"
             color="red"
             variant="ghost"
@@ -74,7 +78,7 @@
           v-if="getCategoryComponents(category.id).length === 0"
           class="text-sm text-gray-500 dark:text-gray-400 text-center py-2"
         >
-          No components added. Click "Add Component" to add components.
+          {{ $t('survey.categories.noComponentsAdded') }}
         </p>
       </div>
     </div>
@@ -88,11 +92,15 @@ import { useScenariosStore } from '~/stores/scenarios'
 interface Props {
   scenarioId: string
   investmentId: string
+  readOnly?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: true  // Default to read-only since this is used on Offer/Contract page
+})
 
 const scenariosStore = useScenariosStore()
+const { translate } = useTranslatableField()
 
 // Loading states for each category
 const loadingCategories = ref<Record<string, boolean>>({})
@@ -124,28 +132,8 @@ const getComponentName = (componentId: string) => {
 }
 
 // Get display name for category
-const getCategoryDisplayName = (persistName: string): string => {
-  const nameMap: Record<string, string> = {
-    'panel': 'Solar Panels',
-    'inverter': 'Inverter',
-    'mounting': 'Mounting System',
-    'regulator': 'Charge Regulator',
-    'ac_surge_protector': 'AC Surge Protector',
-    'dc_surge_protector': 'DC Surge Protector',
-    'optimizer': 'Power Optimizer',
-    'rapid_shutdown': 'Rapid Shutdown',
-    'battery': 'Battery',
-    'heatpump': 'Heat Pump',
-    'accessory': 'Accessories',
-    'insulation': 'Insulation',
-    'adhesive': 'Adhesive',
-    'plaster': 'Plaster',
-    'vapor_barrier': 'Vapor Barrier',
-    'window': 'Windows',
-    'airconditioner': 'Air Conditioner',
-    'charger': 'EV Charger'
-  }
-  return nameMap[persistName] || persistName
+const getCategoryDisplayName = (category: any): string => {
+  return translate(category.name_translations, category.persist_name)
 }
 
 // Show category info

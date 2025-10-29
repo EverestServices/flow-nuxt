@@ -9,7 +9,7 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-ruler" class="w-5 h-5" />
-            <span>System Design</span>
+            <span>{{ $t('survey.consultation.systemDesign') }}</span>
           </div>
           <UButton
             icon="i-lucide-chevron-left"
@@ -31,7 +31,7 @@
               <template #leading>
                 <UIcon name="i-lucide-zap" class="w-4 h-4" />
               </template>
-              AI Scenarios
+              {{ $t('survey.consultation.aiScenarios') }}
             </UButton>
 
             <!-- New Scenario button -->
@@ -44,14 +44,14 @@
               <template #leading>
                 <UIcon name="i-lucide-plus" class="w-4 h-4" />
               </template>
-              New Scenario
+              {{ $t('survey.consultation.newScenario') }}
             </UButton>
           </div>
           <!-- Technical Data Container -->
           <div v-if="!hasScenarios" class="border-b border-gray-200 dark:border-gray-700">
             <div class="p-4">
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                No scenarios created yet. Use the buttons above to create scenarios.
+                {{ $t('survey.consultation.noScenariosYet') }}
               </p>
             </div>
           </div>
@@ -76,7 +76,7 @@
               >
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-banknote" class="w-4 h-4" />
-                  <span>Subsidy</span>
+                  <span>{{ $t('survey.consultation.subsidy') }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <!-- Info Button with Tooltip -->
@@ -90,7 +90,7 @@
                     </button>
                     <!-- Tooltip -->
                     <div class="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50">
-                      Subsidies are available
+                      {{ $t('survey.consultation.subsidiesAvailable') }}
                       <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-0 h-0 border-4 border-transparent border-l-gray-900 dark:border-l-gray-700"></div>
                     </div>
                   </div>
@@ -128,21 +128,21 @@
               >
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-info" class="w-4 h-4" />
-                  <span>Household Data</span>
+                  <span>{{ $t('survey.consultation.householdData') }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <!-- Action Buttons -->
                   <button
                     class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     @click.stop="showElectricCarsModal = true"
-                    title="Elektromos autó beállítás"
+                    :title="$t('survey.consultation.electricCarSettings')"
                   >
                     <UIcon name="i-lucide-car" class="w-4 h-4" />
                   </button>
                   <button
                     class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                     @click.stop="showHeavyConsumersModal = true"
-                    title="Nagyfogyasztó beállítás"
+                    :title="$t('survey.consultation.heavyConsumerSettings')"
                   >
                     <UIcon name="i-lucide-plug-zap" class="w-4 h-4" />
                   </button>
@@ -200,7 +200,7 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-message-circle" class="w-5 h-5" />
-            <span>Consultation</span>
+            <span>{{ $t('survey.consultation.consultation') }}</span>
           </div>
           <UButton
             icon="i-lucide-chevron-right"
@@ -214,7 +214,7 @@
           <!-- Investment Details Accordion -->
           <UAccordion
             :items="[{
-              label: 'Investment Details',
+              label: t('survey.consultation.investmentDetails'),
               icon: 'i-lucide-bar-chart-3',
               slot: 'investment-details',
               defaultOpen: true
@@ -236,14 +236,14 @@
             >
               <div class="flex items-center gap-2">
                 <UIcon name="i-lucide-file-text" class="w-4 h-4" />
-                <span>Consultation</span>
+                <span>{{ $t('survey.consultation.consultation') }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <!-- Info Button -->
                 <button
                   class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                   @click.stop="showConsultationInfoModal = true"
-                  title="Information"
+                  :title="$t('survey.consultation.information')"
                 >
                   <UIcon name="i-lucide-info" class="w-4 h-4" />
                 </button>
@@ -275,14 +275,14 @@
             >
               <div class="flex items-center gap-2">
                 <UIcon name="i-lucide-file-check" class="w-4 h-4" />
-                <span>Contract Details</span>
+                <span>{{ $t('survey.consultation.contractDetails') }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <!-- Info Button -->
                 <button
                   class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                   @click.stop="showContractDetailsInfoModal = true"
-                  title="Information"
+                  :title="$t('survey.consultation.information')"
                 >
                   <UIcon name="i-lucide-info" class="w-4 h-4" />
                 </button>
@@ -290,7 +290,7 @@
                 <button
                   class="p-1.5 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                   @click.stop="showFinancingModal = true"
-                  title="Financing Settings"
+                  :title="$t('survey.consultation.financingSettings')"
                 >
                   <UIcon name="i-lucide-settings" class="w-4 h-4" />
                 </button>
@@ -364,6 +364,8 @@ import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSubsidies } from '~/composables/useSubsidies'
 import type { EligibilityConditions } from '~/types/subsidy'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string

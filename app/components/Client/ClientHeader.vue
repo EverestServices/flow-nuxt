@@ -8,7 +8,7 @@
           class="flex items-center gap-2 mb-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
         >
           <UIcon name="i-heroicons-arrow-left" class="w-5 h-5" />
-          <span class="text-sm font-medium">Back</span>
+          <span class="text-sm font-medium">{{ $t('client.header.back') }}</span>
         </button>
 
         <div class="mt-1">
@@ -24,7 +24,7 @@
       <!-- Right Section - Edit Button -->
       <UButton
         icon="i-heroicons-pencil-square"
-        label="Edit"
+        :label="$t('client.header.edit')"
         color="primary"
         variant="soft"
         size="sm"

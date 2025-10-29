@@ -1,14 +1,12 @@
 <template>
   <UIModal
     v-model="isOpen"
-    title="Contract Details Information"
+    :title="$t('survey.consultation.contractDetailsInfoTitle')"
     size="lg"
     @close="closeModal"
   >
     <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-      This section shows the detailed costs and pricing for your selected investments.
-      It includes support programs, price calculations, and total costs.
-      Use the gear icon to open the financing modal for additional cost analysis and payment options.
+      {{ $t('survey.consultation.contractDetailsInfoText') }}
     </p>
 
     <template #footer>
@@ -16,7 +14,7 @@
         variant="primary"
         @click="closeModal"
       >
-        Close
+        {{ $t('survey.consultation.close') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>

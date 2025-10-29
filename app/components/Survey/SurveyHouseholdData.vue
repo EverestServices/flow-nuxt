@@ -156,7 +156,7 @@
       <div class="mt-4">
         <div class="flex items-center justify-between mb-1">
           <label class="text-sm font-medium text-gray-900 dark:text-white">
-            Monthly Gas Bill
+            {{ $t('household.monthlyGasBill') }}
           </label>
           <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
             {{ formatCurrency(localData.monthlyGasBill) }}
@@ -180,7 +180,7 @@
       <!-- Consumption Profiles -->
       <div class="mt-4">
         <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-          Consumption Profiles
+          {{ $t('household.consumptionProfiles') }}
         </label>
         <div class="grid grid-cols-2 gap-2">
           <button
@@ -248,14 +248,16 @@ const showSolarFields = ref(false)
 const selectedInvestments = ref<string[]>([])
 const selectedProfiles = ref<string[]>([])
 
+const { t } = useI18n()
+
 // Consumption profiles options
-const consumptionProfiles = [
-  { value: 'work_from_home', label: 'Work from home', icon: 'i-lucide-home' },
-  { value: 'traditional_hours', label: 'Traditional hours (9-17)', icon: 'i-lucide-briefcase' },
-  { value: 'shift_work', label: 'Shift work', icon: 'i-lucide-clock' },
-  { value: 'retired_stay_at_home', label: 'Retired/Stay at home', icon: 'i-lucide-armchair' },
-  { value: 'young_family', label: 'Young family with children', icon: 'i-lucide-baby' }
-]
+const consumptionProfiles = computed(() => [
+  { value: 'work_from_home', label: t('household.profiles.workFromHome'), icon: 'i-lucide-home' },
+  { value: 'traditional_hours', label: t('household.profiles.traditionalHours'), icon: 'i-lucide-briefcase' },
+  { value: 'shift_work', label: t('household.profiles.shiftWork'), icon: 'i-lucide-clock' },
+  { value: 'retired_stay_at_home', label: t('household.profiles.retiredStayAtHome'), icon: 'i-lucide-armchair' },
+  { value: 'young_family', label: t('household.profiles.youngFamily'), icon: 'i-lucide-baby' }
+])
 
 /**
  * Check if solar-related investment is selected

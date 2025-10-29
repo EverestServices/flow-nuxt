@@ -3,7 +3,7 @@
     <!-- Contract Selector Section -->
     <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
       <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
-        Select contracts (maximum 3):
+        {{ $t('survey.contractData.selectContracts') }}
       </h3>
 
       <!-- Contract Buttons -->
@@ -46,7 +46,7 @@
 
       <!-- No contracts message -->
       <p v-if="contracts.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-        No contracts available. Please create contracts in the Offer/Contract tab first.
+        {{ $t('survey.contractData.noContracts') }}
       </p>
     </div>
 
@@ -73,9 +73,9 @@
             <!-- Client Data Section -->
             <div>
               <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">Client Data</h5>
+                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.clientData') }}</h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">Copy to:</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
                     <UButton
                       v-for="otherContract in getOtherContracts(contract.id)"
@@ -93,12 +93,12 @@
               <div class="space-y-3">
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
+                    {{ $t('survey.contractData.name') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_name"
                     size="sm"
-                    placeholder="Client name"
+                    :placeholder="$t('survey.contractData.clientName')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -106,12 +106,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Address
+                    {{ $t('survey.contractData.address') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_address"
                     size="sm"
-                    placeholder="Client address"
+                    :placeholder="$t('survey.contractData.clientAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -119,12 +119,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone
+                    {{ $t('survey.contractData.phone') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_phone"
                     size="sm"
-                    placeholder="Phone number"
+                    :placeholder="$t('survey.contractData.phoneNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -132,13 +132,13 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
+                    {{ $t('survey.contractData.email') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].client_email"
                     type="email"
                     size="sm"
-                    placeholder="Email address"
+                    :placeholder="$t('survey.contractData.emailAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -149,9 +149,9 @@
             <!-- Personal Details Section -->
             <div>
               <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">Personal Details</h5>
+                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.personalDetails') }}</h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
-                  <span class="text-xs text-gray-500 dark:text-gray-400">Copy to:</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
                     <UButton
                       v-for="otherContract in getOtherContracts(contract.id)"
@@ -169,12 +169,12 @@
               <div class="space-y-3">
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Birth Place
+                    {{ $t('survey.contractData.birthPlace') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].birth_place"
                     size="sm"
-                    placeholder="Birth place"
+                    :placeholder="$t('survey.contractData.birthPlace')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -182,7 +182,7 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Date of Birth
+                    {{ $t('survey.contractData.dateOfBirth') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].date_of_birth"
@@ -195,12 +195,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    ID Card Number
+                    {{ $t('survey.contractData.idCardNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].id_card_number"
                     size="sm"
-                    placeholder="ID card number"
+                    :placeholder="$t('survey.contractData.idCardNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -208,12 +208,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tax ID
+                    {{ $t('survey.contractData.taxId') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].tax_id"
                     size="sm"
-                    placeholder="Tax ID"
+                    :placeholder="$t('survey.contractData.taxId')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -221,12 +221,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mother's Name
+                    {{ $t('survey.contractData.motherBirthName') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].mother_birth_name"
                     size="sm"
-                    placeholder="Mother's birth name"
+                    :placeholder="$t('survey.contractData.motherBirthName')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -234,12 +234,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bank Account Number
+                    {{ $t('survey.contractData.bankAccountNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].bank_account_number"
                     size="sm"
-                    placeholder="Bank account number"
+                    :placeholder="$t('survey.contractData.bankAccountNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -247,12 +247,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Citizenship
+                    {{ $t('survey.contractData.citizenship') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].citizenship"
                     size="sm"
-                    placeholder="Citizenship"
+                    :placeholder="$t('survey.contractData.citizenship')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -260,12 +260,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Marital Status
+                    {{ $t('survey.contractData.maritalStatus') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].marital_status"
                     size="sm"
-                    placeholder="Marital status"
+                    :placeholder="$t('survey.contractData.maritalStatus')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -273,12 +273,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Residence Card Number
+                    {{ $t('survey.contractData.residenceCardNumber') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].residence_card_number"
                     size="sm"
-                    placeholder="Residence card number"
+                    :placeholder="$t('survey.contractData.residenceCardNumber')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -286,12 +286,12 @@
 
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mailing Address
+                    {{ $t('survey.contractData.mailingAddress') }}
                   </label>
                   <UInput
                     v-model="contractsData[contract.id].mailing_address"
                     size="sm"
-                    placeholder="Mailing address"
+                    :placeholder="$t('survey.contractData.mailingAddress')"
                     class="w-full"
                     @update:model-value="handleFieldUpdate(contract.id)"
                   />
@@ -378,7 +378,7 @@ const toggleContractSelection = (contractId: string) => {
             client_phone: contract.client_phone || props.clientData?.phone || '',
             client_email: contract.client_email || props.clientData?.email || '',
             birth_place: contract.birth_place || '',
-            date_of_birth: contract.date_of_birth || '',
+            date_of_birth: contract.date_of_birth || null,
             id_card_number: contract.id_card_number || '',
             tax_id: contract.tax_id || '',
             mother_birth_name: contract.mother_birth_name || '',
@@ -496,7 +496,7 @@ const saveContractData = async (contractId: string) => {
       client_phone: data.client_phone,
       client_email: data.client_email,
       birth_place: data.birth_place,
-      date_of_birth: data.date_of_birth,
+      date_of_birth: data.date_of_birth || null, // Convert empty string to null
       id_card_number: data.id_card_number,
       tax_id: data.tax_id,
       mother_birth_name: data.mother_birth_name,

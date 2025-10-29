@@ -127,7 +127,7 @@
               class="whitespace-nowrap"
             >
               <Icon name="i-lucide-zap" class="w-4 h-4 mr-2" />
-              AI Scenarios
+              {{ t('survey.footer.aiScenarios') }}
             </UIButtonEnhanced>
 
             <UIButtonEnhanced
@@ -137,7 +137,7 @@
               class="whitespace-nowrap"
             >
               <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-              New Scenario
+              {{ t('survey.footer.newScenario') }}
             </UIButtonEnhanced>
           </div>
 
@@ -148,7 +148,7 @@
               class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               <span class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ activeScenario?.name || 'Select Scenario' }}
+                {{ activeScenario?.name || t('survey.header.selectScenario') }}
               </span>
               <Icon name="i-lucide-chevron-down" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
@@ -191,7 +191,7 @@
               @click="handleRenameScenario"
               class="whitespace-nowrap"
             >
-              Rename
+              {{ t('survey.footer.rename') }}
             </UIButtonEnhanced>
             <UIButtonEnhanced
               size="xs"
@@ -199,7 +199,7 @@
               @click="handleDuplicateScenario"
               class="whitespace-nowrap"
             >
-              Duplicate
+              {{ t('survey.footer.duplicate') }}
             </UIButtonEnhanced>
             <UIButtonEnhanced
               size="xs"
@@ -207,7 +207,7 @@
               @click="handleDeleteScenario"
               class="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 whitespace-nowrap"
             >
-              Delete
+              {{ t('survey.footer.delete') }}
             </UIButtonEnhanced>
           </div>
         </div>
@@ -236,8 +236,8 @@
       <UISelect
         v-model="displayMode"
         :options="[
-          { label: 'Graphic Mode', value: 'graphic' },
-          { label: 'Marker Mode', value: 'marker' }
+          { label: t('survey.header.graphicMode'), value: 'graphic' },
+          { label: t('survey.header.markerMode'), value: 'marker' }
         ]"
         size="md"
         class="w-48 rounded-full"
@@ -346,11 +346,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useContractsStore } from '~/stores/contracts'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -386,45 +388,57 @@ const activeTab = ref<'property-assessment' | 'consultation' | 'offer-contract' 
 // Contract mode state (null = not set, 'offer' = Offer mode, 'contract' = Contract mode)
 const contractMode = ref<'offer' | 'contract' | null>(null)
 
+// Check if there are any saved contracts
+const hasContracts = computed(() => contracts.value.length > 0)
+
 // Tab configuration with dynamic status
 const tabs = computed(() => {
   // Determine tab 3 and 4 labels based on contractMode
-  let tab3Label = 'Offer/Contract'
-  let tab4Label = 'Contract Data'
+  let tab3Label = t('survey.tabs.offerContract')
+  let tab4Label = t('survey.tabs.contractData')
 
   if (contractMode.value === 'offer') {
-    tab3Label = 'Offer'
-    tab4Label = 'Offer Data'
+    tab3Label = t('survey.labels.offer')
+    tab4Label = t('survey.labels.offerData')
   } else if (contractMode.value === 'contract') {
-    tab3Label = 'Contract'
-    tab4Label = 'Contract Data'
+    tab3Label = t('survey.labels.contract')
+    tab4Label = t('survey.labels.contractData')
   }
 
   return [
     {
       id: 'property-assessment',
-      label: 'Property Assessment',
+      label: t('survey.tabs.propertyAssessment'),
       number: 1,
       status: missingItemsCount.value === 0 ? 'completed' as const : 'warning' as const
     },
-    { id: 'consultation', label: 'Consultation', number: 2 },
+    { id: 'consultation', label: t('survey.tabs.consultation'), number: 2 },
     { id: 'offer-contract', label: tab3Label, number: 3 },
-    { id: 'contract-data', label: tab4Label, number: 4 },
-    { id: 'summary', label: 'Summary', number: 5 }
+    { id: 'contract-data', label: tab4Label, number: 4, disabled: !hasContracts.value },
+    { id: 'summary', label: t('survey.tabs.summary'), number: 5, disabled: !hasContracts.value }
   ]
 })
 
 // Survey data
-const clientName = ref('Loading...')
+const clientName = ref(t('survey.page.loading'))
 const clientData = ref<any>(null)
 
-// Can proceed - always true for property-assessment tab
+// Can proceed logic per tab
 const canProceed = computed(() => {
-  if (activeTab.value === 'property-assessment') {
-    return true
+  switch (activeTab.value) {
+    case 'property-assessment':
+      return true
+    case 'consultation':
+      return true
+    case 'offer-contract':
+      return hasContracts.value
+    case 'contract-data':
+      return true
+    case 'summary':
+      return missingItemsCount.value === 0
+    default:
+      return true
   }
-  // For other tabs, check if there are missing items
-  return missingItemsCount.value === 0
 })
 
 // Calculate missing items count dynamically
@@ -518,15 +532,14 @@ const canSaveContract = computed(() => {
   return activeTab.value === 'offer-contract'
 })
 
+// Use optimized survey data loading
+const { loadSurveyWithRelations, refreshSurveyData } = useSurveyData()
+
 // Load survey data
 onMounted(async () => {
   await loadSurveyData()
-  // Load scenarios
-  await scenariosStore.loadScenarios(surveyId.value)
-  // Load main components data (needed for contract preview)
-  await scenariosStore.loadMainComponentsData()
-  // Load contracts
-  await contractsStore.loadContracts(surveyId.value)
+  // Load all survey-related data with a single optimized query
+  await loadSurveyWithRelations(surveyId.value)
 })
 
 const loadSurveyData = async () => {
@@ -564,14 +577,26 @@ const loadSurveyData = async () => {
       if (survey.consultation_panel_open !== null && survey.consultation_panel_open !== undefined) {
         consultationPanelOpen.value = survey.consultation_panel_open
       }
+
+      // Set first_opened_at if not already set
+      if (!survey.first_opened_at) {
+        const { error: updateError } = await supabase
+          .from('surveys')
+          .update({ first_opened_at: new Date().toISOString() })
+          .eq('id', surveyId.value)
+
+        if (updateError) {
+          console.error('Error setting first_opened_at:', updateError)
+        }
+      }
     } else {
-      clientName.value = 'Unknown Client'
+      clientName.value = t('survey.page.unknownClient')
       clientData.value = null
     }
 
   } catch (error) {
     console.error('Error loading survey data:', error)
-    clientName.value = 'Error Loading'
+    clientName.value = t('survey.page.errorLoading')
     // TODO: Show error toast and redirect
   }
 }
@@ -690,7 +715,11 @@ const handleOpenCamera = (investmentId: string) => {
 const handleNext = () => {
   const currentIndex = tabs.value.findIndex(tab => tab.id === activeTab.value)
   if (currentIndex < tabs.value.length - 1) {
-    activeTab.value = tabs.value[currentIndex + 1].id as any
+    const nextTab = tabs.value[currentIndex + 1]
+    // Skip disabled tabs
+    if (!nextTab.disabled) {
+      activeTab.value = nextTab.id as any
+    }
   }
 }
 
@@ -768,8 +797,8 @@ const handleDuplicateScenario = async () => {
       if (compError) throw compError
     }
 
-    // Refresh scenarios list
-    await scenariosStore.loadScenarios(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
     // Set the new scenario as active
     scenariosStore.setActiveScenario(newScenario.id)
 
@@ -784,7 +813,7 @@ const handleDeleteScenario = async () => {
   if (!activeScenario.value) return
 
   // TODO: Add confirmation dialog
-  if (!confirm(`Are you sure you want to delete "${activeScenario.value.name}"?`)) {
+  if (!confirm(t('survey.scenarios.deleteConfirm'))) {
     return
   }
 
@@ -798,8 +827,8 @@ const handleDeleteScenario = async () => {
 
     if (error) throw error
 
-    // Refresh scenarios list
-    await scenariosStore.loadScenarios(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
 
     // Set first scenario as active if any scenarios remain
     if (scenarios.value.length > 0) {
@@ -822,8 +851,8 @@ const handleCreateScenarios = async (investmentIds: string[]) => {
       console.log('Scenarios created successfully:', result.scenarios)
       // Close modal
       showSelectInvestmentsModal.value = false
-      // Refresh scenarios list
-      await scenariosStore.loadScenarios(surveyId.value)
+      // Refresh all survey data
+      await refreshSurveyData(surveyId.value)
       // TODO: Show success message
     } else {
       console.error('Failed to create scenarios:', result.error)
@@ -872,8 +901,8 @@ const handleCreateManualScenario = async (investmentIds: string[]) => {
     // Close modal
     showSelectInvestmentsModal.value = false
 
-    // Refresh scenarios list
-    await scenariosStore.loadScenarios(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
 
     // Set the new scenario as active
     scenariosStore.setActiveScenario(newScenario.id)
@@ -898,8 +927,8 @@ const handleRenameComplete = async (newName: string) => {
 
     if (error) throw error
 
-    // Refresh scenarios list
-    await scenariosStore.loadScenarios(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
     showRenameScenarioModal.value = false
 
     // TODO: Show success message
@@ -948,12 +977,16 @@ const handleSelectContract = (contractId: string) => {
 const handleSaveInvestmentContract = async () => {
   if (offerContractRef.value) {
     await offerContractRef.value.handleSaveContract()
+    // Refresh all survey data after saving contract
+    await refreshSurveyData(surveyId.value)
   }
 }
 
 const handleModifyContract = async () => {
   if (offerContractRef.value) {
     await offerContractRef.value.handleModifyContract()
+    // Refresh all survey data after modifying contract
+    await refreshSurveyData(surveyId.value)
   }
 }
 
@@ -966,6 +999,8 @@ const handleRenameContractComplete = async (newName: string) => {
 
   try {
     await contractsStore.renameContract(activeContract.value.id, newName)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
     showRenameContractModal.value = false
 
     // TODO: Show success message
@@ -981,8 +1016,8 @@ const handleDuplicateContract = async () => {
   try {
     const newContractId = await contractsStore.duplicateContract(activeContract.value.id)
 
-    // Refresh contracts list
-    await contractsStore.loadContracts(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
 
     // Set the new contract as active
     if (newContractId) {
@@ -1000,15 +1035,15 @@ const handleDeleteContract = async () => {
   if (!activeContract.value) return
 
   // TODO: Add confirmation dialog
-  if (!confirm(`Are you sure you want to delete "${activeContract.value.name}"?`)) {
+  if (!confirm(t('survey.contracts.deleteConfirm'))) {
     return
   }
 
   try {
     await contractsStore.deleteContract(activeContract.value.id)
 
-    // Refresh contracts list
-    await contractsStore.loadContracts(surveyId.value)
+    // Refresh all survey data
+    await refreshSurveyData(surveyId.value)
 
     // Set first contract as active if any contracts remain
     if (contracts.value.length > 0) {
@@ -1044,14 +1079,37 @@ const handleSignNowSingle = (contractId: string) => {
   }
 }
 
-const handleSendContractEmail = (emailTemplate: string) => {
-  console.log('Send contract email:', selectedContractForSend.value?.id, emailTemplate)
-  // TODO: Implement - Send email with contract
+const handleSendContractEmail = async (emailTemplate: string) => {
+  if (!selectedContractForSend.value) return
+
+  try {
+    // Mark contract as sent (sets first_sent_at if not already set)
+    await contractsStore.markContractAsSent(selectedContractForSend.value.id)
+
+    console.log('Send contract email:', selectedContractForSend.value.id, emailTemplate)
+    // TODO: Implement - Send email with contract
+  } catch (error) {
+    console.error('Error sending contract:', error)
+    // TODO: Show error message
+  }
 }
 
-const handleSignContract = (data: any) => {
-  console.log('Sign contract:', selectedContractForSign.value?.id, data)
-  // TODO: Implement - Save signature and update contract status
+const handleSignContract = async (data: any) => {
+  if (!selectedContractForSign.value) return
+
+  try {
+    // Mark contract as sent (sets first_sent_at if not already set)
+    await contractsStore.markContractAsSent(selectedContractForSign.value.id)
+
+    // Mark contract as signed (sets first_signed_at if not already set)
+    await contractsStore.markContractAsSigned(selectedContractForSign.value.id)
+
+    console.log('Sign contract:', selectedContractForSign.value.id, data)
+    // TODO: Implement - Save signature and update contract status
+  } catch (error) {
+    console.error('Error signing contract:', error)
+    // TODO: Show error message
+  }
 }
 
 const handleSaveAllAndSend = () => {
@@ -1074,5 +1132,13 @@ const handleSignAllContractsComplete = (data: any) => {
 
 definePageMeta({
   layout: 'fullwidth'
+})
+
+// Watch for contract count changes and redirect if necessary
+watch(() => hasContracts.value, (hasContracts) => {
+  // If no contracts exist and we're on a disabled tab, redirect to offer-contract
+  if (!hasContracts && (activeTab.value === 'contract-data' || activeTab.value === 'summary')) {
+    activeTab.value = 'offer-contract'
+  }
 })
 </script>

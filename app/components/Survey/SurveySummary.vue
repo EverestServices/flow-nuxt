@@ -3,7 +3,7 @@
     <!-- View Toggle -->
     <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">View:</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('survey.summary.view') }}</span>
         <UButton
           :icon="viewMode === 'list' ? 'i-lucide-list' : 'i-lucide-layout-grid'"
           :color="viewMode === 'list' ? 'primary' : 'gray'"
@@ -11,7 +11,7 @@
           size="sm"
           @click="viewMode = 'list'"
         >
-          List
+          {{ $t('survey.summary.list') }}
         </UButton>
         <UButton
           :icon="viewMode === 'card' ? 'i-lucide-layout-grid' : 'i-lucide-layout-grid'"
@@ -20,7 +20,7 @@
           size="sm"
           @click="viewMode = 'card'"
         >
-          Card
+          {{ $t('survey.summary.card') }}
         </UButton>
       </div>
     </div>
@@ -31,7 +31,7 @@
       <div v-if="loading" class="flex items-center justify-center h-full">
         <div class="text-center">
           <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
-          <p class="text-gray-600 dark:text-gray-400">Loading contracts...</p>
+          <p class="text-gray-600 dark:text-gray-400">{{ $t('survey.summary.loadingContracts') }}</p>
         </div>
       </div>
 
@@ -39,7 +39,7 @@
       <div v-else-if="!contracts || contracts.length === 0" class="flex items-center justify-center h-full">
         <div class="text-center">
           <UIcon name="i-lucide-file-text" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p class="text-gray-600 dark:text-gray-400">No contracts available</p>
+          <p class="text-gray-600 dark:text-gray-400">{{ $t('survey.summary.noContracts') }}</p>
         </div>
       </div>
 
@@ -68,7 +68,7 @@
             <!-- Client Information -->
             <div>
               <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                Client Information
+                {{ $t('survey.summary.clientInformation') }}
               </h4>
               <div class="space-y-2 text-sm">
                 <div v-if="getClientName(contract)" class="flex items-start">
@@ -88,7 +88,7 @@
                   <span class="text-gray-700 dark:text-gray-300">{{ getClientEmail(contract) }}</span>
                 </div>
                 <div v-if="!getClientName(contract) && !getClientAddress(contract) && !getClientPhone(contract) && !getClientEmail(contract)" class="text-gray-500 dark:text-gray-400 italic">
-                  No client information available
+                  {{ $t('survey.summary.noClientInfo') }}
                 </div>
               </div>
             </div>
@@ -96,12 +96,12 @@
             <!-- Contract Details -->
             <div>
               <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                Contract Details
+                {{ $t('survey.summary.contractDetails') }}
               </h4>
 
               <!-- Selected Investments -->
               <div class="mb-4">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Selected Investments:</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ $t('survey.summary.selectedInvestments') }}</p>
                 <div class="flex flex-wrap gap-2">
                   <div
                     v-for="investmentId in getContractInvestments(contract.id)"
@@ -118,14 +118,14 @@
                     v-if="getContractInvestments(contract.id).length === 0"
                     class="text-gray-500 dark:text-gray-400 italic text-xs"
                   >
-                    No investments selected
+                    {{ $t('survey.summary.noInvestments') }}
                   </div>
                 </div>
               </div>
 
               <!-- Cost Summary -->
               <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Implementation Fee:</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ $t('survey.summary.implementationFee') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">
                   {{ formatPrice(contract.total_price) }}
                 </p>
@@ -139,7 +139,7 @@
               <!-- Save without send -->
               <UButton
                 :icon="'i-lucide-save'"
-                :label="viewMode === 'list' ? 'Save without send' : undefined"
+                :label="viewMode === 'list' ? $t('survey.summary.saveWithoutSend') : undefined"
                 color="gray"
                 variant="outline"
                 size="sm"
@@ -149,7 +149,7 @@
               <!-- Save and Send -->
               <UButton
                 :icon="'i-lucide-send'"
-                :label="viewMode === 'list' ? 'Save and Send' : undefined"
+                :label="viewMode === 'list' ? $t('survey.summary.saveAndSend') : undefined"
                 color="primary"
                 variant="outline"
                 size="sm"
@@ -159,7 +159,7 @@
               <!-- Sign Now -->
               <UButton
                 :icon="'i-lucide-pen-tool'"
-                :label="viewMode === 'list' ? 'Sign Now' : undefined"
+                :label="viewMode === 'list' ? $t('survey.summary.signNow') : undefined"
                 color="primary"
                 size="sm"
                 @click="handleSignNow(contract.id)"
@@ -176,6 +176,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useContractsStore } from '~/stores/contracts'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -198,8 +200,9 @@ const getContractInvestments = (contractId: string): string[] => {
 }
 
 const getInvestmentName = (investmentId: string): string => {
+  const { translate } = useTranslatableField()
   const investment = investmentsStore.availableInvestments.find(inv => inv.id === investmentId)
-  return investment?.name || 'Unknown'
+  return investment ? translate(investment.name_translations, investment.name) : 'Unknown'
 }
 
 const getInvestmentIcon = (investmentId: string): string => {

@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpen"
-    :title="`Send Contracts (${contracts.length})`"
+    :title="$t('survey.sendContracts.title', { count: contracts.length })"
     size="full"
     :scrollable="true"
     @close="close"

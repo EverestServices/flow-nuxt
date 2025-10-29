@@ -141,6 +141,7 @@ const {
 } = useEnergySavings()
 
 const supabase = useSupabaseClient()
+const { translate } = useTranslatableField()
 const loading = ref(false)
 const investmentImpacts = ref<InvestmentImpact[]>([])
 
@@ -205,18 +206,19 @@ const calculateImpacts = async () => {
     // Group components by investment (through categories)
     const impactPromises = investments.map(async (investment) => {
       const persistName = investment.persist_name
+      const translatedName = translate(investment.name_translations, investment.name)
 
       // Calculate based on investment type
       if (persistName === 'solarPanel' || persistName === 'solarPanelBattery') {
-        return await calculateSolarImpact(scenarioComponents, investment.name)
+        return await calculateSolarImpact(scenarioComponents, translatedName)
       } else if (persistName === 'heatPump') {
-        return await calculateHeatPumpImpactForInvestment(scenarioComponents, investment.name)
+        return await calculateHeatPumpImpactForInvestment(scenarioComponents, translatedName)
       } else if (persistName === 'facadeInsulation') {
-        return await calculateFacadeInsulationImpact(scenarioComponents, investment.name)
+        return await calculateFacadeInsulationImpact(scenarioComponents, translatedName)
       } else if (persistName === 'roofInsulation') {
-        return await calculateRoofInsulationImpact(scenarioComponents, investment.name)
+        return await calculateRoofInsulationImpact(scenarioComponents, translatedName)
       } else if (persistName === 'windows') {
-        return await calculateWindowsImpact(scenarioComponents, investment.name)
+        return await calculateWindowsImpact(scenarioComponents, translatedName)
       }
 
       return null

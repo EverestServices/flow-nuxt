@@ -38,7 +38,7 @@
 
       <!-- Annual total -->
       <div class="border-t pt-4 text-center">
-        <div class="text-sm text-gray-600 dark:text-gray-400">Annual Total</div>
+        <div class="text-sm text-gray-600 dark:text-gray-400">{{ $t('survey.monthly.annualTotal') }}</div>
         <div class="text-xl font-bold mt-1">
           {{ formatNumber(annualTotal) }} {{ unit }}
         </div>
@@ -51,7 +51,7 @@
         variant="outline"
         @click="closeModal"
       >
-        Close
+        {{ $t('survey.monthly.close') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>

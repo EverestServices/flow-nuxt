@@ -63,7 +63,7 @@
               ? 'text-primary-700 dark:text-primary-300'
               : 'text-gray-700 dark:text-gray-300'"
           >
-            {{ investment.name }}
+            {{ translate(investment.name_translations, investment.name) }}
           </span>
 
           <!-- Selected Checkmark -->
@@ -98,6 +98,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+
+const { translate } = useTranslatableField()
 
 interface Props {
   modelValue: boolean

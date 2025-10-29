@@ -3,7 +3,7 @@
     <!-- Disable Compatibility Check Toggle -->
     <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
       <span class="text-sm font-medium text-gray-900 dark:text-white">
-        Disable compatibility check
+        {{ $t('survey.offerContract.disableCompatibilityCheck') }}
       </span>
       <USwitch
         v-model="disableCheck"
@@ -20,10 +20,10 @@
               <!-- Empty header for row labels -->
             </th>
             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Selected values
+              {{ $t('survey.offerContract.selectedValues') }}
             </th>
             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Compatible values
+              {{ $t('survey.offerContract.compatibleValues') }}
             </th>
           </tr>
         </thead>
@@ -31,7 +31,7 @@
           <!-- Panel number -->
           <tr :class="getRowClass('panel_number')">
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-              Panel number
+              {{ $t('survey.offerContract.panelNumber') }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
               {{ calculations.panel_number.selected }}
@@ -44,7 +44,7 @@
           <!-- Inverter number -->
           <tr :class="getRowClass('inverter_number')">
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-              Inverter number
+              {{ $t('survey.offerContract.inverterNumber') }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
               {{ calculations.inverter_number.selected }}
@@ -57,7 +57,7 @@
           <!-- Install power -->
           <tr :class="getRowClass('install_power')">
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-              Install power
+              {{ $t('survey.offerContract.installPower') }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
               {{ calculations.install_power.selected }} kW
@@ -70,7 +70,7 @@
           <!-- Inverter kWp -->
           <tr :class="getRowClass('inverter_kwp')">
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-              Inverter kWp
+              {{ $t('survey.offerContract.inverterKwp') }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
               {{ calculations.inverter_kwp.selected }} kW
@@ -83,7 +83,7 @@
           <!-- Panel kWp -->
           <tr :class="getRowClass('panel_kwp')">
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-              Panel kWp
+              {{ $t('survey.offerContract.panelKwp') }}
             </td>
             <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
               {{ calculations.panel_kwp.selected }} kW
@@ -99,7 +99,7 @@
     <!-- Info message when check is disabled -->
     <div v-else class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
       <p class="text-sm text-yellow-800 dark:text-yellow-200">
-        Compatibility check is disabled. Values may be incompatible.
+        {{ $t('survey.offerContract.compatibilityDisabledWarning') }}
       </p>
     </div>
   </div>
