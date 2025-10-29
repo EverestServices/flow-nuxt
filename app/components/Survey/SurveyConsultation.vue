@@ -361,6 +361,7 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSubsidies } from '~/composables/useSubsidies'
 import type { EligibilityConditions } from '~/types/subsidy'

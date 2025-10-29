@@ -164,6 +164,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ExtraCostItem from './ExtraCostItem.vue'
 
 const { t } = useI18n()
