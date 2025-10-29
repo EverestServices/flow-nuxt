@@ -134,6 +134,9 @@
     "monthlyNaturalGasImpact": "Havi földgáz hatás",
     "totalCO2Reduction": "Teljes CO₂ csökkentés",
     "co2PerYear": "kg CO₂ / év",
+    "kwhPerYear": "kWh / év",
+    "m3PerYear": "m³ / év",
+    "noInvestmentsYet": "Ebben a forgatókönyvben még nincsenek beruházások.",
     "years": "év",
     "ftPerYear": "Ft / év",
     "months": {
