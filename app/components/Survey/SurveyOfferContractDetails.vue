@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 
 const { t } = useI18n()
