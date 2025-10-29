@@ -19,6 +19,8 @@
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n()
+
 defineProps<{
   modelValue: string
 }>()
@@ -28,12 +30,12 @@ defineEmits<{
 }>()
 
 const tabs = [
-  { key: 'basicInfo', label: 'Basic Info' },
-  { key: 'surveys', label: 'Surveys' },
-  { key: 'contracts', label: 'Contracts' },
-  { key: 'projects', label: 'Projects' },
-  { key: 'events', label: 'Events' },
-  { key: 'emails', label: 'Emails' },
-  { key: 'logs', label: 'Logs' }
+  { key: 'basicInfo', label: t('client.tabs.basicInfo') },
+  { key: 'surveys', label: t('client.tabs.surveys') },
+  { key: 'contracts', label: t('client.tabs.contracts') },
+  { key: 'projects', label: t('client.tabs.projects') },
+  { key: 'events', label: t('client.tabs.events') },
+  { key: 'emails', label: t('client.tabs.emails') },
+  { key: 'logs', label: t('client.tabs.logs') }
 ]
 </script>

@@ -1,7 +1,7 @@
 <template>
-  <div class="video-background-container">
+  <div class="w-screen h-screen fixed p-8">
     <video
-        class="video-background"
+        class=" w-full h-full object-cover rounded-4xl"
         autoplay
         muted
         loop
@@ -9,29 +9,10 @@
     >
       <source src="~assets/mounteverest.mov" type="video/quicktime">
     </video>
-    <UPage>
-      <UPageBody>
-        <slot />
-      </UPageBody>
-    </UPage>
+
   </div>
+
+  <slot />
 </template>
-
-<style scoped>
-.video-background-container {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.video-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: -1;
-}
-</style>
+<script setup lang="ts">
+</script>

@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-24 items-center">
-    <div class="text-2xl font-light">Profile <span class="font-black">Settings</span></div>
+    <div class="text-2xl font-light">{{ $t('settings.title') }}</div>
   </div>
 
   <div class="flex flex-col space-y-8">
@@ -12,7 +12,7 @@
           <strong class="font-black">preferences</strong>
         </div>
         <div class="text-2xl outfit font-thin text-gray-600 dark:text-gray-400 mt-4">
-          Keep your information up to date
+          {{ $t('settings.subtitle') }}
         </div>
       </div>
 
@@ -22,31 +22,42 @@
           <div class="flex items-center gap-6">
             <div class="relative">
               <img
-                :src="profileData.avatar_url || 'https://github.com/benjamincanac.png'"
+                :src="profileData.avatar_url || user?.user_metadata?.avatar_url || 'https://github.com/benjamincanac.png'"
                 alt="Profile Avatar"
                 class="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-700"
               />
               <label
                 for="avatar-upload"
-                class="absolute bottom-0 right-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-green-600 transition"
+                :class="[
+                  'absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center transition',
+                  uploadingAvatar ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 cursor-pointer hover:bg-green-600'
+                ]"
               >
-                <Icon name="i-lucide-camera" class="w-4 h-4 text-white" />
+                <Icon v-if="!uploadingAvatar" name="i-lucide-camera" class="w-4 h-4 text-white" />
+                <svg v-else class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               </label>
               <input
                 id="avatar-upload"
                 type="file"
                 accept="image/*"
                 class="hidden"
+                :disabled="uploadingAvatar"
                 @change="handleAvatarUpload"
               />
             </div>
             <div class="flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Profile Photo</h3>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('settings.avatar.title') }}</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Click the camera icon to upload a new photo
+                {{ $t('settings.avatar.description') }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                JPG, PNG or GIF. Max size 5MB.
+                {{ $t('settings.avatar.requirements') }}
+              </p>
+              <p v-if="uploadingAvatar" class="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
+                Uploading...
               </p>
             </div>
           </div>
@@ -60,14 +71,14 @@
       <UIBox>
         <div class="w-full p-6">
           <div class="flex justify-between mb-6">
-            <UIH2>Personal Information</UIH2>
+            <UIH2>{{ $t('settings.personalInfo.title') }}</UIH2>
           </div>
 
           <form @submit.prevent="savePersonalInfo" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  First Name
+                  {{ $t('settings.personalInfo.firstName') }}
                 </label>
                 <UIInput
                   v-model="profileData.first_name"
@@ -77,7 +88,7 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Last Name
+                  {{ $t('settings.personalInfo.lastName') }}
                 </label>
                 <UIInput
                   v-model="profileData.last_name"
@@ -89,7 +100,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
+                {{ $t('settings.personalInfo.email') }}
               </label>
               <UIInput
                 v-model="profileData.email"
@@ -97,12 +108,12 @@
                 disabled
                 class="w-full opacity-60"
               />
-              <p class="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+              <p class="text-xs text-gray-500 mt-1">{{ $t('settings.personalInfo.emailNote') }}</p>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Phone
+                {{ $t('settings.personalInfo.phone') }}
               </label>
               <UIInput
                 v-model="profileData.phone"
@@ -114,7 +125,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Job Title
+                {{ $t('settings.personalInfo.jobTitle') }}
               </label>
               <UIInput
                 v-model="profileData.job_title"
@@ -125,7 +136,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Department
+                {{ $t('settings.personalInfo.department') }}
               </label>
               <UIInput
                 v-model="profileData.department"
@@ -136,11 +147,11 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Bio
+                {{ $t('settings.personalInfo.bio') }}
               </label>
               <textarea
                 v-model="profileData.bio"
-                placeholder="Tell us about yourself..."
+                :placeholder="$t('settings.personalInfo.bioPlaceholder')"
                 rows="4"
                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               />
@@ -148,7 +159,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Location
+                {{ $t('settings.personalInfo.location') }}
               </label>
               <UIInput
                 v-model="profileData.location"
@@ -162,7 +173,7 @@
               :loading="savingPersonalInfo"
               class="w-full"
             >
-              Save Personal Information
+              {{ $t('settings.personalInfo.save') }}
             </UIButtonEnhanced>
           </form>
         </div>
@@ -172,13 +183,13 @@
       <UIBox>
         <div class="w-full p-6">
           <div class="flex justify-between mb-6">
-            <UIH2>Preferences</UIH2>
+            <UIH2>{{ $t('settings.preferences.title') }}</UIH2>
           </div>
 
           <form @submit.prevent="savePreferences" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Timezone
+                {{ $t('settings.preferences.timezone') }}
               </label>
               <UISelect
                 v-model="profileData.timezone"
@@ -189,18 +200,19 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Language
+                {{ $t('settings.preferences.language') }}
               </label>
               <UISelect
                 v-model="profileData.language"
                 :options="languageOptions"
                 class="w-full"
+                @update:model-value="handleLanguageChange"
               />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Date Format
+                {{ $t('settings.preferences.dateFormat') }}
               </label>
               <UISelect
                 v-model="profileData.date_format"
@@ -211,7 +223,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Time Format
+                {{ $t('settings.preferences.timeFormat') }}
               </label>
               <UISelect
                 v-model="profileData.time_format"
@@ -222,7 +234,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Theme
+                {{ $t('settings.preferences.theme') }}
               </label>
               <UISelect
                 v-model="profileData.theme"
@@ -236,7 +248,7 @@
               :loading="savingPreferences"
               class="w-full"
             >
-              Save Preferences
+              {{ $t('settings.preferences.save') }}
             </UIButtonEnhanced>
           </form>
         </div>
@@ -437,6 +449,7 @@
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 const toast = useToast()
+const { locale, t } = useI18n()
 
 // Page metadata
 useHead({
@@ -495,6 +508,7 @@ const languageOptions = [
   { label: 'Spanish', value: 'es' },
   { label: 'French', value: 'fr' },
   { label: 'German', value: 'de' },
+  { label: 'Hungarian', value: 'hu' },
   { label: 'Japanese', value: 'ja' },
 ]
 
@@ -520,19 +534,37 @@ const fetchProfile = async () => {
   if (!user.value) return
 
   try {
+    // Set email from user object
+    profileData.value.email = user.value.email || ''
+
     const { data, error } = await client
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.value.id)
-      .single()
+      .maybeSingle()
 
-    if (error) {
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
       console.error('Error fetching profile:', error)
       return
     }
 
     if (data) {
-      profileData.value = { ...profileData.value, ...data }
+      profileData.value = { ...profileData.value, ...data, email: user.value.email }
+    } else {
+      // Profile doesn't exist yet, create it
+      const { error: insertError } = await client
+        .from('user_profiles')
+        .insert({
+          user_id: user.value.id,
+          email: user.value.email,
+          company_id: '550e8400-e29b-41d4-a716-446655440000', // Default company ID
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError)
+      }
     }
   } catch (err) {
     console.error('Error:', err)
@@ -559,14 +591,14 @@ const savePersonalInfo = async () => {
     if (error) throw error
 
     toast.add({
-      title: 'Success',
-      description: 'Personal information updated successfully',
+      title: t('common.success'),
+      description: t('settings.personalInfo.saveSuccess'),
       color: 'green',
     })
   } catch (error) {
     toast.add({
-      title: 'Error',
-      description: 'Failed to update personal information',
+      title: t('common.error'),
+      description: t('settings.personalInfo.saveError'),
       color: 'red',
     })
   } finally {
@@ -591,14 +623,14 @@ const savePreferences = async () => {
     if (error) throw error
 
     toast.add({
-      title: 'Success',
-      description: 'Preferences updated successfully',
+      title: t('common.success'),
+      description: t('settings.preferences.saveSuccess'),
       color: 'green',
     })
   } catch (error) {
     toast.add({
-      title: 'Error',
-      description: 'Failed to update preferences',
+      title: t('common.error'),
+      description: t('settings.preferences.saveError'),
       color: 'red',
     })
   } finally {
@@ -696,6 +728,8 @@ const savePrivacySettings = async () => {
   }
 }
 
+const uploadingAvatar = ref(false)
+
 const handleAvatarUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -706,8 +740,8 @@ const handleAvatarUpload = async (event: Event) => {
   const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   if (!validTypes.includes(file.type)) {
     toast.add({
-      title: 'Invalid file type',
-      description: 'Please upload a JPEG, PNG, GIF, or WebP image',
+      title: t('common.error'),
+      description: t('settings.avatar.invalidType'),
       color: 'red',
     })
     return
@@ -716,61 +750,156 @@ const handleAvatarUpload = async (event: Event) => {
   // Validate file size (5MB)
   if (file.size > 5 * 1024 * 1024) {
     toast.add({
-      title: 'File too large',
-      description: 'Maximum file size is 5MB',
+      title: t('common.error'),
+      description: t('settings.avatar.tooLarge'),
       color: 'red',
     })
     return
   }
 
+  uploadingAvatar.value = true
+
   try {
+    // Show uploading toast
+    toast.add({
+      title: 'Uploading...',
+      description: 'Please wait while we upload your avatar',
+      color: 'blue',
+    })
+
     // Create unique file name
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.value?.id}/${Date.now()}.${fileExt}`
 
+    console.log('Uploading file:', fileName)
+
     // Upload to Supabase Storage
-    const { data, error } = await client.storage
+    const { data: uploadData, error: uploadError } = await client.storage
       .from('avatars')
       .upload(fileName, file, {
         cacheControl: '3600',
-        upsert: false,
+        upsert: true, // Changed to true to allow overwriting
       })
 
-    if (error) throw error
+    if (uploadError) {
+      console.error('Upload error:', uploadError)
+      throw uploadError
+    }
+
+    console.log('Upload successful:', uploadData)
 
     // Get public URL
-    const { data: { publicUrl } } = client.storage
+    const { data: urlData } = client.storage
       .from('avatars')
       .getPublicUrl(fileName)
 
-    // Update profile with new avatar URL
-    const { error: updateError } = await client
+    const publicUrl = urlData.publicUrl
+    console.log('Public URL:', publicUrl)
+
+    // First check if user profile exists
+    const { data: existingProfile, error: checkError } = await client
       .from('user_profiles')
-      .update({ avatar_url: publicUrl })
+      .select('*')
       .eq('user_id', user.value?.id)
+      .maybeSingle()
 
-    if (updateError) throw updateError
+    console.log('Existing profile:', existingProfile)
 
+    if (checkError) {
+      console.error('Check error:', checkError)
+    }
+
+    let profileUpdate, updateError
+
+    if (existingProfile) {
+      // Profile exists - UPDATE only
+      console.log('Updating existing profile...')
+      const result = await client
+        .from('user_profiles')
+        .update({
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.value?.id)
+        .select()
+
+      profileUpdate = result.data
+      updateError = result.error
+    } else {
+      // Profile doesn't exist - INSERT
+      console.log('Creating new profile...')
+      const result = await client
+        .from('user_profiles')
+        .insert({
+          user_id: user.value?.id,
+          avatar_url: publicUrl,
+          email: user.value?.email,
+          company_id: '550e8400-e29b-41d4-a716-446655440000', // Default company ID
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+
+      profileUpdate = result.data
+      updateError = result.error
+    }
+
+    if (updateError) {
+      console.error('Update error:', updateError)
+      throw updateError
+    }
+
+    console.log('Profile updated:', profileUpdate)
+
+    // Update local state
     profileData.value.avatar_url = publicUrl
 
+    // Also update Supabase auth user metadata
+    const { error: metadataError } = await client.auth.updateUser({
+      data: {
+        avatar_url: publicUrl
+      }
+    })
+
+    if (metadataError) {
+      console.warn('Metadata update error:', metadataError)
+    }
+
     toast.add({
-      title: 'Success',
-      description: 'Avatar uploaded successfully',
+      title: t('common.success'),
+      description: t('settings.avatar.uploadSuccess'),
       color: 'green',
     })
-  } catch (error) {
-    console.error('Upload error:', error)
+  } catch (error: any) {
+    console.error('Avatar upload error:', error)
     toast.add({
-      title: 'Error',
-      description: 'Failed to upload avatar',
+      title: t('common.error'),
+      description: error.message || t('settings.avatar.uploadError'),
       color: 'red',
     })
+  } finally {
+    uploadingAvatar.value = false
+    // Reset input
+    target.value = ''
   }
+}
+
+// Handle language change
+const handleLanguageChange = async (newLanguage: string) => {
+  // Update i18n locale immediately
+  locale.value = newLanguage
 }
 
 // Fetch profile on mount
 onMounted(() => {
   fetchProfile()
+})
+
+// Watch for profileData.language changes and sync with i18n
+watch(() => profileData.value.language, (newLanguage) => {
+  if (newLanguage && locale.value !== newLanguage) {
+    locale.value = newLanguage
+  }
 })
 </script>
 

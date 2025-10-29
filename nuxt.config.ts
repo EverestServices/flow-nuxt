@@ -8,7 +8,8 @@ export default defineNuxtConfig({
     '@nuxt/ui-pro',
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    '@nuxtjs/supabase'
+    '@nuxtjs/supabase',
+    '@nuxtjs/i18n'
   ],
   css: ['~/assets/css/main.css', '~/assets/css/transitions.css'],
   app: {
@@ -53,6 +54,30 @@ export default defineNuxtConfig({
         persistSession: true,
         autoRefreshToken: true,
       }
+    }
+  },
+
+  i18n: {
+    locales: [
+      {
+        code: 'en',
+        name: 'English',
+        file: 'en.json'
+      },
+      {
+        code: 'hu',
+        name: 'Hungarian',
+        file: 'hu.json'
+      }
+    ],
+    lazy: true,
+    langDir: 'locales',
+    defaultLocale: 'en',
+    strategy: 'no_prefix',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root'
     }
   }
 

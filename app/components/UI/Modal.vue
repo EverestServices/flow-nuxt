@@ -7,25 +7,29 @@
         @click.self="handleBackdropClick"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+        <div class="absolute inset-0 bg-white/50 backdrop-blur-xs" />
 
         <!-- Modal Container -->
         <div :class="computedModalClasses" role="dialog" aria-modal="true">
           <!-- Header -->
-          <div v-if="$slots.header || title" class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <slot name="header">
-              <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">{{ title }}</h3>
-            </slot>
-            <button
-              v-if="closeable"
-              @click="handleClose"
-              class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-              aria-label="Close modal"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <div v-if="$slots.header || title" class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <slot name="header">
+                  <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">{{ title }}</h3>
+                </slot>
+              </div>
+              <button
+                v-if="closeable"
+                @click="handleClose"
+                class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+                aria-label="Close modal"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <!-- Body -->

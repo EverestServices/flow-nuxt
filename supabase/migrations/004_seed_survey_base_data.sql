@@ -536,27 +536,6 @@ BEGIN
     RAISE NOTICE 'Survey pages and questions seeded successfully for Solar Panel + Battery';
 
     -- ========================================================================
-    -- HEAT PUMP (7 categories with nested structures)
-    -- ========================================================================
-
-    -- Heat Pump néha túl komplex a teljes implementációhoz, így csak a főbb page-eket hozzuk létre
-    -- A többi investment típust teljesen implementáljuk
-
-    INSERT INTO public.survey_pages (id, investment_id, name, type, position, allow_multiple, allow_delete_first)
-    VALUES (gen_random_uuid(), inv_heat_pump, 'Általános adatok', 'general', '{"top": 200, "right": 300}'::jsonb, false, false)
-    RETURNING id INTO page_id;
-
-    INSERT INTO public.survey_questions (survey_page_id, name, type, is_required, default_value, placeholder_value, options, min, max, unit) VALUES
-    (page_id, 'property_type', 'dropdown', true, 'Családi ház', null, '["Családi ház", "Ikerház", "Sorház", "Egyéb"]'::jsonb, null, null, null),
-    (page_id, 'construction_year', 'number', true, null, 'Építési év', null, null, null, null),
-    (page_id, 'property_location', 'text', true, null, 'Település, kerület', null, null, null, null),
-    (page_id, 'monument_protection', 'switch', true, 'false', null, null, null, null, null),
-    (page_id, 'heat_pump_type', 'dropdown', true, 'Egyszerűsített', null, '["Egyszerűsített", "FÉG"]'::jsonb, null, null, null),
-    (page_id, 'building_floors', 'number', true, '2', null, null, 1, 10, null),
-    (page_id, 'building_area', 'number', true, null, null, null, 1, 2000, 'm²'),
-    (page_id, 'heated_area', 'number', true, null, null, null, 1, 2000, 'm²');
-
-    -- ========================================================================
     -- FACADE INSULATION (3 categories)
     -- ========================================================================
 

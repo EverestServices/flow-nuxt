@@ -1,64 +1,49 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="closeModal"
-  ></div>
-
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="closeModal"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                Upload Photos
-              </h3>
-              <p v-if="investmentTitle" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {{ investmentTitle }}
-              </p>
-            </div>
-            <button
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              @click="closeModal"
-            >
-              <UIcon name="i-lucide-x" class="w-5 h-5" />
-            </button>
-          </div>
-
-          <!-- Overall Progress -->
-          <div class="mt-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Overall Progress
-              </span>
-              <span v-if="!isNaN(overallPercentage)" class="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                {{ overallPercentage }}%
-              </span>
-            </div>
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-xs text-gray-600 dark:text-gray-400">
-                min. {{ totalMinPhotos }} photos
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                class="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                :style="{ width: (isNaN(overallPercentage) ? 0 : overallPercentage) + '%' }"
-              />
-            </div>
+  <UIModal
+    v-model="isOpen"
+    size="xl"
+    :scrollable="true"
+    @close="closeModal"
+  >
+    <template #header>
+      <div class="w-full">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+              {{ $t('survey.photos.uploadPhotos') }}
+            </h3>
+            <p v-if="investmentTitle" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {{ investmentTitle }}
+            </p>
           </div>
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-6">
+        <!-- Overall Progress -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ $t('survey.photos.overallProgress') }}
+            </span>
+            <span v-if="!isNaN(overallPercentage)" class="text-sm font-semibold text-primary-600 dark:text-primary-400">
+              {{ overallPercentage }}%
+            </span>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-600 dark:text-gray-400">
+                {{ $t('survey.photos.minPhotos', { count: totalMinPhotos }) }}
+            </span>
+          </div>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div
+              class="bg-primary-600 h-2 rounded-full transition-all duration-300"
+              :style="{ width: (isNaN(overallPercentage) ? 0 : overallPercentage) + '%' }"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div>
           <div class="space-y-3">
             <UAccordion
               v-for="category in paginatedCategories"
@@ -113,10 +98,10 @@
                   <!-- Progress -->
                   <div class="flex items-center justify-between mb-3">
                     <span class="text-xs text-gray-600 dark:text-gray-400">
-                      min. {{ category.min_photos }} photos
+                      {{ $t('survey.photos.minPhotos', { count: category.min_photos }) }}
                     </span>
                     <span class="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                      {{ getCategoryUploadedCount(category.id) }} / {{ category.min_photos }} uploaded
+                      {{ getCategoryUploadedCount(category.id) }} / {{ category.min_photos }} {{ $t('survey.photos.uploaded') }}
                     </span>
                   </div>
                   <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-4">
@@ -136,7 +121,7 @@
                       >
                         <img
                           :src="photo.url"
-                          :alt="`Photo ${index + 1}`"
+                          :alt="$t('survey.photos.photo', { number: index + 1 })"
                           class="w-full h-full object-cover"
                         >
                         <!-- Delete button -->
@@ -152,30 +137,24 @@
 
                   <!-- Upload Buttons -->
                   <div class="flex gap-2">
-                    <UButton
-                      color="primary"
+                    <UIButtonEnhanced
                       variant="outline"
                       size="md"
                       class="flex-1"
                       @click="selectPhoto(category.id)"
                     >
-                      <template #leading>
-                        <UIcon name="i-lucide-image" class="w-4 h-4" />
-                      </template>
-                      Select Photo
-                    </UButton>
-                    <UButton
-                      color="primary"
+                      <Icon name="i-lucide-image" class="w-4 h-4 mr-2" />
+                      {{ $t('survey.photos.selectPhoto') }}
+                    </UIButtonEnhanced>
+                    <UIButtonEnhanced
                       variant="outline"
                       size="md"
                       class="flex-1"
                       @click="takePhoto(category.id)"
                     >
-                      <template #leading>
-                        <UIcon name="i-lucide-camera" class="w-4 h-4" />
-                      </template>
-                      Take Photo
-                    </UButton>
+                      <Icon name="i-lucide-camera" class="w-4 h-4 mr-2" />
+                      {{ $t('survey.photos.takePhoto') }}
+                    </UIButtonEnhanced>
                   </div>
 
                   <!-- Hidden file input -->
@@ -191,47 +170,47 @@
               </template>
             </UAccordion>
           </div>
-        </div>
-
-        <!-- Footer (Pagination only) -->
-        <div v-if="showPagination" class="p-6 border-t border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between">
-            <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="currentPage === 0"
-              @click="currentPage--"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
-                <span>Previous</span>
-              </div>
-            </button>
-
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
-              {{ currentPage + 1 }} / {{ totalPages }}
-            </span>
-
-            <button
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="currentPage === totalPages - 1"
-              @click="currentPage++"
-            >
-              <div class="flex items-center gap-2">
-                <span>Next</span>
-                <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  </Transition>
+
+    <template #footer v-if="showPagination">
+      <div class="flex items-center justify-between w-full">
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="currentPage === 0"
+          @click="currentPage--"
+        >
+          <div class="flex items-center gap-2">
+            <UIcon name="i-lucide-chevron-left" class="w-4 h-4" />
+            <span>{{ $t('survey.photos.previous') }}</span>
+          </div>
+        </button>
+
+        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">
+          {{ currentPage + 1 }} / {{ totalPages }}
+        </span>
+
+        <button
+          class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="currentPage === totalPages - 1"
+          @click="currentPage++"
+        >
+          <div class="flex items-center gap-2">
+            <span>{{ $t('survey.photos.next') }}</span>
+            <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
+          </div>
+        </button>
+      </div>
+    </template>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { DocumentCategory } from '~/stores/surveyInvestments'
+
+const { t } = useI18n()
+const { translate } = useTranslatableField()
 
 interface PhotoData {
   url: string
@@ -257,6 +236,24 @@ const emit = defineEmits<{
 }>()
 
 const store = useSurveyInvestmentsStore()
+
+const isOpen = ref(false)
+
+// Sync with parent v-model
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value
+})
+
+watch(isOpen, (value) => {
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+})
+
+const closeModal = () => {
+  isOpen.value = false
+  emit('update:modelValue', false)
+}
 
 // File input refs
 const fileInputRefs = ref<Record<string, HTMLInputElement>>({})
@@ -317,9 +314,10 @@ const investmentTitle = computed(() => {
   if (props.mode === 'investment') {
     // In mode 2, show the current page's investment name
     const currentGroup = investmentGroups.value[currentPage.value]
-    return currentGroup?.investment.name || ''
+    if (!currentGroup) return ''
+    return translate(currentGroup.investment.name_translations, currentGroup.investment.name)
   } else if (props.mode === 'all') {
-    return 'All Investments'
+    return t('survey.photos.allInvestments')
   }
   return ''
 })
@@ -356,15 +354,7 @@ const totalPages = computed(() => {
 })
 
 const showPagination = computed(() => {
-  const shouldShow = props.mode !== 'all' && totalPages.value > 1
-  console.log('showPagination:', {
-    mode: props.mode,
-    categoriesLength: categories.value.length,
-    totalPages: totalPages.value,
-    investmentGroupsLength: investmentGroups.value.length,
-    shouldShow
-  })
-  return shouldShow
+  return props.mode !== 'all' && totalPages.value > 1
 })
 
 const paginatedCategories = computed(() => {
@@ -432,7 +422,7 @@ const handleFileSelect = async (event: Event, categoryId: string) => {
 const takePhoto = async (categoryId: string) => {
   // Check if camera is available
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Camera not available on this device')
+    alert(t('survey.photos.cameraNotAvailable'))
     return
   }
 
@@ -456,10 +446,6 @@ const deletePhoto = (categoryId: string, index: number) => {
   }
 }
 
-const closeModal = () => {
-  emit('update:modelValue', false)
-}
-
 // Lapozás visszaállítása a felugró ablak megnyitásakor
 watch(() => props.modelValue, (newValue) => {
   if (newValue) {
@@ -469,27 +455,6 @@ watch(() => props.modelValue, (newValue) => {
 </script>
 
 <style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-
 /* Make accordion label span full width */
 :deep(.text-start.break-words) {
   flex: 1;

@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
+import { useSupabaseClient } from '#imports'
 
 export interface Investment {
   id: string
   name: string
+  name_translations?: { en: string; hu: string }
+  persist_name: string
   icon: string
   position: { top: number; right: number }
   sequence: number
@@ -13,35 +16,58 @@ export interface SurveyPage {
   id: string
   investment_id: string
   name: string
+  name_translations?: { en: string; hu: string }
   type: string
   position: { top: number; right: number }
   sequence: number
   allow_multiple: boolean
   allow_delete_first: boolean
   item_name_template?: string
+  item_name_template_translations?: { en: string; hu: string }
+}
+
+export interface SurveyQuestionOption {
+  value: string
+  label: { en: string; hu: string }
+}
+
+export interface DisplayCondition {
+  field: string
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains'
+  value: string | number | boolean
 }
 
 export interface SurveyQuestion {
   id: string
   survey_page_id: string
   name: string
+  name_translations?: { en: string; hu: string }
   type: string
   is_required: boolean
   is_special?: boolean
   default_value?: string
   placeholder_value?: string
+  placeholder_translations?: { en: string; hu: string }
   options?: string[]
+  options_translations?: SurveyQuestionOption[]
   min?: number
   max?: number
   step?: number
   unit?: string
+  unit_translations?: { en: string; hu: string }
+  info_message?: string
+  info_message_translations?: { en: string; hu: string }
+  display_conditions?: DisplayCondition
+  sequence?: number
 }
 
 export interface DocumentCategory {
   id: string
   persist_name: string
   name: string
+  name_translations?: { en: string; hu: string }
   description: string
+  description_translations?: { en: string; hu: string }
   min_photos: number
   position?: { top: number; right: number }
   investmentPosition?: number // Position in the investment_document_categories junction table
@@ -95,6 +121,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Loading states
     isLoading: false,
+    isLoadingInvestmentData: false,
   }),
 
   getters: {
@@ -176,8 +203,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (siError) throw siError
 
-        // Set selected investment IDs
-        this.selectedInvestmentIds = surveyInvestments?.map(si => si.investment_id) || []
+        // Set selected investment IDs (remove duplicates using Set)
+        const investmentIds = surveyInvestments?.map(si => si.investment_id) || []
+        this.selectedInvestmentIds = [...new Set(investmentIds)]
 
         // If we have selected investments, load their pages
         if (this.selectedInvestmentIds.length > 0) {
@@ -201,10 +229,30 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     },
 
     // Load survey pages and questions for investments
-    async loadInvestmentData(investmentIds: string[]) {
+    async loadInvestmentData(investmentIds: string[], forceReload: boolean = false) {
+      // Check if already loading - prevent concurrent calls
+      if (this.isLoadingInvestmentData) {
+        // Wait for the current loading to finish
+        while (this.isLoadingInvestmentData) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+        return
+      }
+
+      // Check if data is already loaded for ALL requested investments
+      const alreadyLoaded = !forceReload && investmentIds.every(invId =>
+        this.surveyPages[invId] && this.surveyPages[invId].length > 0
+      )
+
+      if (alreadyLoaded) {
+        return
+      }
+
       const supabase = useSupabaseClient()
 
       try {
+        this.isLoadingInvestmentData = true
+
         // Initialize/reset data structures for these investments
         investmentIds.forEach(invId => {
           this.surveyPages[invId] = []
@@ -220,9 +268,22 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (pagesError) throw pagesError
 
-        // Group pages by investment_id
-        pages?.forEach(page => {
-          this.surveyPages[page.investment_id].push(page)
+        // Group pages by investment_id and ensure no duplicates
+        const pagesByInvestment = new Map<string, Set<string>>()
+
+        pages?.forEach((page) => {
+          // Track which page IDs we've already added for this investment
+          if (!pagesByInvestment.has(page.investment_id)) {
+            pagesByInvestment.set(page.investment_id, new Set())
+          }
+
+          const pageIds = pagesByInvestment.get(page.investment_id)!
+
+          // Only add if we haven't seen this page ID before
+          if (!pageIds.has(page.id)) {
+            pageIds.add(page.id)
+            this.surveyPages[page.investment_id].push(page)
+          }
         })
 
         // Load questions for all pages
@@ -237,7 +298,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_questions')
             .select('*')
             .in('survey_page_id', pageIds)
-            .order('created_at')
+            .order('sequence', { ascending: true, nullsFirst: false })
+            .order('created_at', { ascending: true })
 
           if (questionsError) throw questionsError
 
@@ -267,8 +329,6 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (docCatsError) throw docCatsError
 
-        console.log('Document categories from database:', docCats)
-
         // Group document categories by investment_id
         docCats?.forEach((idc: any) => {
           const investmentId = idc.investment_id
@@ -276,12 +336,13 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             ...idc.document_category,
             investmentPosition: idc.position
           }
-          console.log('Adding document category:', categoryWithPosition)
           this.documentCategories[investmentId].push(categoryWithPosition)
         })
 
       } catch (error) {
         console.error('Error loading investment data:', error)
+      } finally {
+        this.isLoadingInvestmentData = false
       }
     },
 
@@ -489,24 +550,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
       if (!instances || instances.length === 0) return
 
-      console.log('removePageInstance:', {
-        pageId,
-        index,
-        allowDeleteLast,
-        instancesLengthBefore: instances.length
-      })
-
       // Remove the instance
       instances.splice(index, 1)
 
-      console.log('After splice:', {
-        instancesLengthAfter: instances.length,
-        shouldAddBack: instances.length === 0 && !allowDeleteLast
-      })
-
       // Ensure at least one instance exists (unless allowDeleteLast is true)
       if (instances.length === 0 && !allowDeleteLast) {
-        console.log('Adding back one instance because allowDeleteLast is false')
         instances.push({})
       }
 

@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full overflow-x-auto px-5 py-4">
-    <div class="flex items-center gap-3 min-w-max">
+  <div class="w-full overflow-x-auto p-0 mt-12">
+    <div class="flex items-center gap-1 min-w-max">
       <template v-for="(wall, index) in walls" :key="wall.id">
         <Icon v-if="index > 0" name="i-lucide-chevron-right" class="text-secondary/50" />
         <UButton

@@ -1,44 +1,19 @@
 <template>
-  <!-- Backdrop -->
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black/50 z-40"
-    @click="close"
-  ></div>
-
-  <!-- Modal -->
-  <Transition name="modal-fade">
-    <div
-      v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @click.self="close"
-    >
-      <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-        @click.stop
-      >
-      <!-- Header -->
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-          Hiányzó elemek listája
-        </h2>
-        <button
-          class="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-          @click="close"
-        >
-          <UIcon name="i-heroicons-x-mark" class="w-6 h-6 text-gray-500" />
-        </button>
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+  <UIModal
+    v-model="isOpen"
+    :title="$t('survey.missingItems.title')"
+    size="lg"
+    :scrollable="true"
+    @close="close"
+  >
+    <div class="space-y-6">
         <!-- Hiányos fotó kategóriák -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Hiányos fotó kategóriák ({{ missingPhotoCategories.length }})
+            {{ $t('survey.missingItems.missingPhotoCategories') }} ({{ missingPhotoCategories.length }})
           </h3>
           <div v-if="missingPhotoCategories.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
-            Minden fotó kategória kitöltve
+            {{ $t('survey.missingItems.allPhotoCategoriesFilled') }}
           </div>
           <div v-else class="space-y-3">
             <button
@@ -58,7 +33,7 @@
                 </span>
               </div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
-                {{ category.uploadedCount }}/{{ category.minPhotos }} fénykép feltöltve
+                {{ category.uploadedCount }}/{{ category.minPhotos }} {{ $t('survey.missingItems.photosUploaded') }}
               </div>
             </button>
           </div>
@@ -67,10 +42,10 @@
         <!-- Megválaszolatlan kérdések -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Megválaszolatlan kérdések ({{ unansweredQuestions.length }})
+            {{ $t('survey.missingItems.unansweredQuestions') }} ({{ unansweredQuestions.length }})
           </h3>
           <div v-if="unansweredQuestions.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-4">
-            Minden kérdés megválaszolva
+            {{ $t('survey.missingItems.allQuestionsAnswered') }}
           </div>
           <div v-else class="space-y-3">
             <button
@@ -94,14 +69,12 @@
             </button>
           </div>
         </div>
-      </div>
-      </div>
     </div>
-  </Transition>
+  </UIModal>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 
 interface MissingPhotoCategory {
@@ -137,9 +110,24 @@ const emit = defineEmits<{
 }>()
 
 const store = useSurveyInvestmentsStore()
-const { translatePage, translateQuestion } = useI18n()
+const { translatePage, translateField } = useSurveyTranslations()
+const { translate } = useTranslatableField()
+
+const isOpen = ref(false)
+
+// Sync with parent v-model
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value
+})
+
+watch(isOpen, (value) => {
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+})
 
 const close = () => {
+  isOpen.value = false
   emit('update:modelValue', false)
 }
 
@@ -172,6 +160,7 @@ const missingPhotoCategories = computed<MissingPhotoCategory[]>(() => {
 // Compute unanswered questions
 const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
   const unanswered: UnansweredQuestion[] = []
+  const seenQuestions = new Set<string>() // Track by investment + question name
 
   store.selectedInvestments.forEach(investment => {
     const pages = store.surveyPages[investment.id] || []
@@ -180,17 +169,25 @@ const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
       questions.forEach(question => {
         // Check if required and not answered
         if (question.is_required) {
-          const response = store.getResponse(question.name)
+          // Get investment-specific response
+          const response = store.investmentResponses[investment.id]?.[question.name]
           if (!response || response === '' || response === null || response === undefined) {
-            unanswered.push({
-              id: question.id,
-              label: translateQuestion(question.name),
-              pageId: page.id,
-              pageName: translatePage(page.name),
-              investmentId: investment.id,
-              investmentName: investment.name,
-              investmentIcon: investment.icon
-            })
+            // Create unique key: investmentId + questionName
+            const questionKey = `${investment.id}:${question.name}`
+
+            // Only add if we haven't seen this investment+question combination before
+            if (!seenQuestions.has(questionKey)) {
+              seenQuestions.add(questionKey)
+              unanswered.push({
+                id: question.id,
+                label: translate(question.name_translations, translateField(question.name)),
+                pageId: page.id,
+                pageName: translatePage(page.name),
+                investmentId: investment.id,
+                investmentName: translate(investment.name_translations, investment.name),
+                investmentIcon: investment.icon
+              })
+            }
           }
         }
       })
@@ -210,26 +207,3 @@ const handleQuestionClick = (pageId: string) => {
   emit('open-survey-page', pageId)
 }
 </script>
-
-<style scoped>
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active > div,
-.modal-fade-leave-active > div {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-fade-enter-from > div,
-.modal-fade-leave-to > div {
-  transform: scale(0.95);
-  opacity: 0;
-}
-</style>
