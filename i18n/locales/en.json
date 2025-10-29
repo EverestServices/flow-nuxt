@@ -134,6 +134,9 @@
     "monthlyNaturalGasImpact": "Monthly Natural Gas Impact",
     "totalCO2Reduction": "Total CO₂ Reduction",
     "co2PerYear": "kg CO₂ / year",
+    "kwhPerYear": "kWh / year",
+    "m3PerYear": "m³ / year",
+    "noInvestmentsYet": "No investments in this scenario yet.",
     "years": "years",
     "ftPerYear": "Ft / year",
     "months": {
