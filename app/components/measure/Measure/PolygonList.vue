@@ -53,7 +53,7 @@
     <div
       v-for="(polygon, index) in polygons"
       :key="polygon.id"
-      class="flex items-center flex-wrap justify-between gap-4 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
+      class="flex items-center flex-nowrap gap-2 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
       :class="polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300'"
       @click="emit('select', polygon.id)"
     >
@@ -80,19 +80,20 @@
         <option value="sub:window">Ablak</option>
       </select>
 
-      <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
-        {{ formatArea(polygon) }} m²
+      <div class="flex items-center gap-2 ml-auto">
+        <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
+          {{ formatArea(polygon) }} m²
+        </div>
+        <UButton
+          @click.stop="deletePolygon(polygon)"
+          variant="ghost"
+          color="error"
+          size="sm"
+          :title="`Törlés`"
+        >
+          <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+        </UButton>
       </div>
-
-      <UButton
-        @click.stop="deletePolygon(polygon)"
-        variant="ghost"
-        color="error"
-        size="sm"
-        :title="`Törlés`"
-      >
-        <Icon name="i-lucide-trash-2" class="w-5 h-5" />
-      </UButton>
     </div>
     <div class="text-end" v-if="filteredPolygons.length > 0">
       <UButton @click="confirmRemoveAll()" color="error" variant="soft" size="sm" class="tracking-wider">

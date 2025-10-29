@@ -10,10 +10,30 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" v-if="imageSrc">
     <div class="col-span-1">
-      <div class="mb-3 pb-3 border-b-1 border-secondary/30">
+      <div class="mb-3 pb-3 border-b-1 border-secondary/30 flex items-center justify-between gap-3">
         <UButton :to="`/survey/${String(route.params.surveyId)}/measure`" color="neutral">
           <Icon name="i-lucide-layout-list" class="h-5 w-5" />Vissza a falfelületek listára
         </UButton>
+
+        <div class="ml-2">
+          <span
+            v-if="!editingWallName"
+            class="inline-flex items-center cursor-pointer font-semibold text-primary border border-primary rounded-full pl-3 pr-2 py-1 bg-white"
+            @click="startEditingWallName"
+          >
+            <span class="pr-2 leading-none">{{ wallName || 'Névtelen fal' }}</span>
+            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0" />
+          </span>
+          <UInput
+            v-else
+            v-model="wallName"
+            type="text"
+            size="sm"
+            class="h-7 w-[12rem]"
+            @blur="stopEditingWallName"
+            @keyup.enter="stopEditingWallName"
+          />
+        </div>
       </div>
       <PolygonList
         v-if="imageRef"
@@ -32,22 +52,6 @@
       <ExtraItemIcoList />
     </div>
     <div class="col-span-3">
-      <div class="flex flex-wrap content-between gap-8 mb-2 w-full">
-        <UButton
-          v-if="meterPerPixel != storedMeterPerPixel"
-          color="primary"
-          @click="restoreCalibration"
-        >
-          Kalibráció visszaállítása
-        </UButton>
-
-        
-
-        <div v-if="calibrationMode && !calibrationStart && !calibrationEnd">
-          <UBadge color="info" size="xs" class="p-2">Szakasz felvétele ...</UBadge>
-        </div>
-      </div>
-
       <div class="relative">
         <div ref="zoomContainerRef" class="overflow-auto border rounded" style="height: 70vh">
           <div
@@ -89,6 +93,17 @@
                 <UButton color="success" size="xs" type="button" @click="applyCalibration">Alkalmaz</UButton>
               </div>
             </div>
+
+            <!-- Single-point delete overlay near the selected vertex -->
+            <div
+              v-if="editPointsMode && singlePointOverlay"
+              class="absolute z-30"
+              :style="{ left: `${singlePointOverlay.x}px`, top: `${singlePointOverlay.y}px`, transform: 'translate(14px, -14px)' }"
+            >
+              <UButton size="xs" color="error" variant="solid" class="rounded-full p-1" title="Pont törlése" @click.stop="deleteSelectedPoints">
+                <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+              </UButton>
+            </div>
           </div>
         </div>
         <!-- Absolute overlays pinned to outer wrapper (not scrolling with content) -->
@@ -105,6 +120,9 @@
               <Icon name="i-lucide-zoom-in" class="w-5 h-5" />
             </UButton>
             <UBadge color="neutral" size="sm">{{ pixelPerMeterLabel }}</UBadge>
+            <UBadge v-if="referenceSet" color="success" size="sm" class="px-2 py-1">
+              Referenciapont beállítva
+            </UBadge>
             <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleUndo">
               <Icon name="i-lucide-undo-2" class="w-5 h-5" />
             </UButton>
@@ -143,19 +161,65 @@
             </UButton>
             <UButton
               size="md"
-              :color="calibrationMode ? 'warning' : (referenceSet ? 'success' : 'neutral')"
+              :color="calibrationMode ? 'warning' : 'neutral'"
               variant="soft"
-              @click="() => (referenceSet && !calibrationMode ? toggleSavedReference() : setMode('calibrate'))"
+              @click="() => setMode('calibrate')"
             >
-              {{ calibrationMode ? 'Setup Reference' : (referenceSet ? 'Reference set' : 'Setup Reference') }}
+              Setup Reference
             </UButton>
           </div>
 
-          <!-- Calibration helper banner -->
-          <div v-if="calibrationMode" class="pointer-events-auto absolute left-2 top-2 flex items-center gap-2">
-            <UBadge color="error" size="sm" class="px-2 py-1">Setup Reference</UBadge>
-            <div class="bg-neutral-900/80 text-white text-sm rounded px-3 py-1">
-              {{ calibrationInfoText }}
+          <!-- Bottom-left: Download composed image with polygons -->
+          <div class="pointer-events-auto absolute left-2 bottom-2">
+            <UButton size="md" color="primary" variant="solid" class="px-3 py-2 rounded-full" @click="downloadWithPolygons">
+              <Icon name="i-lucide-download" class="w-5 h-5" /> Letöltés
+            </UButton>
+          </div>
+
+          <!-- Top-left: Reference controls (only in calibration mode) -->
+          <div
+            v-if="calibrationMode"
+            class="pointer-events-auto absolute left-2 top-2 flex items-center gap-1 bg-base-100/80 backdrop-blur rounded-full shadow px-2 py-1"
+          >
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
+              @click="onStartNewReference"
+              title="Új referencia hozzáadása"
+            >
+              <Icon name="i-lucide-wand-2" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Új hozzáadása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
+              :disabled="!referenceSet"
+              @click="onChangeReferenceLength"
+              title="Referencia méret módosítása"
+            >
+              <Icon name="i-lucide-ruler" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Méret módosítása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="error"
+              :disabled="!referenceSet"
+              @click="onClearReference"
+              title="Referencia törlése"
+            >
+              <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+              <span class="ml-1 hidden sm:inline">Törlés</span>
+            </UButton>
+          </div>
+
+          <!-- Calibration helper (only message, no buttons) -->
+          <div v-if="calibrationMode" class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+            <div class="pointer-events-auto bg-neutral-900/80 text-white text-sm rounded-full px-3 py-1 flex items-center gap-2 shadow">
+              <UBadge color="error" size="sm" class="px-2 py-0.5">Setup Reference</UBadge>
+              <span>{{ calibrationInfoText }}</span>
             </div>
           </div>
         </div>
@@ -165,7 +229,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, unref } from 'vue';
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect, unref } from 'vue';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
@@ -181,6 +245,25 @@ const wall = computed<Wall>(() => {
   const w = map[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
+const wallName = computed<string>({
+  get: () => wall.value?.name ?? '',
+  set: (val: string) => {
+    if (wall.value) {
+      store.setWall(wall.value.id, { ...wall.value, name: val });
+    }
+  },
+});
+const editingWallName = ref<boolean>(false);
+const startEditingWallName = () => {
+  editingWallName.value = true;
+  void nextTick(() => {
+    const input = document.querySelector<HTMLInputElement>('input[type="text"]:focus');
+    input?.select();
+  });
+};
+const stopEditingWallName = () => {
+  editingWallName.value = false;
+};
 const firstImage = computed(() => wall.value?.images?.[0] ?? null);
 
 const zoomScale = ref(1);
@@ -219,6 +302,22 @@ const draggingPoint = ref<{
   index: number;
   type: 'polygon' | 'calibration';
 } | null>(null);
+const selectedPoints = ref<Set<string>>(new Set());
+const keyOf = (polyId: string, idx: number) => `${polyId}:${idx}`;
+const clearSelection = () => {
+  selectedPoints.value = new Set();
+};
+const isPointSelected = (polyId: string, idx: number) => selectedPoints.value.has(keyOf(polyId, idx));
+const toggleSelection = (polyId: string, idx: number) => {
+  const k = keyOf(polyId, idx);
+  const next = new Set(selectedPoints.value);
+  if (next.has(k)) next.delete(k);
+  else next.add(k);
+  selectedPoints.value = next;
+};
+const selectOnly = (polyId: string, idx: number) => {
+  selectedPoints.value = new Set([keyOf(polyId, idx)]);
+};
 const mousePos = ref<Point | null>(null);
 const calibrationStart = ref<Point | null>(null);
 const calibrationEnd = ref<Point | null>(null);
@@ -226,6 +325,7 @@ const calibrationLength = ref<number | null>(null);
 const calibrationMode = ref<boolean>(false);
 const highlightRef = ref<boolean>(false);
 const showSavedReference = ref<boolean>(false);
+const allowRefOverride = ref<boolean>(false);
 
 const referenceSet = computed(() => Boolean(firstImage.value?.referenceStart && firstImage.value?.referenceEnd));
 
@@ -240,8 +340,14 @@ const calibrationPx = computed(() => {
 
 const calibrationInfoText = computed(() => {
   const px = calibrationPx.value;
-  const prefix = px ? `${px.toFixed(0)} px • ` : '';
-  return `${prefix}Írd be a valós hossz centiméterben, majd erősítsd meg a kalibrációt.`;
+  if (!calibrationStart.value) {
+    return '1/2: Érintsd meg az első pontot a képen.';
+  }
+  if (calibrationStart.value && !calibrationEnd.value) {
+    const pxPart = px ? ` • ${px.toFixed(0)} px` : '';
+    return `2/2: Érintsd meg a második pontot.${pxPart}`;
+  }
+  return 'Add meg a referencia hosszát centiméterben, majd kattints az Alkalmaz gombra.';
 });
 
 const calibrationMidOverlay = computed(() => {
@@ -253,6 +359,44 @@ const calibrationMidOverlay = computed(() => {
   const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
   // shift by the image's offset inside the wrapper to align with canvas positioning
   return { x: imageRef.value.offsetLeft + mid.x, y: imageRef.value.offsetTop + mid.y };
+});
+
+// Ensure saved reference always applies: compute meterPerPixel from stored reference points + length
+const recalcMeterPerPixelFromReference = (): boolean => {
+  const imgMeta = firstImage.value;
+  const img = imageRef.value;
+  const lengthCm = imgMeta?.referenceLengthCm ?? 0;
+  if (!imgMeta || !img || !imgMeta.referenceStart || !imgMeta.referenceEnd || !(lengthCm > 0)) return false;
+  const dx = (imgMeta.referenceEnd.x - imgMeta.referenceStart.x) * img.naturalWidth;
+  const dy = (imgMeta.referenceEnd.y - imgMeta.referenceStart.y) * img.naturalHeight;
+  const pixelDist = Math.sqrt(dx * dx + dy * dy);
+  if (!(pixelDist > 0)) return false;
+  meterPerPixel.value = (lengthCm / 100) / pixelDist;
+  return true;
+};
+
+const singlePointOverlay = computed(() => {
+  if (!editPointsMode.value || selectedPoints.value.size !== 1 || !imageRef.value) return null as { x: number; y: number } | null;
+  const firstKey = Array.from(selectedPoints.value)[0];
+  if (!firstKey) return null as { x: number; y: number } | null;
+  const parts = firstKey.split(':');
+  if (parts.length !== 2) return null as { x: number; y: number } | null;
+  const polyId = parts[0];
+  const idx = Number(parts[1]);
+  const poly = polygons.value.find((p) => p.id === polyId);
+  const pt = poly?.points?.[idx];
+  if (!poly || !pt) return null as { x: number; y: number } | null;
+  const p = denormalizePoint(pt);
+  const wrapper = zoomWrapperRef.value;
+  let x = imageRef.value.offsetLeft + p.x + 16; // offset right
+  let y = imageRef.value.offsetTop + p.y - 16; // offset up
+  if (wrapper) {
+    const maxX = wrapper.clientWidth - 8;
+    const maxY = wrapper.clientHeight - 8;
+    x = Math.min(maxX, Math.max(8, x));
+    y = Math.min(maxY, Math.max(8, y));
+  }
+  return { x, y };
 });
 
 type HistoryEntry = {
@@ -608,7 +752,9 @@ const drawAllPolygons = () => {
           draggingPoint.value.polygonId === poly.id &&
           draggingPoint.value.index === idx;
 
-        drawCircle(ctx, p.x, p.y, isSelected ? 9 : 7, isSelected ? '#22c55e' : pointColor);
+        const preSelected = isPointSelected(poly.id, idx);
+        const showSelected = isSelected || preSelected;
+        drawCircle(ctx, p.x, p.y, showSelected ? 9 : 7, showSelected ? '#22c55e' : pointColor);
       });
     }
 
@@ -657,13 +803,13 @@ const drawAllPolygons = () => {
     }
   }
 
-  // Highlight stored reference if requested (with length in cm)
-  if ((showSavedReference.value || highlightRef.value) && firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
+  // Draw stored reference if present (always visible). Highlight may adjust style.
+  if (firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
     const ctx = canvasRef.value!.getContext('2d')!;
     const p1 = denormalizePoint(firstImage.value.referenceStart);
     const p2 = denormalizePoint(firstImage.value.referenceEnd);
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = highlightRef.value ? 4 : 3;
     ctx.setLineDash([10, 6]);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
@@ -694,6 +840,11 @@ const applyCalibration = () => {
   )
     return;
 
+  // Do not override an existing saved reference unless explicitly starting a new one
+  if (referenceSet.value && !allowRefOverride.value) {
+    return;
+  }
+
   const naturalWidth = imageRef.value.naturalWidth;
   const naturalHeight = imageRef.value.naturalHeight;
 
@@ -716,6 +867,14 @@ const applyCalibration = () => {
     // Persist mutated image meta into store
     store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
   }
+  allowRefOverride.value = false;
+  // Exit calibration and clear draft/overlay
+  calibrationStart.value = null;
+  calibrationEnd.value = null;
+  calibrationLength.value = null;
+  setMode('view');
+  // Briefly highlight the saved reference so user sees the result
+  highlightStoredReference();
 };
 
 const gotoZoom = (targetScale: number) => {
@@ -755,11 +914,18 @@ const setMode = (mode: Mode) => {
     calibrationStart.value = null;
     calibrationEnd.value = null;
   }
+  if (mode !== 'calibrate') {
+    allowRefOverride.value = false;
+  }
+  if (mode !== 'edit') clearSelection();
 
   // Exclusive modes
   editingMode.value = mode === 'draw';
   editPointsMode.value = mode === 'edit';
   calibrationMode.value = mode === 'calibrate';
+
+  // Apply saved reference-derived meterPerPixel if available
+  recalcMeterPerPixelFromReference();
 
   void nextTick(() => {
     drawAllPolygons();
@@ -777,21 +943,26 @@ const togglePolygonEditing = () => {
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
-  if (calibrationMode.value) {
-    if (!calibrationStart.value || !calibrationEnd.value) {
-      const clickPoint = normalizePoint(getCanvasCoords(event));
-      if (!calibrationStart.value) {
-        calibrationStart.value = clickPoint;
-      } else {
-        calibrationEnd.value = clickPoint;
-      }
-      drawAllPolygons();
-    }
+  const clickPoint = normalizePoint(getCanvasCoords(event));
 
+  // 1) Calibration mode: only allow drawing if explicitly started (override allowed)
+  if (calibrationMode.value) {
+    if (referenceSet.value && !allowRefOverride.value) return;
+    if (!calibrationStart.value) {
+      calibrationStart.value = clickPoint;
+      drawAllPolygons();
+      return;
+    }
+    if (!calibrationEnd.value) {
+      calibrationEnd.value = clickPoint;
+      drawAllPolygons();
+      return;
+    }
     return;
   }
+
+  // 2) Edit points mode: pick topmost closed polygon under cursor
   if (editPointsMode.value) {
-    const clickPoint = normalizePoint(getCanvasCoords(event));
     const list = polygons.value as PolygonSurface[];
     let target: PolygonSurface | null = null;
     if (selectedPolygonId.value) {
@@ -802,35 +973,18 @@ const handleCanvasClick = (event: MouseEvent) => {
         const p = list[idx];
         if (!p) continue;
         if (p.visible === false || !p.closed || p.points.length < 3) continue;
-        if (isPointInPolygon(clickPoint, p.points)) {
-          target = p;
-          break;
-        }
+        if (isPointInPolygon(clickPoint, p.points)) { target = p; break; }
       }
     }
-    if (!target || !target.closed || target.points.length < 2) return;
-    let best = { dist: Number.POSITIVE_INFINITY, seg: -1, t: 0 } as { dist: number; seg: number; t: number };
-    for (let i = 0; i < target.points.length; i++) {
-      const j = (i + 1) % target.points.length;
-      const a = target.points[i]!;
-      const b = target.points[j]!;
-      const d = pointSegmentDistance(clickPoint, a, b);
-      if (d.dist < best.dist) best = { dist: d.dist, seg: i, t: d.t };
-    }
-    if (best.seg >= 0 && best.dist < 0.03) {
-      pushHistory();
-      const a = target.points[best.seg]!;
-      const b = target.points[(best.seg + 1) % target.points.length]!;
-      const newP: Point = { x: a.x + best.t * (b.x - a.x), y: a.y + best.t * (b.y - a.y) };
-      target.points.splice(best.seg + 1, 0, newP);
+    if (target) {
       selectedPolygonId.value = target.id;
       drawAllPolygons();
     }
     return;
   }
+
+  // 3) View mode: select polygon by click (topmost)
   if (!editingMode.value) {
-    const clickPoint = normalizePoint(getCanvasCoords(event));
-    // Legfelül lévő találat preferálása
     for (let idx = polygons.value.length - 1; idx >= 0; idx--) {
       const p = polygons.value[idx] as PolygonSurface | undefined;
       if (!p) continue;
@@ -845,22 +999,19 @@ const handleCanvasClick = (event: MouseEvent) => {
     drawAllPolygons();
     return;
   }
-  const clickPoint = normalizePoint(getCanvasCoords(event));
+
+  // 4) Draw mode: add points / close polygon
   pushHistory();
   if (!currentPolygon.value || currentPolygon.value.closed) {
-    currentPolygon.value = {
-      id: crypto.randomUUID(),
-      points: [],
-      closed: false,
-    };
+    currentPolygon.value = { id: crypto.randomUUID(), points: [], closed: false } as PolygonSurface;
   }
   const existingPoints = currentPolygon.value.points;
   if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
     currentPolygon.value.closed = true;
-    polygons.value.push(currentPolygon.value);
+    polygons.value.push(currentPolygon.value as PolygonSurface);
     currentPolygon.value = null;
   } else {
-    currentPolygon.value.points.push(clickPoint);
+    existingPoints.push(clickPoint);
   }
   drawAllPolygons();
 };
@@ -885,6 +1036,14 @@ const getCanvasCoordsFromEvent = (event: MouseEvent | TouchEvent): Point => {
   };
 };
 
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+type DragSnapshot = {
+  start: Point; // normalized
+  items: Array<{ polyId: string; index: number; start: Point }>;
+};
+const dragSnapshot = ref<DragSnapshot | null>(null);
+
 const handleMouseDown = (event: MouseEvent | TouchEvent) => {
   if (!(editPointsMode.value || calibrationMode.value)) return;
   const click = normalizePoint(getCanvasCoordsFromEvent(event));
@@ -900,15 +1059,38 @@ const handleMouseDown = (event: MouseEvent | TouchEvent) => {
     }
   }
 
+  // Edit pontok: kiválasztás + húzás (multi-select támogatás)
   for (const polygon of polygons.value) {
     for (let i = 0; i < polygon.points.length; i++) {
       const pi = polygon.points[i] as Point | undefined;
       if (pi && isNearPoint(click, pi)) {
+        if (event instanceof MouseEvent && event.shiftKey) toggleSelection(polygon.id, i);
+        else selectOnly(polygon.id, i);
+
+        // Drag előkészítés a kijelölt pontokra
         pushHistory();
         draggingPoint.value = { polygonId: polygon.id, index: i, type: 'polygon' };
+        const items = Array.from(selectedPoints.value)
+          .map((k) => {
+            const parts = k.split(':');
+            if (parts.length !== 2) return null;
+            const polyId = parts[0] as string;
+            const idx = Number(parts[1]);
+            const p = polygons.value.find((pp) => pp.id === polyId);
+            const pt = p?.points?.[idx];
+            if (!p || !pt) return null;
+            return { polyId, index: idx, start: { x: pt.x, y: pt.y } };
+          })
+          .filter((x): x is { polyId: string; index: number; start: { x: number; y: number } } => Boolean(x));
+        dragSnapshot.value = { start: click, items };
+        drawAllPolygons();
         return;
       }
     }
+  }
+  if (!(event instanceof MouseEvent && event.shiftKey)) {
+    clearSelection();
+    drawAllPolygons();
   }
 };
 
@@ -920,9 +1102,21 @@ const handleMouseMove = (event: MouseEvent) => {
   }
 
   if (draggingPoint.value.type === 'polygon') {
-    const { polygonId, index } = draggingPoint.value;
-    const polygon = polygons.value.find((p) => p.id === polygonId);
-    if (polygon) polygon.points[index] = mousePos.value;
+    if (dragSnapshot.value && mousePos.value) {
+      const dx = mousePos.value.x - dragSnapshot.value.start.x;
+      const dy = mousePos.value.y - dragSnapshot.value.start.y;
+      for (const it of dragSnapshot.value.items) {
+        const poly = polygons.value.find((p) => p.id === it.polyId);
+        if (!poly) continue;
+        const nx = clamp01(it.start.x + dx);
+        const ny = clamp01(it.start.y + dy);
+        poly.points[it.index] = { x: nx, y: ny };
+      }
+    } else {
+      const { polygonId, index } = draggingPoint.value;
+      const polygon = polygons.value.find((p) => p.id === polygonId);
+      if (polygon) polygon.points[index] = mousePos.value;
+    }
   } else if (draggingPoint.value.type === 'calibration') {
     if (mousePos.value) {
       if (draggingPoint.value.index === 0 && calibrationStart.value)
@@ -937,6 +1131,7 @@ const handleMouseMove = (event: MouseEvent) => {
 
 const handleMouseUp = () => {
   draggingPoint.value = null;
+  dragSnapshot.value = null;
 };
 
 const highlightStoredReference = () => {
@@ -975,6 +1170,47 @@ const toggleSavedReference = () => {
   drawAllPolygons();
 };
 
+// Calibration controls (top-left)
+const onStartNewReference = () => {
+  if (!calibrationMode.value) setMode('calibrate');
+  calibrationStart.value = null;
+  calibrationEnd.value = null;
+  calibrationLength.value = null;
+  showSavedReference.value = false;
+  allowRefOverride.value = true;
+  drawAllPolygons();
+};
+
+const onChangeReferenceLength = () => {
+  const imgMeta = firstImage.value;
+  const img = imageRef.value;
+  if (!imgMeta || !img || !imgMeta.referenceStart || !imgMeta.referenceEnd) return;
+  const current = imgMeta.referenceLengthCm ?? null;
+  const input = typeof window !== 'undefined' ? window.prompt('Referencia hossza (cm)', current ? String(current) : '') : null;
+  if (input === null) return;
+  const lengthCm = Number(input);
+  if (!Number.isFinite(lengthCm) || lengthCm <= 0) return;
+  const dx = (imgMeta.referenceEnd.x - imgMeta.referenceStart.x) * img.naturalWidth;
+  const dy = (imgMeta.referenceEnd.y - imgMeta.referenceStart.y) * img.naturalHeight;
+  const pixelDist = Math.sqrt(dx * dx + dy * dy);
+  if (pixelDist <= 0) return;
+  meterPerPixel.value = (lengthCm / 100) / pixelDist;
+  imgMeta.referenceLengthCm = lengthCm;
+  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  highlightStoredReference();
+};
+
+const onClearReference = () => {
+  const imgMeta = firstImage.value;
+  if (!imgMeta) return;
+  imgMeta.referenceStart = null;
+  imgMeta.referenceEnd = null;
+  imgMeta.referenceLengthCm = null;
+  showSavedReference.value = false;
+  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  drawAllPolygons();
+};
+
 const undoLastPoint = () => {
   undo();
 };
@@ -984,6 +1220,110 @@ const resetCurrentEdit = () => {
     currentPolygon.value = null;
     drawAllPolygons();
   }
+};
+
+const deleteSelectedPoints = () => {
+  if (selectedPoints.value.size === 0) return;
+  pushHistory();
+  // Group deletions by polygon
+  const map = new Map<string, number[]>();
+  for (const key of selectedPoints.value) {
+    const parts = key.split(':');
+    if (parts.length !== 2) continue;
+    const pid: string = String(parts[0] ?? '');
+    const idxRaw = parts[1];
+    const idx = Number(idxRaw);
+    if (!pid || Number.isNaN(idx)) continue;
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid)!.push(idx);
+  }
+  // Apply deletions (descending index order)
+  for (const [pid, idxs] of map) {
+    const poly = polygons.value.find((p) => p.id === pid);
+    if (!poly) continue;
+    idxs.sort((a, b) => b - a).forEach((i) => {
+      if (i >= 0 && i < poly.points.length) poly.points.splice(i, 1);
+    });
+    if (poly.closed && poly.points.length < 3) poly.closed = false;
+    if (poly.points.length === 0) {
+      polygons.value = polygons.value.filter((p) => p.id !== pid);
+    }
+  }
+  clearSelection();
+  drawAllPolygons();
+};
+
+const downloadWithPolygons = () => {
+  const img = imageRef.value;
+  if (!img) return;
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = natW;
+  canvas.height = natH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  // Draw base image
+  ctx.drawImage(img, 0, 0, natW, natH);
+
+  const pixelSize = meterPerPixel.value || storedMeterPerPixel.value || 0; // meters per pixel
+  const allPolys: PolygonSurface[] = [...(polygons.value as PolygonSurface[])];
+  if (currentPolygon.value) allPolys.push(currentPolygon.value);
+
+  for (const poly of allPolys) {
+    if (poly.visible === false) continue;
+    const denormPoints = poly.points.map((p) => ({ x: p.x * natW, y: p.y * natH }));
+    if (denormPoints.length < 1) continue;
+    const { strokeColor, fillColor, pointColor } = getPolygonColors(poly);
+
+    ctx.beginPath();
+    ctx.setLineDash([]);
+    ctx.moveTo(denormPoints[0].x, denormPoints[0].y);
+    for (let i = 1; i < denormPoints.length; i++) ctx.lineTo(denormPoints[i].x, denormPoints[i].y);
+    if (poly.closed) {
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+    }
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw points for clarity
+    denormPoints.forEach((p) => drawCircle(ctx, p.x, p.y, 6, pointColor));
+
+    // Labels (length per edge and area)
+    if (poly.closed && denormPoints.length >= 3 && pixelSize > 0) {
+      for (let i = 0; i < denormPoints.length; i++) {
+        const j = (i + 1) % denormPoints.length;
+        const p1 = denormPoints[i];
+        const p2 = denormPoints[j];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const pxDist = Math.sqrt(dx * dx + dy * dy);
+        const length = pxDist * pixelSize;
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        drawLabel(ctx, `${length.toFixed(2)} m`, midX - 22, midY - 8);
+      }
+      const area = calculatePolygonArea(poly.points, pixelSize, img);
+      const center = getPolygonCenter(denormPoints);
+      drawLabel(ctx, `${area.toFixed(2)} m²`, center.x - 18, center.y - 8);
+    }
+  }
+
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const baseName = (wallName.value || wallId.value || 'measure').replace(/\s+/g, '-');
+    a.download = `${baseName}.png`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
 };
 const imageWidth = ref(0);
 const imageHeight = ref(0);
@@ -1027,13 +1367,29 @@ const handleResize = () => {
   });
 };
 
+const onKeydown = (e: KeyboardEvent) => {
+  if (!editPointsMode.value) return;
+  const target = e.target as HTMLElement | null;
+  const tn = target?.tagName?.toLowerCase() || '';
+  const isTyping = tn === 'input' || tn === 'textarea' || (target as any)?.isContentEditable;
+  if (isTyping) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedPoints.value.size > 0) {
+      e.preventDefault();
+      deleteSelectedPoints();
+    }
+  }
+};
+
 onMounted(() => {
   window.addEventListener('resize', handleResize);
+  window.addEventListener('keydown', onKeydown);
   const canvas = canvasRef.value;
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('keydown', onKeydown);
   const canvas = canvasRef.value;
 });
 
@@ -1059,6 +1415,19 @@ watch(zoomScale, () => {
   void nextTick(() => {
     drawAllPolygons();
   });
+});
+// Keep meterPerPixel in sync with saved reference whenever image/meta becomes available
+watchEffect(() => {
+  // Reading these makes them reactive dependencies
+  const _img = imageRef.value;
+  const meta = firstImage.value;
+  const _rs = meta?.referenceStart?.x ?? null;
+  const _re = meta?.referenceEnd?.x ?? null;
+  const _len = meta?.referenceLengthCm ?? null;
+  if (!_img || !meta) return;
+  if (meta.referenceStart && meta.referenceEnd && (meta.referenceLengthCm ?? 0) > 0) {
+    recalcMeterPerPixelFromReference();
+  }
 });
 const restoreCalibration = () => {
   meterPerPixel.value = storedMeterPerPixel.value;
