@@ -334,9 +334,23 @@ const isEffectivelyReadonly = computed(() => {
       return false
     }
 
+    // Find which investment the source page belongs to
+    let sourceInvestmentId: string | null = null
+    for (const investmentId in store.surveyPages) {
+      const pages = store.surveyPages[investmentId]
+      if (pages.find(p => p.id === sourcePageId)) {
+        sourceInvestmentId = investmentId
+        break
+      }
+    }
+
+    if (!sourceInvestmentId) {
+      return false
+    }
+
     // Check if the source field has a value
-    // Get the value from the store (it will be in investmentResponses since source questions are never on allow_multiple pages)
-    const sourceValue = store.getResponse(sourceQuestion.name)
+    // Get the value from the correct investment context
+    const sourceValue = store.investmentResponses[sourceInvestmentId]?.[sourceQuestion.name]
 
     const hasSourceValue = sourceValue !== undefined &&
                           sourceValue !== null &&
