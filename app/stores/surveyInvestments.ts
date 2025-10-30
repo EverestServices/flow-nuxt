@@ -16,6 +16,7 @@ export interface Investment {
 export interface SurveyPage {
   id: string
   investment_id: string
+  parent_page_id?: string | null
   name: string
   name_translations?: { en: string; hu: string }
   type: string
@@ -82,7 +83,8 @@ export interface SurveyInvestmentData {
 }
 
 export interface PageInstanceData {
-  instances: Record<string, any>[]
+  instances: Record<string, any>[]  // For root pages (parent_page_id = null)
+  subpageInstances?: Record<number, Record<string, any>[]>  // For hierarchical subpages, keyed by parent_item_group
 }
 
 export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
@@ -153,10 +155,18 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       return state.availableInvestments.find(inv => inv.id === state.activeInvestmentId) || null
     },
 
-    // Get pages for active investment
+    // Get pages for active investment (only root pages, not subpages)
     activeSurveyPages(state): SurveyPage[] {
       if (!state.activeInvestmentId) return []
-      return state.surveyPages[state.activeInvestmentId] || []
+      const allPages = state.surveyPages[state.activeInvestmentId] || []
+      return allPages.filter(page => !page.parent_page_id)
+    },
+
+    // Get subpages for a specific page
+    getSubPages: (state) => (parentPageId: string): SurveyPage[] => {
+      if (!state.activeInvestmentId) return []
+      const allPages = state.surveyPages[state.activeInvestmentId] || []
+      return allPages.filter(page => page.parent_page_id === parentPageId)
     },
 
     // Get active page
@@ -385,14 +395,14 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // Load all survey answers for this survey
         const { data: answers, error } = await supabase
           .from('survey_answers')
-          .select('survey_question_id, answer, item_group')
+          .select('survey_question_id, answer, item_group, parent_item_group')
           .eq('survey_id', surveyId)
 
         if (error) throw error
         if (!answers || answers.length === 0) return
 
         // Create a map of question_id -> question for faster lookup
-        const questionMap = new Map<string, { question: SurveyQuestion, pageId: string, investmentId: string }>()
+        const questionMap = new Map<string, { question: SurveyQuestion, page: SurveyPage, investmentId: string }>()
 
         for (const investmentId in this.surveyPages) {
           const pages = this.surveyPages[investmentId]
@@ -401,7 +411,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             for (const question of questions) {
               questionMap.set(question.id, {
                 question,
-                pageId: page.id,
+                page,
                 investmentId: investmentId
               })
             }
@@ -416,24 +426,53 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             continue
           }
 
-          const { question, pageId, investmentId } = questionData
+          const { question, page, investmentId } = questionData
 
-          if (answer.item_group === null) {
-            // Regular answer (no item_group) - store in investmentResponses
+          if (answer.item_group === null && answer.parent_item_group === null) {
+            // Regular answer (no item_group, no parent_item_group) - store in investmentResponses
             if (!this.investmentResponses[investmentId]) {
               this.investmentResponses[investmentId] = {}
             }
             this.investmentResponses[investmentId][question.name] = answer.answer
-          } else {
-            // Answer with item_group - store in pageInstances
+          } else if (answer.parent_item_group === null) {
+            // Answer with item_group but no parent (root-level multi-instance page)
             if (!this.pageInstances[investmentId]) {
               this.pageInstances[investmentId] = {}
             }
-            if (!this.pageInstances[investmentId][pageId]) {
-              this.pageInstances[investmentId][pageId] = { instances: [] }
+            if (!this.pageInstances[investmentId][page.id]) {
+              this.pageInstances[investmentId][page.id] = { instances: [] }
             }
 
-            const instances = this.pageInstances[investmentId][pageId].instances
+            const instances = this.pageInstances[investmentId][page.id].instances
+            const itemGroup = answer.item_group
+
+            // Ensure we have enough instances
+            while (instances.length <= itemGroup) {
+              instances.push({})
+            }
+
+            // Store the answer
+            instances[itemGroup][question.name] = answer.answer
+          } else {
+            // Answer with both item_group and parent_item_group (hierarchical subpage)
+            if (!this.pageInstances[investmentId]) {
+              this.pageInstances[investmentId] = {}
+            }
+            if (!this.pageInstances[investmentId][page.id]) {
+              this.pageInstances[investmentId][page.id] = { instances: [], subpageInstances: {} }
+            }
+
+            const pageData = this.pageInstances[investmentId][page.id]
+            if (!pageData.subpageInstances) {
+              pageData.subpageInstances = {}
+            }
+
+            const parentItemGroup = answer.parent_item_group
+            if (!pageData.subpageInstances[parentItemGroup]) {
+              pageData.subpageInstances[parentItemGroup] = []
+            }
+
+            const instances = pageData.subpageInstances[parentItemGroup]
             const itemGroup = answer.item_group
 
             // Ensure we have enough instances
@@ -961,6 +1000,241 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
       } catch (error) {
         console.error('Error loading default values for instance:', error)
+      }
+    },
+
+    // ========================================================================
+    // Hierarchical Subpage Instances Management
+    // ========================================================================
+
+    // Get instances for a hierarchical subpage under a specific parent instance
+    getSubPageInstances(subpageId: string, parentItemGroup: number): Record<string, any>[] {
+      if (!this.activeInvestmentId) return []
+
+      // Initialize if doesn't exist
+      if (!this.pageInstances[this.activeInvestmentId]) {
+        this.pageInstances[this.activeInvestmentId] = {}
+      }
+      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      if (!pageData.subpageInstances) {
+        pageData.subpageInstances = {}
+      }
+
+      if (!pageData.subpageInstances[parentItemGroup]) {
+        pageData.subpageInstances[parentItemGroup] = [{}] // Initialize with one empty instance
+      }
+
+      return pageData.subpageInstances[parentItemGroup]
+    },
+
+    // Add a new instance for a hierarchical subpage
+    async addSubPageInstance(subpageId: string, parentItemGroup: number) {
+      if (!this.activeInvestmentId) return
+
+      // Initialize if doesn't exist
+      if (!this.pageInstances[this.activeInvestmentId]) {
+        this.pageInstances[this.activeInvestmentId] = {}
+      }
+      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      if (!pageData.subpageInstances) {
+        pageData.subpageInstances = {}
+      }
+
+      if (!pageData.subpageInstances[parentItemGroup]) {
+        pageData.subpageInstances[parentItemGroup] = []
+      }
+
+      // Add new instance
+      pageData.subpageInstances[parentItemGroup].push({})
+
+      // Load default values for the new instance
+      const newIndex = pageData.subpageInstances[parentItemGroup].length - 1
+      await this.loadDefaultValuesForSubPageInstance(subpageId, parentItemGroup, newIndex)
+    },
+
+    // Remove an instance from a hierarchical subpage
+    removeSubPageInstance(subpageId: string, parentItemGroup: number, index: number, allowDeleteLast: boolean = false) {
+      if (!this.activeInvestmentId) return
+
+      const instances = this.pageInstances[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
+      if (!instances || instances.length === 0) return
+
+      // Remove the instance
+      instances.splice(index, 1)
+
+      // Ensure at least one instance exists (unless allowDeleteLast is true)
+      if (instances.length === 0 && !allowDeleteLast) {
+        instances.push({})
+      }
+    },
+
+    // Save response for a question in a hierarchical subpage instance
+    async saveSubPageInstanceResponse(
+      subpageId: string,
+      parentItemGroup: number,
+      instanceIndex: number,
+      questionName: string,
+      value: any
+    ) {
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
+
+      try {
+        const supabase = useSupabaseClient()
+
+        // Update local state
+        if (!this.pageInstances[this.activeInvestmentId]) {
+          this.pageInstances[this.activeInvestmentId] = {}
+        }
+        if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
+          this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+        }
+
+        const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+        if (!pageData.subpageInstances) {
+          pageData.subpageInstances = {}
+        }
+
+        if (!pageData.subpageInstances[parentItemGroup]) {
+          pageData.subpageInstances[parentItemGroup] = []
+        }
+
+        const instances = pageData.subpageInstances[parentItemGroup]
+
+        // Ensure instance exists
+        while (instances.length <= instanceIndex) {
+          instances.push({})
+        }
+
+        // Save the value locally
+        instances[instanceIndex][questionName] = value
+
+        // Find the question ID by name
+        let questionId: string | null = null
+        const questions = this.surveyQuestions[subpageId] || []
+        const question = questions.find(q => q.name === questionName)
+
+        if (question) {
+          questionId = question.id
+        }
+
+        if (!questionId) {
+          console.warn(`Question not found for name: ${questionName}`)
+          return
+        }
+
+        // Save to database with both item_group and parent_item_group
+        const { data: existing, error: checkError } = await supabase
+          .from('survey_answers')
+          .select('id')
+          .eq('survey_id', this.currentSurveyId)
+          .eq('survey_question_id', questionId)
+          .eq('item_group', instanceIndex)
+          .eq('parent_item_group', parentItemGroup)
+          .maybeSingle()
+
+        if (checkError) throw checkError
+
+        if (existing) {
+          // Update existing answer
+          const { error: updateError } = await supabase
+            .from('survey_answers')
+            .update({ answer: String(value) })
+            .eq('id', existing.id)
+
+          if (updateError) throw updateError
+        } else {
+          // Insert new answer
+          const { error: insertError } = await supabase
+            .from('survey_answers')
+            .insert({
+              survey_id: this.currentSurveyId,
+              survey_question_id: questionId,
+              answer: String(value),
+              item_group: instanceIndex,
+              parent_item_group: parentItemGroup
+            })
+
+          if (insertError) throw insertError
+        }
+
+      } catch (error) {
+        console.error('Error saving subpage instance response:', error)
+      }
+    },
+
+    // Get response for a question in a hierarchical subpage instance
+    getSubPageInstanceResponse(
+      subpageId: string,
+      parentItemGroup: number,
+      instanceIndex: number,
+      questionName: string
+    ): any {
+      if (!this.activeInvestmentId) return null
+
+      const instances = this.pageInstances[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
+      if (!instances || instanceIndex >= instances.length) return null
+
+      return instances[instanceIndex]?.[questionName]
+    },
+
+    // Load default values from source questions for a subpage instance
+    async loadDefaultValuesForSubPageInstance(subpageId: string, parentItemGroup: number, instanceIndex: number) {
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
+
+      try {
+        const supabase = useSupabaseClient()
+
+        // Get all questions for this subpage
+        const questions = this.surveyQuestions[subpageId] || []
+
+        // Find questions with default_value_source_question_id
+        const questionsWithSource = questions.filter(q => q.default_value_source_question_id)
+
+        if (questionsWithSource.length === 0) return
+
+        // Get source question IDs
+        const sourceQuestionIds = questionsWithSource
+          .map(q => q.default_value_source_question_id)
+          .filter((id): id is string => id !== undefined && id !== null)
+
+        // Load source answers from database
+        const { data: sourceAnswers, error } = await supabase
+          .from('survey_answers')
+          .select('survey_question_id, answer')
+          .eq('survey_id', this.currentSurveyId)
+          .in('survey_question_id', sourceQuestionIds)
+          .is('item_group', null)
+
+        if (error) throw error
+        if (!sourceAnswers || sourceAnswers.length === 0) return
+
+        // Create a map: sourceQuestionId -> answer
+        const sourceAnswerMap = new Map<string, string>()
+        sourceAnswers.forEach(sa => {
+          sourceAnswerMap.set(sa.survey_question_id, sa.answer)
+        })
+
+        // Set default values and save to database
+        for (const question of questionsWithSource) {
+          if (!question.default_value_source_question_id) continue
+
+          const sourceAnswer = sourceAnswerMap.get(question.default_value_source_question_id)
+          if (sourceAnswer !== undefined) {
+            // Save to local state and database
+            await this.saveSubPageInstanceResponse(subpageId, parentItemGroup, instanceIndex, question.name, sourceAnswer)
+          }
+        }
+
+      } catch (error) {
+        console.error('Error loading default values for subpage instance:', error)
       }
     },
   }

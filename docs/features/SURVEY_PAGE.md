@@ -261,6 +261,32 @@ emit('next')                          // Proceed to next tab
 - Each instance saved with unique `item_group` identifier
 - Default values auto-loaded for new instances
 
+**Hierarchical Survey Pages (NEW):**
+- Support for parent-child page relationships via `parent_page_id`
+- Nested instances: each parent instance can have multiple child instances
+- Example: "Falak" (Walls) → "Nyílászárók" (Openings)
+  - Wall #1 can have Opening #1, Opening #2, etc.
+  - Wall #2 can have Opening #1, Opening #2, etc.
+- Child answers linked to parent via `parent_item_group` in database
+- Nested accordion UI for intuitive navigation
+- Automatic data synchronization between parent and child instances
+
+**Automated Wall Metrics Calculations (NEW):**
+- Real-time calculations for facade insulation metrics
+- Per-wall calculations displayed in each wall accordion:
+  - Homlokzat bruttó (Gross facade area)
+  - Homlokzat bruttó, lábazat nélkül (Gross facade without foundation)
+  - Lábazat felülete (Foundation surface area)
+  - Falon lévő nyílászárók homlokzati felülete (Opening surface area on wall)
+  - Homlokzat nettó (Net facade area)
+  - Káva felületek ezen a falon (Reveal surfaces on this wall)
+- Aggregate calculations for all walls combined
+- Opening-type-specific káva calculations:
+  - Windows: 4 sides (full perimeter)
+  - Doors/Balcony doors: 3 sides (no bottom)
+- Automatic unit conversion (cm to m²)
+- Real-time updates as user inputs data
+
 ### Data Storage
 
 **Store:** `/app/stores/surveyInvestments.ts`
@@ -281,7 +307,47 @@ pageInstances: {
         { questionName: value, ... },  // item_group 0
         { questionName: value, ... },  // item_group 1
         ...
+      ],
+      // Hierarchical subpage instances (NEW)
+      subpageInstances: {
+        [parentItemGroup: number]: [
+          { questionName: value, ... },  // child item_group 0
+          { questionName: value, ... },  // child item_group 1
+          ...
+        ]
+      }
+    }
+  }
+}
+```
+
+**Example Hierarchical Structure:**
+```typescript
+// Wall #0 (parent_item_group: null, item_group: 0)
+//   → Opening #0 (parent_item_group: 0, item_group: 0)
+//   → Opening #1 (parent_item_group: 0, item_group: 1)
+// Wall #1 (parent_item_group: null, item_group: 1)
+//   → Opening #0 (parent_item_group: 1, item_group: 0)
+//   → Opening #1 (parent_item_group: 1, item_group: 1)
+
+pageInstances: {
+  'facade-investment-id': {
+    'walls-page-id': {
+      instances: [
+        { wall_length: '1000', wall_height: '300' },  // Wall #0
+        { wall_length: '800', wall_height: '300' }    // Wall #1
       ]
+    },
+    'openings-page-id': {
+      subpageInstances: {
+        0: [  // Openings for Wall #0
+          { opening_type: 'Ablak', opening_width: '120', opening_height: '150' },
+          { opening_type: 'Ajtó', opening_width: '90', opening_height: '210' }
+        ],
+        1: [  // Openings for Wall #1
+          { opening_type: 'Ablak', opening_width: '100', opening_height: '120' }
+        ]
+      }
     }
   }
 }
@@ -296,9 +362,31 @@ CREATE TABLE survey_answers (
   survey_id UUID NOT NULL,
   survey_question_id UUID NOT NULL,
   answer TEXT,
-  item_group INTEGER,  -- NULL for regular pages, 0,1,2,... for multiple
-  UNIQUE (survey_id, survey_question_id, COALESCE(item_group, -1))
+  item_group INTEGER,         -- NULL for regular pages, 0,1,2,... for multiple
+  parent_item_group INTEGER,  -- NEW: Links child to parent instance
+  UNIQUE (
+    survey_id,
+    survey_question_id,
+    COALESCE(item_group, -1),
+    COALESCE(parent_item_group, -1)  -- NEW: Part of unique constraint
+  )
 );
+
+-- Indexes for hierarchical queries
+CREATE INDEX idx_survey_answers_parent_item_group
+  ON survey_answers(parent_item_group)
+  WHERE parent_item_group IS NOT NULL;
+```
+
+**survey_pages Table:**
+```sql
+ALTER TABLE survey_pages
+ADD COLUMN parent_page_id UUID REFERENCES survey_pages(id) ON DELETE CASCADE;
+
+-- Index for efficient parent-child lookups
+CREATE INDEX idx_survey_pages_parent_page_id
+  ON survey_pages(parent_page_id)
+  WHERE parent_page_id IS NOT NULL;
 ```
 
 **survey_questions Table:**
@@ -309,6 +397,270 @@ ADD COLUMN default_value_source_question_id UUID REFERENCES survey_questions(id)
 ALTER TABLE survey_questions
 ADD COLUMN is_readonly BOOLEAN DEFAULT FALSE;
 ```
+
+**Migrations:**
+- `102_add_hierarchical_survey_pages.sql` - Adds parent_page_id and parent_item_group support
+- `104_create_openings_survey_page.sql` - Creates Nyílászárók (Openings) subpage
+- `105_add_planned_investment_and_site_conditions_pages.sql` - Adds additional facade insulation pages
+
+### Hierarchical Survey Pages - Implementation Details
+
+**Store Methods (surveyInvestments.ts):**
+
+The following methods were added to support hierarchical pages:
+
+```typescript
+// Get all subpages for a given parent page
+getSubPages: (state) => (parentPageId: string): SurveyPage[]
+
+// Get subpage instances for a specific parent instance
+getSubPageInstances(subpageId: string, parentItemGroup: number): Record<string, any>[]
+
+// Add a new subpage instance under a parent instance
+addSubPageInstance(subpageId: string, parentItemGroup: number): void
+
+// Remove a subpage instance
+removeSubPageInstance(
+  subpageId: string,
+  parentItemGroup: number,
+  index: number,
+  allowDeleteFirst: boolean
+): void
+
+// Get a specific subpage instance response
+getSubPageInstanceResponse(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string
+): any
+
+// Save a subpage instance response
+saveSubPageInstanceResponse(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string,
+  value: any
+): Promise<void>
+
+// Load default values for a new subpage instance
+loadDefaultValuesForSubPageInstance(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number
+): Promise<void>
+```
+
+**Component Methods (SurveyPropertyAssessment.vue):**
+
+```typescript
+// Get subpages of a parent page
+getSubPages(parentPageId: string): SurveyPage[]
+
+// Get instances for a subpage under a specific parent
+getSubPageInstances(subpageId: string, parentItemGroup: number): any[]
+
+// Get instance name with index
+getSubPageInstanceName(subpage: SurveyPage, index: number): string
+
+// Check if instance can be deleted
+canDeleteSubPageInstance(subpage: SurveyPage, parentItemGroup: number, index: number): boolean
+
+// Add new subpage instance
+addSubPageInstance(subpageId: string, parentItemGroup: number): void
+
+// Delete subpage instance
+deleteSubPageInstance(subpage: SurveyPage, parentItemGroup: number, index: number): void
+
+// Get question value from subpage instance
+getSubPageInstanceQuestionValue(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string
+): any
+
+// Update question value in subpage instance
+updateSubPageInstanceQuestionValue(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string,
+  value: any
+): Promise<void>
+```
+
+**UI Structure:**
+
+Hierarchical pages are rendered as nested accordions:
+```vue
+<UAccordion>  <!-- Parent instance accordion -->
+  <div class="p-4">
+    <!-- Parent questions -->
+
+    <!-- Subpage section -->
+    <div v-for="subpage in getSubPages(page.id)">
+      <h5>{{ subpage.name }}</h5>
+
+      <UAccordion>  <!-- Child instance accordion -->
+        <!-- Child questions -->
+      </UAccordion>
+
+      <UButton @click="addSubPageInstance(subpage.id, parentIndex)">
+        Add {{ subpage.name }}
+      </UButton>
+    </div>
+  </div>
+</UAccordion>
+```
+
+### Wall Metrics Calculations - Implementation Details
+
+**Calculation Methods (SurveyPropertyAssessment.vue:463-552):**
+
+```typescript
+// Calculate metrics for a single wall instance
+const calculateWallMetrics = (pageId: string, parentItemGroup: number) => {
+  // 1. Get wall dimensions
+  const wallLength = Number(getInstanceQuestionValue(pageId, parentItemGroup, 'wall_length')) || 0
+  const wallHeight = Number(getInstanceQuestionValue(pageId, parentItemGroup, 'wall_height')) || 0
+  const foundationHeight = Number(getInstanceQuestionValue(pageId, parentItemGroup, 'foundation_height')) || 0
+
+  // 2. Calculate basic metrics (in m²)
+  const bruttoHomlokzat = wallLength * wallHeight
+  const bruttoLabazatNelkul = wallLength * (wallHeight - foundationHeight)
+  const labazatFeluletePostpone = wallLength * foundationHeight
+
+  // 3. Get all openings (nyílászárók) for this wall
+  const openings = getSubPageInstances(nyilaszarokPageId, parentItemGroup)
+
+  let nyilaszarokFeluletePostpone = 0
+  let kavaFeluletek = 0
+
+  openings.forEach((opening, index) => {
+    // Get opening data
+    const type = getSubPageInstanceQuestionValue(..., 'opening_type')
+    const width = Number(getSubPageInstanceQuestionValue(..., 'opening_width')) / 100  // cm to m
+    const height = Number(getSubPageInstanceQuestionValue(..., 'opening_height')) / 100
+    const quantity = Number(getSubPageInstanceQuestionValue(..., 'opening_quantity'))
+    const revealDepth = Number(getSubPageInstanceQuestionValue(..., 'reveal_depth')) / 100
+
+    // Calculate opening surface area
+    nyilaszarokFeluletePostpone += width * height * quantity
+
+    // Calculate káva based on opening type
+    if (type === 'Ablak') {
+      // Window: 4 sides (full perimeter)
+      kavaFeluletek += (width * 2 + height * 2) * revealDepth * quantity
+    } else if (type === 'Ajtó' || type === 'Erkélyajtó') {
+      // Door/Balcony door: 3 sides (no bottom)
+      kavaFeluletek += (width + height * 2) * revealDepth * quantity
+    }
+  })
+
+  // 4. Calculate net facade
+  const nettoHomlokzat = bruttoLabazatNelkul - nyilaszarokFeluletePostpone
+
+  return {
+    bruttoHomlokzat: bruttoHomlokzat.toFixed(2),
+    bruttoLabazatNelkul: bruttoLabazatNelkul.toFixed(2),
+    labazatFeluletePostpone: labazatFeluletePostpone.toFixed(2),
+    nyilaszarokFeluletePostpone: nyilaszarokFeluletePostpone.toFixed(2),
+    nettoHomlokzat: nettoHomlokzat.toFixed(2),
+    kavaFeluletek: kavaFeluletek.toFixed(2)
+  }
+}
+
+// Calculate aggregate metrics for all walls
+const calculateAllWallsMetrics = (pageId: string) => {
+  const instances = getPageInstances(pageId)
+
+  // Sum up all wall metrics
+  let totals = { /* ... */ }
+  instances.forEach((instance, index) => {
+    const metrics = calculateWallMetrics(pageId, index)
+    // Add to totals...
+  })
+
+  return totals
+}
+```
+
+**Calculation Formulas:**
+
+1. **Homlokzat bruttó (Gross facade):**
+   ```
+   wall_length × wall_height
+   ```
+
+2. **Homlokzat bruttó, lábazat nélkül (Gross facade without foundation):**
+   ```
+   wall_length × (wall_height - foundation_height)
+   ```
+
+3. **Lábazat felülete (Foundation surface):**
+   ```
+   wall_length × foundation_height
+   ```
+
+4. **Falon lévő nyílászárók felülete (Opening surface):**
+   ```
+   Σ (opening_width × opening_height × opening_quantity)
+   ```
+   Unit conversion: cm → m (divide by 100)
+
+5. **Homlokzat nettó (Net facade):**
+   ```
+   (Gross facade without foundation) - (Total opening surface)
+   ```
+
+6. **Káva felületek (Reveal surfaces):**
+   - **For Windows (Ablak):**
+     ```
+     Σ ((width × 2 + height × 2) × reveal_depth × quantity)
+     ```
+   - **For Doors/Balcony Doors (Ajtó/Erkélyajtó):**
+     ```
+     Σ ((width + height × 2) × reveal_depth × quantity)
+     ```
+   Unit conversion: cm → m (divide by 100)
+
+**UI Display:**
+
+Per-wall metrics are displayed in a collapsible accordion inside each wall instance:
+```vue
+<UAccordion :items="[{ label: 'Számítások', slot: `metrics-${pageId}-${index}` }]">
+  <template #[`metrics-${pageId}-${index}`]>
+    <div class="p-4 bg-blue-50 dark:bg-blue-900/20">
+      <table class="w-full text-sm">
+        <!-- 6 metrics displayed here -->
+      </table>
+    </div>
+  </template>
+</UAccordion>
+```
+
+Total metrics are displayed in a separate accordion below the "Add Wall" button:
+```vue
+<div v-if="page.type === 'walls' && getPageInstances(page.id).length > 0">
+  <UAccordion :items="[{ label: 'Összes falfelület számítások' }]">
+    <template>
+      <div class="p-4 bg-green-50 dark:bg-green-900/20">
+        <table class="w-full text-sm">
+          <!-- 6 aggregate metrics displayed here -->
+        </table>
+      </div>
+    </template>
+  </UAccordion>
+</div>
+```
+
+**Styling:**
+- Per-wall calculations: Blue background (`bg-blue-50` / `dark:bg-blue-900/20`)
+- Total calculations: Green background (`bg-green-50` / `dark:bg-green-900/20`)
+- Real-time updates as user types
+- Automatic recalculation when openings are added/removed
 
 ### Implementation Details
 
@@ -542,7 +894,16 @@ try {
 ### Database
 - Table: `surveys`
 - Table: `clients`
+- Table: `survey_pages`
+- Table: `survey_questions`
+- Table: `survey_answers`
 - Migration: `supabase/migrations/003_create_survey_system.sql`
+- Migration: `supabase/migrations/102_add_hierarchical_survey_pages.sql` - Hierarchical pages support
+- Migration: `supabase/migrations/104_create_openings_survey_page.sql` - Openings subpage
+- Migration: `supabase/migrations/105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages
+
+### Stores
+- `app/stores/surveyInvestments.ts` - Survey data state management with hierarchical support
 
 ## Implementation Status
 
@@ -564,6 +925,10 @@ try {
 - [x] **Default value inheritance between questions**
 - [x] **Dynamic readonly field behavior**
 - [x] **Investment-specific response tracking**
+- [x] **Hierarchical survey pages with parent-child relationships (2025-10-30)**
+- [x] **Nested accordion UI for hierarchical pages (2025-10-30)**
+- [x] **Wall metrics calculations with real-time updates (2025-10-30)**
+- [x] **Opening-type-specific káva calculations (2025-10-30)**
 - [x] Load survey data from Supabase
 - [x] Implement client name display
 - [x] Calculate missing items count
@@ -608,7 +973,7 @@ try {
 
 **Created:** 2025-10-20
 **Last Updated:** 2025-10-30
-**Status:** Phase 1 Complete - Property Assessment Fully Implemented
+**Status:** Phase 1 Complete - Property Assessment Fully Implemented with Hierarchical Pages & Calculations
 **Next Steps:** Implement Consultation and Offer/Contract tabs
 **Dependencies:** Survey system migration, Supabase integration
 
@@ -619,3 +984,8 @@ try {
 - ✅ Default value inheritance across questions
 - ✅ Dynamic readonly field behavior
 - ✅ Investment-specific response tracking
+- ✅ **Hierarchical survey pages (parent-child relationships)**
+- ✅ **Nested accordion UI for hierarchical data entry**
+- ✅ **Automated wall metrics calculations**
+- ✅ **Real-time facade insulation area calculations**
+- ✅ **Opening-type-specific reveal (káva) calculations**

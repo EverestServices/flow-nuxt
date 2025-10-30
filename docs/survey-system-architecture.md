@@ -2,8 +2,15 @@
 
 **Created:** 2025-10-17
 **Last Updated:** 2025-10-30
-**Version:** 2.3.0
-**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`, `097-101_default_value_source_and_persistence.sql`
+**Version:** 2.4.0
+**Migrations:**
+- `003_create_survey_system.sql` - Core survey system
+- `031-043_products_system.sql` - Products and components
+- `070_add_investment_id_to_pivot_tables.sql` - Investment-specific tracking
+- `097-101_default_value_source_and_persistence.sql` - Default values and persistence
+- `102_add_hierarchical_survey_pages.sql` - Hierarchical pages (NEW)
+- `104_create_openings_survey_page.sql` - Openings subpage (NEW)
+- `105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages (NEW)
 
 ---
 
@@ -39,6 +46,8 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Persistent survey answer storage with multi-instance support** (NEW - 2025-10-30)
 - ✅ **Default value inheritance across survey questions** (NEW - 2025-10-30)
 - ✅ **Dynamic readonly fields based on source data** (NEW - 2025-10-30)
+- ✅ **Hierarchical survey pages with parent-child relationships** (NEW - 2025-10-30)
+- ✅ **Automated wall metrics calculations for facade insulation** (NEW - 2025-10-30)
 
 ---
 
@@ -206,7 +215,7 @@ Additional costs catalog.
 - Linked to Scenarios OR Contracts (via `extra_cost_relations`)
 
 #### **survey_pages**
-Survey form pages/sections.
+Survey form pages/sections with hierarchical support.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -216,10 +225,22 @@ Survey form pages/sections.
 | name | VARCHAR(255) | Page name |
 | position | JSONB | Position data |
 | type | VARCHAR(100) | Page type |
+| **parent_page_id** | UUID | FK → survey_pages (nullable) ⭐ |
+| allow_multiple | BOOLEAN | Allow multiple instances |
+| allow_delete_first | BOOLEAN | Allow deleting first instance |
+| item_name_template | VARCHAR(255) | Template for instance names |
+
+⭐ **NEW - 2025-10-30:** Hierarchical page support
 
 **Relations:**
 - Many-to-Many with Surveys (via `survey_survey_pages`) with position field
 - 1 Page → Many Questions
+- 1 Parent Page → Many Subpages (self-referential)
+
+**Hierarchical Structure:**
+- `parent_page_id = NULL`: Root-level pages
+- `parent_page_id = <uuid>`: Subpages nested under a parent
+- Example: "Falak" (Walls) parent → "Nyílászárók" (Openings) subpage
 
 #### **survey_questions**
 Questions within survey pages.
@@ -265,7 +286,7 @@ Questions within survey pages.
 - Supports both regular pages and allow_multiple pages with item_group
 
 #### **survey_answers**
-Answers to survey questions with multi-instance support.
+Answers to survey questions with multi-instance and hierarchical support.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -276,21 +297,31 @@ Answers to survey questions with multi-instance support.
 | survey_question_id | UUID | FK → survey_questions |
 | answer | TEXT | Answer value |
 | **item_group** | INTEGER | Instance number for allow_multiple pages (nullable) ⭐ |
+| **parent_item_group** | INTEGER | Parent instance number for hierarchical pages (nullable) ⭐ |
 
-⭐ **NEW - 2025-10-30:** Multi-instance support for allow_multiple survey pages
+⭐ **NEW - 2025-10-30:** Multi-instance and hierarchical support
 
 **Relations:**
 - 1 Survey → Many Answers
 - 1 Question → Many Answers (different surveys)
 
 **Unique Constraint:**
-- `UNIQUE (survey_id, survey_question_id, COALESCE(item_group, -1))`
-- Ensures one answer per question per survey per instance
+- `UNIQUE (survey_id, survey_question_id, COALESCE(item_group, -1), COALESCE(parent_item_group, -1))`
+- Ensures one answer per question per survey per instance per parent instance
 
 **Item Group Behavior:**
-- `item_group = NULL`: Regular survey pages (single instance)
-- `item_group = 0, 1, 2, ...`: Allow_multiple pages (e.g., multiple wall surfaces)
-- Example: 3 wall surfaces → 3 sets of answers with item_group 0, 1, 2
+- `item_group = NULL, parent_item_group = NULL`: Regular pages (single instance)
+- `item_group = 0,1,2..., parent_item_group = NULL`: Root allow_multiple pages
+- `item_group = 0,1,2..., parent_item_group = 0,1,2...`: Hierarchical subpage instances
+
+**Hierarchical Example:**
+```
+Wall #0 (parent_item_group: null, item_group: 0)
+  → Opening #0 (parent_item_group: 0, item_group: 0)
+  → Opening #1 (parent_item_group: 0, item_group: 1)
+Wall #1 (parent_item_group: null, item_group: 1)
+  → Opening #0 (parent_item_group: 1, item_group: 0)
+```
 
 #### **document_categories**
 Photo/document categories.
@@ -1617,8 +1648,244 @@ uuid-123  | wall_structure | Concrete  | 2  -- User manually changed this one
 
 ---
 
+### Hierarchical Survey Pages (NEW - 2025-10-30)
+
+**Overview:**
+Survey pages can now have parent-child relationships, enabling nested data entry structures where each parent instance can have multiple child instances.
+
+**Use Case:**
+"Falak" (Walls) page is the parent, "Nyílászárók" (Openings) is the subpage. Each wall can have multiple openings independently.
+
+#### Database Schema
+
+```sql
+-- Parent page reference
+ALTER TABLE survey_pages
+ADD COLUMN parent_page_id UUID REFERENCES survey_pages(id) ON DELETE CASCADE;
+
+-- Parent instance reference
+ALTER TABLE survey_answers
+ADD COLUMN parent_item_group INTEGER;
+
+-- Unique constraint updated
+CREATE UNIQUE INDEX idx_survey_answers_unique_with_parent
+ON survey_answers (
+  survey_id,
+  survey_question_id,
+  COALESCE(item_group, -1),
+  COALESCE(parent_item_group, -1)
+);
+```
+
+#### Store Structure
+
+```typescript
+pageInstances: {
+  [investmentId]: {
+    [pageId]: {
+      instances: [...],           // Root page instances
+      subpageInstances: {         // Subpage instances grouped by parent
+        [parentItemGroup]: [...]  // Each parent has its own child instances
+      }
+    }
+  }
+}
+```
+
+#### Store Methods
+
+```typescript
+// Get all subpages for a parent
+getSubPages(parentPageId: string): SurveyPage[]
+
+// Get subpage instances for specific parent
+getSubPageInstances(subpageId: string, parentItemGroup: number): any[]
+
+// Add subpage instance under parent
+addSubPageInstance(subpageId: string, parentItemGroup: number): void
+
+// Save subpage answer
+saveSubPageInstanceResponse(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string,
+  value: any
+): Promise<void>
+```
+
+#### UI Structure
+
+Hierarchical pages render as nested accordions:
+
+```vue
+<UAccordion>  <!-- Parent: Wall #1 -->
+  <div>
+    <!-- Wall questions -->
+
+    <div v-for="subpage in getSubPages(wallPageId)">
+      <h5>{{ subpage.name }}</h5>  <!-- "Nyílászárók" -->
+
+      <UAccordion>  <!-- Child: Opening #1 -->
+        <!-- Opening questions -->
+      </UAccordion>
+
+      <UAccordion>  <!-- Child: Opening #2 -->
+        <!-- Opening questions -->
+      </UAccordion>
+
+      <UButton @click="addSubPageInstance(subpage.id, wallIndex)">
+        Add Opening
+      </UButton>
+    </div>
+  </div>
+</UAccordion>
+```
+
+#### Migration Files
+
+- **102_add_hierarchical_survey_pages.sql** - Adds parent_page_id and parent_item_group support
+- **104_create_openings_survey_page.sql** - Creates Nyílászárók subpage under Falak
+- **105_add_planned_investment_and_site_conditions_pages.sql** - Additional facade insulation pages
+
+---
+
+### Automated Wall Metrics Calculations (NEW - 2025-10-30)
+
+**Overview:**
+Real-time calculations for facade insulation metrics, automatically updating as users input wall and opening data.
+
+**Use Case:**
+Calculate net facade area by subtracting opening areas from gross wall area, with special handling for reveal (káva) surfaces.
+
+#### Calculation Methods
+
+**Location:** `/app/components/Survey/SurveyPropertyAssessment.vue:463-552`
+
+```typescript
+// Per-wall calculations
+const calculateWallMetrics = (pageId: string, parentItemGroup: number) => {
+  // 1. Get wall dimensions
+  const wallLength = getInstanceQuestionValue(pageId, parentItemGroup, 'wall_length')
+  const wallHeight = getInstanceQuestionValue(pageId, parentItemGroup, 'wall_height')
+  const foundationHeight = getInstanceQuestionValue(pageId, parentItemGroup, 'foundation_height')
+
+  // 2. Calculate basic areas (m²)
+  const bruttoHomlokzat = wallLength * wallHeight
+  const bruttoLabazatNelkul = wallLength * (wallHeight - foundationHeight)
+  const labazatFeluletePostpone = wallLength * foundationHeight
+
+  // 3. Get openings for this wall
+  const openings = getSubPageInstances(openingsPageId, parentItemGroup)
+
+  let nyilaszarokFeluletePostpone = 0
+  let kavaFeluletek = 0
+
+  openings.forEach(opening => {
+    const type = getSubPageInstanceQuestionValue(..., 'opening_type')
+    const width = Number(...) / 100  // cm to m
+    const height = Number(...) / 100
+    const quantity = Number(...)
+    const revealDepth = Number(...) / 100
+
+    // Opening surface area
+    nyilaszarokFeluletePostpone += width * height * quantity
+
+    // Reveal (káva) calculation - opening type specific
+    if (type === 'Ablak') {
+      // Window: 4 sides (full perimeter)
+      kavaFeluletek += (width * 2 + height * 2) * revealDepth * quantity
+    } else if (type === 'Ajtó' || type === 'Erkélyajtó') {
+      // Door: 3 sides (no bottom)
+      kavaFeluletek += (width + height * 2) * revealDepth * quantity
+    }
+  })
+
+  // 4. Net facade area
+  const nettoHomlokzat = bruttoLabazatNelkul - nyilaszarokFeluletePostpone
+
+  return { bruttoHomlokzat, bruttoLabazatNelkul, labazatFeluletePostpone,
+          nyilaszarokFeluletePostpone, nettoHomlokzat, kavaFeluletek }
+}
+
+// Aggregate calculations for all walls
+const calculateAllWallsMetrics = (pageId: string) => {
+  const instances = getPageInstances(pageId)
+  let totals = { /* ... */ }
+
+  instances.forEach((instance, index) => {
+    const metrics = calculateWallMetrics(pageId, index)
+    // Sum up all metrics
+  })
+
+  return totals
+}
+```
+
+#### Calculation Formulas
+
+1. **Homlokzat bruttó (Gross facade):**
+   ```
+   wall_length × wall_height
+   ```
+
+2. **Homlokzat bruttó, lábazat nélkül (Gross without foundation):**
+   ```
+   wall_length × (wall_height - foundation_height)
+   ```
+
+3. **Lábazat felülete (Foundation surface):**
+   ```
+   wall_length × foundation_height
+   ```
+
+4. **Nyílászárók felülete (Opening surface):**
+   ```
+   Σ (opening_width × opening_height × opening_quantity)
+   Unit: cm → m (divide by 100)
+   ```
+
+5. **Homlokzat nettó (Net facade):**
+   ```
+   (Gross without foundation) - (Total openings)
+   ```
+
+6. **Káva felületek (Reveal surfaces):**
+   - **Windows (Ablak):** 4 sides
+     ```
+     Σ ((width × 2 + height × 2) × reveal_depth × quantity)
+     ```
+   - **Doors (Ajtó/Erkélyajtó):** 3 sides
+     ```
+     Σ ((width + height × 2) × reveal_depth × quantity)
+     ```
+   Unit: cm → m (divide by 100)
+
+#### UI Display
+
+**Per-Wall Metrics:**
+- Displayed in accordion inside each wall instance
+- Background: Blue (`bg-blue-50` / `dark:bg-blue-900/20`)
+- Collapsible by default
+
+**Total Metrics:**
+- Displayed below "Add Wall" button
+- Background: Green (`bg-green-50` / `dark:bg-green-900/20`)
+- Only shown when walls exist
+- Aggregates all wall metrics
+
+**Real-Time Updates:**
+- Calculations update instantly as user types
+- Automatic recalculation when openings added/removed
+- No manual refresh required
+
+**Component Location:** `/app/components/Survey/SurveyPropertyAssessment.vue:340-382`
+
+---
+
 ## Related Documentation
 
+- [Survey Page Feature Documentation](features/SURVEY_PAGE.md) - Complete survey page feature documentation
 - [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
 - [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
 - [Contract Data Page](survey-contract-data-page.md) - Contract Data page documentation
