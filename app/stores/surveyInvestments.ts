@@ -10,6 +10,7 @@ export interface Investment {
   position: { top: number; right: number }
   sequence: number
   client_type?: 'residential' | 'corporate' | 'both'
+  is_default?: boolean
 }
 
 export interface SurveyPage {
@@ -45,7 +46,9 @@ export interface SurveyQuestion {
   type: string
   is_required: boolean
   is_special?: boolean
+  is_readonly?: boolean
   default_value?: string
+  default_value_source_question_id?: string
   placeholder_value?: string
   placeholder_translations?: { en: string; hu: string }
   options?: string[]
@@ -125,9 +128,13 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
   }),
 
   getters: {
-    // Get filtered investments by client type
+    // Get filtered investments by client type (excluding default investments)
     filteredInvestments(state): Investment[] {
       return state.availableInvestments.filter(inv => {
+        // Hide default investments from selection modal
+        if (inv.is_default) return false
+
+        // Filter by client type
         if (!inv.client_type || inv.client_type === 'both') return true
         return inv.client_type === state.clientType
       })
@@ -207,9 +214,33 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         const investmentIds = surveyInvestments?.map(si => si.investment_id) || []
         this.selectedInvestmentIds = [...new Set(investmentIds)]
 
+        // Auto-select default investments if not already selected
+        const defaultInvestments = this.availableInvestments.filter(inv => inv.is_default)
+        for (const defaultInv of defaultInvestments) {
+          if (!this.selectedInvestmentIds.includes(defaultInv.id)) {
+            // Add to database
+            try {
+              await supabase
+                .from('survey_investments')
+                .insert({
+                  survey_id: surveyId,
+                  investment_id: defaultInv.id
+                })
+
+              // Add to selected list
+              this.selectedInvestmentIds.push(defaultInv.id)
+            } catch (error) {
+              console.error('Error auto-selecting default investment:', error)
+            }
+          }
+        }
+
         // If we have selected investments, load their pages
         if (this.selectedInvestmentIds.length > 0) {
           await this.loadInvestmentData(this.selectedInvestmentIds)
+
+          // Load existing answers from database
+          await this.loadExistingAnswers(surveyId)
 
           // Set first investment and page as active
           if (!this.activeInvestmentId) {
@@ -346,6 +377,80 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       }
     },
 
+    // Load existing answers from database
+    async loadExistingAnswers(surveyId: string) {
+      const supabase = useSupabaseClient()
+
+      try {
+        // Load all survey answers for this survey
+        const { data: answers, error } = await supabase
+          .from('survey_answers')
+          .select('survey_question_id, answer, item_group')
+          .eq('survey_id', surveyId)
+
+        if (error) throw error
+        if (!answers || answers.length === 0) return
+
+        // Create a map of question_id -> question for faster lookup
+        const questionMap = new Map<string, { question: SurveyQuestion, pageId: string, investmentId: string }>()
+
+        for (const investmentId in this.surveyPages) {
+          const pages = this.surveyPages[investmentId]
+          for (const page of pages) {
+            const questions = this.surveyQuestions[page.id] || []
+            for (const question of questions) {
+              questionMap.set(question.id, {
+                question,
+                pageId: page.id,
+                investmentId: investmentId
+              })
+            }
+          }
+        }
+
+        // Process each answer
+        for (const answer of answers) {
+          const questionData = questionMap.get(answer.survey_question_id)
+          if (!questionData) {
+            console.warn(`Question not found for answer: ${answer.survey_question_id}`)
+            continue
+          }
+
+          const { question, pageId, investmentId } = questionData
+
+          if (answer.item_group === null) {
+            // Regular answer (no item_group) - store in investmentResponses
+            if (!this.investmentResponses[investmentId]) {
+              this.investmentResponses[investmentId] = {}
+            }
+            this.investmentResponses[investmentId][question.name] = answer.answer
+          } else {
+            // Answer with item_group - store in pageInstances
+            if (!this.pageInstances[investmentId]) {
+              this.pageInstances[investmentId] = {}
+            }
+            if (!this.pageInstances[investmentId][pageId]) {
+              this.pageInstances[investmentId][pageId] = { instances: [] }
+            }
+
+            const instances = this.pageInstances[investmentId][pageId].instances
+            const itemGroup = answer.item_group
+
+            // Ensure we have enough instances
+            while (instances.length <= itemGroup) {
+              instances.push({})
+            }
+
+            // Store the answer
+            instances[itemGroup][question.name] = answer.answer
+          }
+        }
+
+      } catch (error) {
+        console.error('Error loading existing answers:', error)
+      }
+    },
+
     // Select an investment
     async selectInvestment(investmentId: string) {
       if (this.selectedInvestmentIds.includes(investmentId)) {
@@ -391,6 +496,13 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Deselect an investment
     async deselectInvestment(investmentId: string) {
+      // Prevent deselecting default investments
+      const investment = this.availableInvestments.find(inv => inv.id === investmentId)
+      if (investment?.is_default) {
+        console.warn('Cannot deselect default investment')
+        return
+      }
+
       const supabase = useSupabaseClient()
 
       try {
@@ -482,12 +594,67 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       if (!this.activeInvestmentId || !this.currentSurveyId) return
 
       try {
-        // Update local state (responses are stored in memory for now)
-        // TODO: Save to a separate survey_responses table if needed
+        const supabase = useSupabaseClient()
+
+        // Update local state
         if (!this.investmentResponses[this.activeInvestmentId]) {
           this.investmentResponses[this.activeInvestmentId] = {}
         }
         this.investmentResponses[this.activeInvestmentId][questionName] = value
+
+        // Find the question ID by name (search in all pages of active investment)
+        let questionId: string | null = null
+        const pages = this.surveyPages[this.activeInvestmentId] || []
+
+        for (const page of pages) {
+          const questions = this.surveyQuestions[page.id] || []
+          const question = questions.find(q => q.name === questionName)
+          if (question) {
+            questionId = question.id
+            break
+          }
+        }
+
+        if (!questionId) {
+          console.warn(`Question not found for name: ${questionName}`)
+          return
+        }
+
+        // Save to database
+        const { data: existing, error: checkError } = await supabase
+          .from('survey_answers')
+          .select('id')
+          .eq('survey_id', this.currentSurveyId)
+          .eq('survey_question_id', questionId)
+          .is('item_group', null)
+          .maybeSingle()
+
+        if (checkError) throw checkError
+
+        if (existing) {
+          // Update existing answer
+          const { error: updateError } = await supabase
+            .from('survey_answers')
+            .update({ answer: String(value) })
+            .eq('id', existing.id)
+
+          if (updateError) throw updateError
+        } else {
+          // Insert new answer
+          const { error: insertError } = await supabase
+            .from('survey_answers')
+            .insert({
+              survey_id: this.currentSurveyId,
+              survey_question_id: questionId,
+              answer: String(value),
+              item_group: null
+            })
+
+          if (insertError) throw insertError
+        }
+
+        // Update dependent questions in frontend state (questions that use this as default_value_source)
+        await this.syncDependentQuestionsInState(questionId, String(value))
 
       } catch (error) {
         console.error('Error saving response:', error)
@@ -523,8 +690,21 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       return this.pageInstances[this.activeInvestmentId][pageId].instances
     },
 
+    // Ensure page instances are initialized with default values (call this when displaying allow_multiple pages)
+    async ensurePageInstancesInitialized(pageId: string) {
+      if (!this.activeInvestmentId) return
+
+      // Get instances (this will create the first empty instance if needed)
+      const instances = this.getPageInstances(pageId)
+
+      // If we have exactly one instance and it's empty (no keys), it might need default values loaded
+      if (instances.length === 1 && Object.keys(instances[0]).length === 0) {
+        await this.loadDefaultValuesForInstance(pageId, 0)
+      }
+    },
+
     // Add a new instance for a page
-    addPageInstance(pageId: string) {
+    async addPageInstance(pageId: string) {
       if (!this.activeInvestmentId) return
 
       // Initialize if doesn't exist
@@ -541,6 +721,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       // Set as active
       const newIndex = this.pageInstances[this.activeInvestmentId][pageId].instances.length - 1
       this.activeInstanceIndex[pageId] = newIndex
+
+      // Load default values from source questions
+      await this.loadDefaultValuesForInstance(pageId, newIndex)
     },
 
     // Remove an instance from a page
@@ -582,7 +765,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       if (!this.activeInvestmentId || !this.currentSurveyId) return
 
       try {
-        // Initialize if doesn't exist
+        const supabase = useSupabaseClient()
+
+        // Update local state
         if (!this.pageInstances[this.activeInvestmentId]) {
           this.pageInstances[this.activeInvestmentId] = {}
         }
@@ -597,8 +782,55 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
           instances.push({})
         }
 
-        // Save the value
+        // Save the value locally
         instances[instanceIndex][questionName] = value
+
+        // Find the question ID by name (search in this page's questions)
+        let questionId: string | null = null
+        const questions = this.surveyQuestions[pageId] || []
+        const question = questions.find(q => q.name === questionName)
+
+        if (question) {
+          questionId = question.id
+        }
+
+        if (!questionId) {
+          console.warn(`Question not found for name: ${questionName}`)
+          return
+        }
+
+        // Save to database with item_group
+        const { data: existing, error: checkError } = await supabase
+          .from('survey_answers')
+          .select('id')
+          .eq('survey_id', this.currentSurveyId)
+          .eq('survey_question_id', questionId)
+          .eq('item_group', instanceIndex)
+          .maybeSingle()
+
+        if (checkError) throw checkError
+
+        if (existing) {
+          // Update existing answer
+          const { error: updateError } = await supabase
+            .from('survey_answers')
+            .update({ answer: String(value) })
+            .eq('id', existing.id)
+
+          if (updateError) throw updateError
+        } else {
+          // Insert new answer
+          const { error: insertError } = await supabase
+            .from('survey_answers')
+            .insert({
+              survey_id: this.currentSurveyId,
+              survey_question_id: questionId,
+              answer: String(value),
+              item_group: instanceIndex
+            })
+
+          if (insertError) throw insertError
+        }
 
       } catch (error) {
         console.error('Error saving instance response:', error)
@@ -613,6 +845,123 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       if (!instances || instanceIndex >= instances.length) return null
 
       return instances[instanceIndex]?.[questionName]
+    },
+
+    // Sync dependent questions in frontend state when a source question changes
+    async syncDependentQuestionsInState(sourceQuestionId: string, newValue: string) {
+      if (!this.currentSurveyId) return
+
+      try {
+        // Only sync if the source value is not empty
+        // When source is empty, we want to keep the manually entered values in dependent fields
+        const hasSourceValue = newValue !== undefined && newValue !== null && newValue !== ''
+
+        if (!hasSourceValue) {
+          // Source is empty, don't update dependent fields (they keep their manual values)
+          return
+        }
+
+        // Find all questions that have this question as their default_value_source
+        const dependentQuestions: Array<{
+          question: SurveyQuestion
+          pageId: string
+          investmentId: string
+        }> = []
+
+        for (const investmentId in this.surveyPages) {
+          const pages = this.surveyPages[investmentId]
+          for (const page of pages) {
+            const questions = this.surveyQuestions[page.id] || []
+            for (const question of questions) {
+              if (question.default_value_source_question_id === sourceQuestionId) {
+                dependentQuestions.push({
+                  question,
+                  pageId: page.id,
+                  investmentId
+                })
+              }
+            }
+          }
+        }
+
+        // Update each dependent question in the frontend state
+        for (const dep of dependentQuestions) {
+          const page = this.surveyPages[dep.investmentId]?.find(p => p.id === dep.pageId)
+
+          if (!page) continue
+
+          if (page.allow_multiple) {
+            // For allow_multiple pages, update all existing instances
+            const instances = this.pageInstances[dep.investmentId]?.[dep.pageId]?.instances || []
+
+            for (let i = 0; i < instances.length; i++) {
+              instances[i][dep.question.name] = newValue
+            }
+          } else {
+            // For regular pages, update investmentResponses
+            if (!this.investmentResponses[dep.investmentId]) {
+              this.investmentResponses[dep.investmentId] = {}
+            }
+            this.investmentResponses[dep.investmentId][dep.question.name] = newValue
+          }
+        }
+
+      } catch (error) {
+        console.error('Error syncing dependent questions:', error)
+      }
+    },
+
+    // Load default values from source questions for an instance
+    async loadDefaultValuesForInstance(pageId: string, instanceIndex: number) {
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
+
+      try {
+        const supabase = useSupabaseClient()
+
+        // Get all questions for this page
+        const questions = this.surveyQuestions[pageId] || []
+
+        // Find questions with default_value_source_question_id
+        const questionsWithSource = questions.filter(q => q.default_value_source_question_id)
+
+        if (questionsWithSource.length === 0) return
+
+        // Get source question IDs
+        const sourceQuestionIds = questionsWithSource
+          .map(q => q.default_value_source_question_id)
+          .filter((id): id is string => id !== undefined && id !== null)
+
+        // Load source answers from database
+        const { data: sourceAnswers, error } = await supabase
+          .from('survey_answers')
+          .select('survey_question_id, answer')
+          .eq('survey_id', this.currentSurveyId)
+          .in('survey_question_id', sourceQuestionIds)
+          .is('item_group', null)
+
+        if (error) throw error
+        if (!sourceAnswers || sourceAnswers.length === 0) return
+
+        // Create a map: sourceQuestionId -> answer
+        const sourceAnswerMap = new Map<string, string>()
+        sourceAnswers.forEach(sa => {
+          sourceAnswerMap.set(sa.survey_question_id, sa.answer)
+        })
+
+        // Set default values and save to database
+        for (const question of questionsWithSource) {
+          if (!question.default_value_source_question_id) continue
+
+          const sourceAnswer = sourceAnswerMap.get(question.default_value_source_question_id)
+          if (sourceAnswer !== undefined) {
+            // Save to local state and database
+            await this.saveInstanceResponse(pageId, instanceIndex, question.name, sourceAnswer)
+          }
+        }
+
+      } catch (error) {
+        console.error('Error loading default values for instance:', error)
+      }
     },
   }
 })

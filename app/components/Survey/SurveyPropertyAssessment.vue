@@ -319,7 +319,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
 
@@ -616,12 +616,28 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
     fieldValue = store.getResponse(condition.field)
   }
 
+  // Normalize boolean values for comparison
+  // Convert both values to the same type to handle boolean vs string "true"/"false"
+  const normalizeValue = (val: any): any => {
+    if (typeof val === 'boolean') {
+      return val
+    }
+    if (typeof val === 'string') {
+      if (val.toLowerCase() === 'true') return true
+      if (val.toLowerCase() === 'false') return false
+    }
+    return val
+  }
+
+  const normalizedFieldValue = normalizeValue(fieldValue)
+  const normalizedConditionValue = normalizeValue(condition.value)
+
   // Evaluate the condition based on operator
   switch (condition.operator) {
     case 'equals':
-      return fieldValue == condition.value
+      return normalizedFieldValue == normalizedConditionValue
     case 'not_equals':
-      return fieldValue != condition.value
+      return normalizedFieldValue != normalizedConditionValue
     case 'greater_than':
       return Number(fieldValue) > Number(condition.value)
     case 'less_than':
@@ -679,5 +695,20 @@ const closeAccordion = (event: MouseEvent) => {
 // Inicializálás
 onMounted(async () => {
   await store.initializeForSurvey(props.surveyId)
+
+  // Initialize default values for allow_multiple pages
+  if (activePage.value?.allow_multiple && activePageId.value) {
+    await store.ensurePageInstancesInitialized(activePageId.value)
+  }
+})
+
+// Watch for active page changes and initialize default values for allow_multiple pages
+watch(activePageId, async (newPageId) => {
+  if (!newPageId) return
+
+  const page = activePage.value
+  if (page?.allow_multiple) {
+    await store.ensurePageInstancesInitialized(newPageId)
+  }
 })
 </script>

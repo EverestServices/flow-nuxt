@@ -1,9 +1,9 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-24
-**Version:** 2.2.0
-**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
+**Last Updated:** 2025-10-30
+**Version:** 2.3.0
+**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`, `097-101_default_value_source_and_persistence.sql`
 
 ---
 
@@ -36,6 +36,9 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
 - ✅ **Contract Data page with client information management** (NEW - 2025-10-24)
 - ✅ **Summary page with contract preview and digital signing** (NEW - 2025-10-24)
+- ✅ **Persistent survey answer storage with multi-instance support** (NEW - 2025-10-30)
+- ✅ **Default value inheritance across survey questions** (NEW - 2025-10-30)
+- ✅ **Dynamic readonly fields based on source data** (NEW - 2025-10-30)
 
 ---
 
@@ -230,6 +233,8 @@ Questions within survey pages.
 | name | VARCHAR(255) | Question name |
 | type | ENUM | Question type (text, textarea, switch, etc.) |
 | default_value | TEXT | Default value |
+| **default_value_source_question_id** | UUID | FK → survey_questions (nullable) ⭐ |
+| **is_readonly** | BOOLEAN | Field is readonly (default false) ⭐ |
 | placeholder_value | VARCHAR(500) | Placeholder text |
 | options | JSONB | Options array (for dropdown, etc.) |
 | is_required | BOOLEAN | Is required |
@@ -241,6 +246,8 @@ Questions within survey pages.
 | unit | VARCHAR(50) | Unit (e.g., m², kWp) |
 | width | INTEGER | UI width |
 
+⭐ **NEW - 2025-10-30:** Default value inheritance and readonly support
+
 **Question Types:**
 - `text`, `textarea`, `switch`, `dropdown`
 - `title`, `phase_toggle`, `dual_toggle`
@@ -250,9 +257,15 @@ Questions within survey pages.
 **Relations:**
 - 1 Page → Many Questions
 - Many Questions → Many Answers
+- 1 Question → 1 Source Question (optional, self-referential)
+
+**Default Value Inheritance:**
+- Questions can inherit default values from other questions via `default_value_source_question_id`
+- When source question value changes, dependent questions auto-update (via database trigger)
+- Supports both regular pages and allow_multiple pages with item_group
 
 #### **survey_answers**
-Answers to survey questions.
+Answers to survey questions with multi-instance support.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -262,10 +275,22 @@ Answers to survey questions.
 | survey_id | UUID | FK → surveys |
 | survey_question_id | UUID | FK → survey_questions |
 | answer | TEXT | Answer value |
+| **item_group** | INTEGER | Instance number for allow_multiple pages (nullable) ⭐ |
+
+⭐ **NEW - 2025-10-30:** Multi-instance support for allow_multiple survey pages
 
 **Relations:**
 - 1 Survey → Many Answers
 - 1 Question → Many Answers (different surveys)
+
+**Unique Constraint:**
+- `UNIQUE (survey_id, survey_question_id, COALESCE(item_group, -1))`
+- Ensures one answer per question per survey per instance
+
+**Item Group Behavior:**
+- `item_group = NULL`: Regular survey pages (single instance)
+- `item_group = 0, 1, 2, ...`: Allow_multiple pages (e.g., multiple wall surfaces)
+- Example: 3 wall surfaces → 3 sets of answers with item_group 0, 1, 2
 
 #### **document_categories**
 Photo/document categories.
@@ -530,6 +555,23 @@ All entities have:
 - `updated_at: string` (TIMESTAMPTZ)
 
 Plus specific fields as documented in Database Schema section.
+
+**SurveyQuestion Interface (NEW fields - 2025-10-30):**
+```typescript
+interface SurveyQuestion {
+  // ... existing fields
+  default_value_source_question_id?: string  // UUID of source question
+  is_readonly?: boolean                       // Field is readonly
+}
+```
+
+**SurveyAnswer Interface (NEW field - 2025-10-30):**
+```typescript
+interface SurveyAnswer {
+  // ... existing fields
+  item_group?: number | null  // Instance number for allow_multiple pages
+}
+```
 
 ### Extended Types with Relations
 
@@ -1335,6 +1377,243 @@ const response = store.investmentResponses[investment.id]?.[question.name]
 - **Root Cause:** Using `store.getResponse()` which only checked active investment
 - **Fix Date:** 2025-10-22
 - **Solution:** Direct access to `investmentResponses[investment.id][question.name]`
+
+---
+
+## Advanced Features
+
+### Survey Answer Persistence (NEW - 2025-10-30)
+
+**Overview:**
+Survey answers are now automatically saved to the database in real-time, enabling data persistence across sessions and support for multi-instance survey pages.
+
+**Key Components:**
+
+#### Database Layer
+- **Table:** `survey_answers`
+- **New Column:** `item_group` (INTEGER, nullable)
+- **Unique Index:** `idx_survey_answers_unique ON (survey_id, survey_question_id, COALESCE(item_group, -1))`
+
+#### Store Methods
+
+**Location:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+// Save regular question answer
+async saveResponse(questionName: string, value: any)
+
+// Save answer for allow_multiple page instances
+async saveInstanceResponse(pageId: string, instanceIndex: number, questionName: string, value: any)
+
+// Load all existing answers on survey initialization
+async loadExistingAnswers(surveyId: string)
+```
+
+**Behavior:**
+1. **Auto-save:** All input changes trigger immediate database save
+2. **Upsert Logic:** Updates existing answer or inserts new one
+3. **Type Conversion:** All values converted to strings for database storage
+4. **Error Handling:** Graceful error logging without UI disruption
+
+#### Multi-Instance Support
+
+**Use Case:** Survey pages with `allow_multiple: true` (e.g., multiple wall surfaces)
+
+```typescript
+// Example: 3 wall surfaces
+survey_answers:
+  - { survey_id, question_id: 'wall_type', answer: 'Brick', item_group: 0 }
+  - { survey_id, question_id: 'wall_type', answer: 'Concrete', item_group: 1 }
+  - { survey_id, question_id: 'wall_type', answer: 'Wood', item_group: 2 }
+```
+
+**Frontend State:**
+```typescript
+pageInstances[investmentId][pageId].instances = [
+  { wall_type: 'Brick', wall_thickness: 30, ... },      // item_group 0
+  { wall_type: 'Concrete', wall_thickness: 40, ... },   // item_group 1
+  { wall_type: 'Wood', wall_thickness: 20, ... }        // item_group 2
+]
+```
+
+---
+
+### Default Value Inheritance (NEW - 2025-10-30)
+
+**Overview:**
+Questions can automatically inherit and sync values from other questions, enabling reuse of common data across survey sections.
+
+**Use Case:**
+"Basic Data" page captures "External Wall Structure" → Automatically populates "Wall Structure" field on all "Facade Insulation" wall instances.
+
+#### Database Schema
+
+**survey_questions Table:**
+```sql
+ALTER TABLE survey_questions
+ADD COLUMN default_value_source_question_id UUID REFERENCES survey_questions(id) ON DELETE SET NULL;
+
+ALTER TABLE survey_questions
+ADD COLUMN is_readonly BOOLEAN DEFAULT FALSE;
+```
+
+#### Database Trigger
+
+**Function:** `sync_dependent_question_answers()`
+
+**Trigger:** Fires on `INSERT OR UPDATE OF answer ON survey_answers`
+
+**Behavior:**
+1. Detects when a source question's answer changes
+2. Finds all dependent questions (`default_value_source_question_id` matches)
+3. Updates dependent question answers in database:
+   - **Regular pages:** Simple insert/update with `item_group = NULL`
+   - **Allow_multiple pages:** Updates ALL existing instances
+
+```sql
+CREATE TRIGGER trigger_sync_dependent_answers
+    AFTER INSERT OR UPDATE OF answer ON public.survey_answers
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_dependent_question_answers();
+```
+
+#### Frontend Implementation
+
+**Location:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+// Load default values when creating new instance
+async loadDefaultValuesForInstance(pageId: string, instanceIndex: number)
+
+// Sync dependent fields in frontend state when source changes
+async syncDependentQuestionsInState(sourceQuestionId: string, newValue: string)
+
+// Ensure first instance has default values
+async ensurePageInstancesInitialized(pageId: string)
+```
+
+**Component Integration:**
+```vue
+// SurveyPropertyAssessment.vue
+watch(activePageId, async (newPageId) => {
+  if (!newPageId) return
+  const page = activePage.value
+  if (page?.allow_multiple) {
+    await store.ensurePageInstancesInitialized(newPageId)
+  }
+})
+```
+
+**Workflow:**
+1. **Initial Load:** When navigating to allow_multiple page, check for empty first instance → load defaults
+2. **New Instance:** When adding new instance (`addPageInstance`), automatically load defaults
+3. **Source Change:** When source question updates → sync frontend state for immediate UI update
+4. **Database Sync:** Database trigger ensures backend data stays consistent
+
+**Source Value Clearing:**
+- When source becomes empty → dependent fields remain editable and keep manual values
+- Frontend sync skips empty source values to preserve user input
+
+---
+
+### Dynamic Readonly Fields (NEW - 2025-10-30)
+
+**Overview:**
+Form fields can dynamically become readonly based on whether their source question has a value.
+
+**Behavior:**
+1. **Source Empty:** Field is editable, user can enter custom values
+2. **Source Filled:** Field becomes readonly (disabled), displays inherited value
+3. **Source Cleared:** Field becomes editable again, retains previous value
+
+#### Frontend Logic
+
+**Location:** `/app/components/Survey/SurveyQuestionRenderer.vue`
+
+```typescript
+const isEffectivelyReadonly = computed(() => {
+  if (!props.question.is_readonly) return false
+
+  // If has default_value_source, check if SOURCE field has value
+  if (props.question.default_value_source_question_id) {
+    // Find source question and check its value
+    const sourceValue = store.getResponse(sourceQuestion.name)
+    const hasSourceValue = sourceValue !== undefined &&
+                          sourceValue !== null &&
+                          sourceValue !== ''
+    return hasSourceValue  // Only readonly if source has value
+  }
+
+  return true  // Regular is_readonly behavior
+})
+```
+
+**UI Implementation:**
+```vue
+<UIInput
+  :model-value="modelValue"
+  :readonly="isEffectivelyReadonly"
+  :disabled="isEffectivelyReadonly"
+  class="flex-1"
+/>
+```
+
+**Styling:**
+- Readonly fields: `opacity-60`, `cursor-not-allowed`, `disabled` state
+- Applies to all input types: text, textarea, dropdown, switch, slider, toggles, orientation selector
+
+**Example Flow:**
+```
+1. Basic Data → "External Wall Structure" = "" (empty)
+   → Facade Insulation → "Wall Structure" = editable ✓
+
+2. User fills Basic Data → "External Wall Structure" = "Brick"
+   → Facade Insulation → "Wall Structure" = "Brick" (readonly, grayed out) ✓
+
+3. User clears Basic Data → "External Wall Structure" = ""
+   → Facade Insulation → "Wall Structure" = "Brick" (editable again) ✓
+```
+
+---
+
+### Integration Example
+
+**Complete Workflow: Basic Data → Facade Insulation**
+
+```typescript
+// Migration 099: Setup default_value_source
+INSERT INTO survey_questions (
+  survey_page_id, name, type,
+  default_value_source_question_id,  // Points to Basic Data question
+  is_readonly                          // Set to true
+) VALUES (
+  facade_wall_page_id,
+  'wall_structure',
+  'dropdown',
+  basic_data_wall_structure_id,      // Source question ID
+  true
+);
+```
+
+**User Interaction:**
+1. Navigate to "Facade Insulation" → "Walls" page (allow_multiple)
+2. First wall instance auto-created → `ensurePageInstancesInitialized` triggered
+3. Default values loaded from "Basic Data" → `loadDefaultValuesForInstance`
+4. Field readonly if source has value → `isEffectivelyReadonly = true`
+5. User adds 2nd wall → `addPageInstance` → defaults auto-loaded
+6. User changes Basic Data → `syncDependentQuestionsInState` → all walls update instantly
+7. All changes saved to database → `saveInstanceResponse` with `item_group`
+
+**Database Result:**
+```sql
+SELECT * FROM survey_answers WHERE question_id = 'wall_structure';
+
+survey_id | question_id    | answer    | item_group
+----------|----------------|-----------|------------
+uuid-123  | wall_structure | Brick     | 0
+uuid-123  | wall_structure | Brick     | 1
+uuid-123  | wall_structure | Concrete  | 2  -- User manually changed this one
+```
 
 ---
 
