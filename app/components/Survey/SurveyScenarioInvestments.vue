@@ -41,6 +41,7 @@ import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { getTechnicalDataSummary } from '~/utils/technicalDataSummary'
 
 const { t } = useI18n()
+const { translate } = useTranslatableField()
 
 interface Props {
   surveyId: string
@@ -57,11 +58,12 @@ const scenarioInvestmentIds = computed(() => {
   return scenariosStore.scenarioInvestments[props.scenarioId] || []
 })
 
-// Get full investment details
+// Get full investment details (filter out is_default investments)
 const scenarioInvestments = computed(() => {
   return scenarioInvestmentIds.value
     .map(id => investmentsStore.availableInvestments.find(inv => inv.id === id))
     .filter(Boolean)
+    .filter(inv => !inv.is_default)
 })
 
 // Build packageData for an investment from its scenario components
@@ -118,8 +120,6 @@ const getTechnicalSummaryForInvestment = (investmentId: string, investmentType: 
 
 // Build accordion items with technical summaries
 const investmentAccordionItems = computed(() => {
-  const { translate } = useTranslatableField()
-
   return scenarioInvestments.value.map(investment => {
     const technicalSummary = getTechnicalSummaryForInvestment(investment.id, investment.persist_name)
 

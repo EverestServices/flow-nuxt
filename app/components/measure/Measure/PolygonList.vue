@@ -53,7 +53,7 @@
     <div
       v-for="(polygon, index) in polygons"
       :key="polygon.id"
-      class="flex items-center flex-nowrap gap-2 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
+      class="flex items-center flex-wrap gap-2 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
       :class="polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300'"
       @click="emit('select', polygon.id)"
     >
@@ -76,8 +76,9 @@
       >
         <option :value="`type:${SurfaceType.WALL_PLINTH}`">Lábazat</option>
         <option :value="`type:${SurfaceType.FACADE}`">Homlokzat</option>
-        <option value="sub:door">Ajtó</option>
+        <option value="sub:door">Bejárati ajtó</option>
         <option value="sub:window">Ablak</option>
+        <option value="sub:terraceDoor">Teraszajtó</option>
       </select>
 
       <div class="flex items-center gap-2 ml-auto">
@@ -94,6 +95,25 @@
           <Icon name="i-lucide-trash-2" class="w-5 h-5" />
         </UButton>
       </div>
+
+      <div
+        v-if="polygon.type === SurfaceType.WINDOW_DOOR && polygon.subType === WindowSubType.WINDOW"
+        class="w-full order-last flex items-center gap-2 mt-2"
+        @click.stop
+      >
+        <span class="text-sm text-gray-600">Külső árnyékoló típusa:</span>
+        <select
+          :value="polygon.externalShading ?? ExternalShadingType.NONE"
+          @change="polygon.externalShading = ($event.target as HTMLSelectElement).value as any"
+          class="h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+        >
+          <option :value="ExternalShadingType.NONE">nincs</option>
+          <option :value="ExternalShadingType.ROLLER_SHUTTER">redőny</option>
+          <option :value="ExternalShadingType.SHUTTERS">zsalugáter</option>
+          <option :value="ExternalShadingType.VENETIAN_BLINDS">zsalúzia</option>
+          <option :value="ExternalShadingType.TEXTILE_ROLLER">textil roló</option>
+        </select>
+      </div>
     </div>
     <div class="text-end" v-if="filteredPolygons.length > 0">
       <UButton @click="confirmRemoveAll()" color="error" variant="soft" size="sm" class="tracking-wider">
@@ -105,7 +125,7 @@
 
 <script lang="ts" setup>
 import type { Point, PolygonSurface } from '@/model/Measure/ArucoWallSurface';
-import { SurfaceType, WindowSubType } from '@/model/Measure/ArucoWallSurface';
+import { SurfaceType, WindowSubType, ExternalShadingType } from '@/model/Measure/ArucoWallSurface';
 import {
   subtractPolygonGroupsArea,
   unionPolygonsArea,
@@ -145,7 +165,9 @@ const filteredPolygons = computed(() => props.polygons.filter((p) => p.closed));
 
 function getSelectValue(polygon: PolygonSurface): string {
   if (polygon.type === SurfaceType.WINDOW_DOOR) {
-    return polygon.subType === WindowSubType.DOOR ? 'sub:door' : 'sub:window';
+    if (polygon.subType === WindowSubType.DOOR) return 'sub:door';
+    if (polygon.subType === WindowSubType.TERRACE_DOOR) return 'sub:terraceDoor';
+    return 'sub:window';
   }
   if (polygon.type === SurfaceType.WALL_PLINTH) return `type:${SurfaceType.WALL_PLINTH}`;
   if (polygon.type === SurfaceType.FACADE) return `type:${SurfaceType.FACADE}`;
@@ -165,7 +187,9 @@ function onTypeOrSubChange(polygon: PolygonSurface, value: string) {
   } else if (value.startsWith('sub:')) {
     const s = value.slice(4);
     polygon.type = SurfaceType.WINDOW_DOOR;
-    polygon.subType = s === 'door' ? WindowSubType.DOOR : WindowSubType.WINDOW;
+    if (s === 'door') polygon.subType = WindowSubType.DOOR;
+    else if (s === 'terraceDoor') polygon.subType = WindowSubType.TERRACE_DOOR;
+    else polygon.subType = WindowSubType.WINDOW;
   }
 }
 

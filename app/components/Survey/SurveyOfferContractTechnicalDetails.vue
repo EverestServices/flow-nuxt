@@ -57,11 +57,12 @@ const scenarioInvestmentIds = computed(() => {
   return scenariosStore.scenarioInvestments[props.scenarioId] || []
 })
 
-// Get full investment details
+// Get full investment details (filter out is_default investments)
 const scenarioInvestments = computed(() => {
   return scenarioInvestmentIds.value
     .map(id => investmentsStore.availableInvestments.find(inv => inv.id === id))
     .filter(Boolean)
+    .filter(inv => !inv.is_default)
 })
 
 // Build packageData for an investment from its scenario components
