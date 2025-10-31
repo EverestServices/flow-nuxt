@@ -86,6 +86,8 @@ export const useMeasure = () => {
     const rows = polygons.map(p => ({
       wall_id: wallId,
       type: p.type ?? null,
+      sub_type: p.subType ?? null,
+      external_shading: p.externalShading ?? null,
       name: p.name ?? null,
       visible: p.visible !== false,
       closed: p.closed === true,
