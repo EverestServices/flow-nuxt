@@ -2,14 +2,14 @@
   <div>
     <!-- Header -->
     <div class="flex h-24 items-center justify-between mr-16">
-      <div class="text-2xl font-light">Energy <span class="font-black">Consultations</span></div>
+      <div class="text-2xl font-light"><span class="font-black">{{ $t('survey.list.title') }}</span></div>
       <UIButtonEnhanced
         icon="i-lucide-zap"
         variant="primary"
         size="md"
         to="/survey/client-data"
       >
-        New Consultation
+        {{ $t('survey.list.newConsultation') }}
       </UIButtonEnhanced>
     </div>
 
@@ -24,19 +24,19 @@
               <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
                 {{ surveys.length }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Total Surveys</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.totalSurveys') }}</div>
             </UIBox>
             <UIBox class="p-4 text-center">
               <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
                 {{ todayCount }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Today</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.today') }}</div>
             </UIBox>
             <UIBox class="p-4 text-center">
               <div class="text-3xl font-bold text-green-600 dark:text-green-400">
                 {{ thisWeekCount }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">This Week</div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.thisWeek') }}</div>
             </UIBox>
           </div>
         </div>
@@ -71,7 +71,7 @@
         <div class="w-64">
           <UIInput
             v-model="searchQuery"
-            placeholder="Search clients..."
+            :placeholder="$t('survey.list.searchPlaceholder')"
             icon="i-lucide-search"
           />
         </div>
@@ -88,13 +88,13 @@
       <UIBox v-else-if="filteredSurveys.length === 0" class="p-12">
         <div class="text-center">
           <Icon name="i-lucide-clipboard-list" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No consultations found</h3>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">{{ $t('survey.list.noConsultationsFound') }}</h3>
           <p class="text-gray-500 dark:text-gray-400 mb-4">
-            {{ selectedDateFilter !== 'all' ? 'No clients found for selected filter' : 'Start by creating a new energy consultation' }}
+            {{ selectedDateFilter !== 'all' ? $t('survey.list.noClientsForFilter') : $t('survey.list.startByCreating') }}
           </p>
           <UIButtonEnhanced to="/survey/client-data">
             <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-            New Consultation
+            {{ $t('survey.list.newConsultation') }}
           </UIButtonEnhanced>
         </div>
       </UIBox>
@@ -113,26 +113,43 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Survey } from '~/types/survey-new'
+import { useI18n } from 'vue-i18n'
+import type { Survey, Contract } from '~/types/survey-new'
+
+const { t } = useI18n()
+
+interface SurveyWithContracts extends Survey {
+  contracts?: Pick<Contract, 'id' | 'first_sent_at' | 'first_signed_at'>[]
+}
 
 // State
 const selectedDateFilter = ref<'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'pending' | 'all'>('all')
 const searchQuery = ref('')
 
 // Filter options
-const dateFilterOptions = [
-  { label: 'All Time', value: 'all' },
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'This Week', value: 'thisWeek' },
-  { label: 'Last Week', value: 'lastWeek' },
-  { label: 'Pending', value: 'pending' }
-]
+const dateFilterOptions = computed(() => [
+  { label: t('survey.list.filters.allTime'), value: 'all' },
+  { label: t('survey.list.filters.today'), value: 'today' },
+  { label: t('survey.list.filters.yesterday'), value: 'yesterday' },
+  { label: t('survey.list.filters.thisWeek'), value: 'thisWeek' },
+  { label: t('survey.list.filters.lastWeek'), value: 'lastWeek' },
+  { label: t('survey.list.filters.pending'), value: 'pending' }
+])
+
+// Welcome title with HTML formatting
+const welcomeTitleHtml = computed(() => {
+  const bold1 = t('survey.list.welcomeTitleBold1')
+  const bold2 = t('survey.list.welcomeTitleBold2')
+  const prefix = t('survey.list.welcomeTitle')
+    .replace('@:survey.list.welcomeTitleBold1', `<strong class="font-black">${bold1}</strong>`)
+    .replace('@:survey.list.welcomeTitleBold2', `<br /><strong class="font-black">${bold2}</strong>`)
+  return prefix
+})
 
 // Fetch surveys with client data
 const supabase = useSupabaseClient()
 const loading = ref(true)
-const surveys = ref<Survey[]>([])
+const surveys = ref<SurveyWithContracts[]>([])
 
 // Stats computed
 const todayCount = computed(() => {
@@ -165,6 +182,11 @@ onMounted(async () => {
           city,
           street,
           house_number
+        ),
+        contracts (
+          id,
+          first_sent_at,
+          first_signed_at
         )
       `)
       .order('at', { ascending: false })
@@ -223,7 +245,28 @@ const filteredSurveys = computed(() => {
   // Apply date filter
   if (selectedDateFilter.value !== 'all') {
     if (selectedDateFilter.value === 'pending') {
-      result = surveys.value
+      // For pending filter:
+      // - Survey must have been opened at least once (first_opened_at is not null)
+      // - AND either no contracts OR no contracts have been sent/signed
+      result = surveys.value.filter(survey => {
+        // Must have been opened at least once
+        if (!survey.first_opened_at) {
+          return false
+        }
+
+        // No contracts = pending
+        if (!survey.contracts || survey.contracts.length === 0) {
+          return true
+        }
+
+        // Check if any contract has been sent or signed
+        const hasSentOrSignedContract = survey.contracts.some(contract =>
+          contract.first_sent_at || contract.first_signed_at
+        )
+
+        // Pending if no contracts have been sent or signed
+        return !hasSentOrSignedContract
+      })
     } else {
       result = surveys.value.filter(survey => {
         if (!survey.at) return false

@@ -12,7 +12,7 @@
 
           <div class="min-w-0 flex-1 pl-3">
             <h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
-              {{ survey.client?.name || 'Unknown Client' }}
+              {{ survey.client?.name || t('survey.list.unknownClient') }}
             </h3>
             <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
               <span v-if="clientAddress" class="flex items-center gap-1 truncate">
@@ -31,11 +31,24 @@
           </div>
         </div>
 
-        <!-- Center: Date Badge -->
-        <div class="flex-shrink-0">
+        <!-- Center: Date Badges -->
+        <div class="flex-shrink-0 flex flex-col gap-1.5">
+          <!-- Event Date Badge -->
           <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 rounded-full">
             <Icon name="i-lucide-calendar" class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
             <span class="text-xs font-medium text-orange-600 dark:text-orange-400">{{ formattedDateShort }}</span>
+          </div>
+
+          <!-- Contract Sent Date Badge -->
+          <div v-if="firstContractSentDate" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
+            <Icon name="i-lucide-send" class="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+            <span class="text-xs font-medium text-green-600 dark:text-green-400">{{ formattedContractSentDate }}</span>
+          </div>
+
+          <!-- Contract Signed Date Badge -->
+          <div v-if="firstContractSignedDate" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+            <Icon name="i-lucide-pen-tool" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span class="text-xs font-medium text-blue-600 dark:text-blue-400">{{ formattedContractSignedDate }}</span>
           </div>
         </div>
 
@@ -54,7 +67,7 @@
             :to="`/survey/${survey.id}`"
           >
             <Icon name="i-lucide-zap" class="w-3.5 h-3.5 mr-1.5" />
-            Start
+            {{ t('survey.list.start') }}
           </UIButtonEnhanced>
         </div>
       </div>
@@ -64,7 +77,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Survey } from '~/types/survey-new'
+import { useI18n } from 'vue-i18n'
+import type { Survey, Contract } from '~/types/survey-new'
+
+const { t, locale } = useI18n()
 
 const props = defineProps<{
   survey: Survey & {
@@ -78,15 +94,16 @@ const props = defineProps<{
       street: string | null
       house_number: string | null
     } | null
+    contracts?: Pick<Contract, 'id' | 'first_sent_at' | 'first_signed_at'>[]
   }
 }>()
 
 // Format survey date with time
 const formattedDate = computed(() => {
-  if (!props.survey.at) return 'No date'
+  if (!props.survey.at) return t('survey.list.noDate')
 
   const date = new Date(props.survey.at)
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale.value, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -98,10 +115,10 @@ const formattedDate = computed(() => {
 
 // Shorter date format for compact view
 const formattedDateShort = computed(() => {
-  if (!props.survey.at) return 'No date'
+  if (!props.survey.at) return t('survey.list.noDate')
 
   const date = new Date(props.survey.at)
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale.value, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -123,5 +140,59 @@ const clientAddress = computed(() => {
   ].filter(Boolean)
 
   return parts.join(' ')
+})
+
+// Get first contract sent date
+const firstContractSentDate = computed(() => {
+  const contracts = props.survey.contracts
+  if (!contracts || contracts.length === 0) return null
+
+  // Find the earliest first_sent_at date
+  const sentDates = contracts
+    .filter(c => c.first_sent_at)
+    .map(c => new Date(c.first_sent_at!))
+    .sort((a, b) => a.getTime() - b.getTime())
+
+  return sentDates.length > 0 ? sentDates[0] : null
+})
+
+// Format contract sent date
+const formattedContractSentDate = computed(() => {
+  if (!firstContractSentDate.value) return ''
+
+  return firstContractSentDate.value.toLocaleString(locale.value, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+})
+
+// Get first contract signed date
+const firstContractSignedDate = computed(() => {
+  const contracts = props.survey.contracts
+  if (!contracts || contracts.length === 0) return null
+
+  // Find the earliest first_signed_at date
+  const signedDates = contracts
+    .filter(c => c.first_signed_at)
+    .map(c => new Date(c.first_signed_at!))
+    .sort((a, b) => a.getTime() - b.getTime())
+
+  return signedDates.length > 0 ? signedDates[0] : null
+})
+
+// Format contract signed date
+const formattedContractSignedDate = computed(() => {
+  if (!firstContractSignedDate.value) return ''
+
+  return firstContractSignedDate.value.toLocaleString(locale.value, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
 })
 </script>

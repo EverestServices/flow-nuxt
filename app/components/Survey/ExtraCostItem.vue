@@ -9,9 +9,15 @@
             @update:model-value="$emit('toggle')"
           />
           <div class="flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ cost.name }}
-            </p>
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ displayName }}
+              </p>
+              <SurveyQuestionInfoTooltip
+                v-if="infoMessage"
+                :info-message="infoMessage"
+              />
+            </div>
             <p v-if="cost.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {{ cost.description }}
             </p>
@@ -64,15 +70,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+const { translate } = useTranslatableField()
+
 interface Props {
   cost: {
     id: string
     persist_name: string
     name: string
+    name_translations?: any
     description: string
     price: number
     is_quantity_based: boolean
     category: string
+    info_message_translations?: any
   }
   selected: boolean
   quantity: number
@@ -86,6 +96,22 @@ defineEmits<{
   'update:quantity': [value: number]
   'update:notes': [value: string]
 }>()
+
+// Get translated name
+const displayName = computed(() => {
+  if (props.cost.name_translations) {
+    return translate(props.cost.name_translations, props.cost.name)
+  }
+  return props.cost.name
+})
+
+// Get translated info message
+const infoMessage = computed(() => {
+  if (props.cost.info_message_translations) {
+    return translate(props.cost.info_message_translations, '')
+  }
+  return null
+})
 
 // Calculate subtotal
 const subtotal = computed(() => {

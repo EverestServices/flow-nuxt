@@ -4,11 +4,11 @@
   </div>
 
   <div v-else class="space-y-4">
-    <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Costs</h4>
+    <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('survey.costs.costs') }}</h4>
 
     <!-- No components message -->
     <div v-if="mainComponents.length === 0 && !loading" class="text-sm text-gray-500 dark:text-gray-400 py-2">
-      No components added to this scenario yet. Add investments and components to see cost breakdown.
+      {{ $t('survey.costs.noComponents') }}
     </div>
 
     <!-- MainComponents grouped by category -->
@@ -28,7 +28,7 @@
 
     <!-- ExtraCosts -->
     <div v-if="extraCostTotal > 0" class="flex justify-between text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
-      <span class="text-gray-700 dark:text-gray-300">Járulékos költségek</span>
+      <span class="text-gray-700 dark:text-gray-300">{{ $t('survey.costs.extraCosts') }}</span>
       <span class="text-gray-900 dark:text-white font-medium">
         {{ formatCurrency(extraCostTotal) }}
       </span>
@@ -36,7 +36,7 @@
 
     <!-- Implementation Fee -->
     <div class="flex justify-between text-base font-semibold border-t border-gray-300 dark:border-gray-600 pt-3">
-      <span class="text-gray-900 dark:text-white">Implementation Fee</span>
+      <span class="text-gray-900 dark:text-white">{{ $t('survey.costs.implementationFee') }}</span>
       <span class="text-gray-900 dark:text-white">
         {{ formatCurrency(implementationFee) }}
       </span>
@@ -54,7 +54,7 @@
 
     <!-- Total -->
     <div class="flex justify-between text-base font-bold border-t-2 border-gray-300 dark:border-gray-600 pt-3">
-      <span class="text-gray-900 dark:text-white">Összesen</span>
+      <span class="text-gray-900 dark:text-white">{{ $t('survey.costs.total') }}</span>
       <span class="text-gray-900 dark:text-white">
         {{ formatCurrency(total) }}
       </span>

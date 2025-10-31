@@ -19,7 +19,7 @@
             class="inline-flex items-center gap-2 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-l border-white pl-4 pr-4 h-8"
             @click="$emit('toggle-investment')"
           >
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Investments</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('survey.header.investment') }}</span>
 
             <!-- Show all icons if investments are selected, otherwise show plus icon -->
             <!--
@@ -37,49 +37,48 @@
           <!--
           <UButton
             icon="i-heroicons-user"
-            label="Edit Client Data"
+            :label="t('survey.header.editClient')"
             color="gray"
             variant="outline"
             size="md"
             @click="$emit('edit-client')"
           />-->
+          <!-- Investment Filter Toggle -->
+          <div class="flex items-center rounded-full gap-1">
+            <!-- Individual Investment Buttons -->
+            <button
+                v-for="investment in selectedInvestments"
+                :key="investment.id"
+                :class="[
+                  'px-2 py-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer',
+                  activeInvestmentFilter === investment.id
+                    ? 'bg-white dark:bg-gray-600 shadow-sm'
+                    : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+                ]"
+                @click="handleInvestmentFilterChange(investment.id)"
+            >
+              <UIcon
+                  :name="investment.icon"
+                  class="w-4 h-4"
+                  :class="activeInvestmentFilter === investment.id
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-600 dark:text-gray-400'"
+              />
+            </button>
+            <!-- All Button -->
+            <button
+                :class="[
+                  'px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                  activeInvestmentFilter === 'all'
+                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                ]"
+                @click="handleInvestmentFilterChange('all')"
+            >
+              {{ t('survey.header.all') }}
+            </button>
+          </div>
         </template>
-
-        <!-- Investment Filter Toggle -->
-        <div class="flex items-center rounded-full gap-1">
-          <!-- Individual Investment Buttons -->
-          <button
-              v-for="investment in selectedInvestments"
-              :key="investment.id"
-              :class="[
-                'px-2 py-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer',
-                activeInvestmentFilter === investment.id
-                  ? 'bg-white dark:bg-gray-600 shadow-sm'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-              ]"
-              @click="handleInvestmentFilterChange(investment.id)"
-          >
-            <UIcon
-                :name="investment.icon"
-                class="w-4 h-4"
-                :class="activeInvestmentFilter === investment.id
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-gray-400'"
-            />
-          </button>
-          <!-- All Button -->
-          <button
-              :class="[
-                'px-3 py-1 rounded-md text-sm font-medium transition-colors',
-                activeInvestmentFilter === 'all'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              @click="handleInvestmentFilterChange('all')"
-          >
-            All
-          </button>
-        </div>
 
         <!-- Consultation specific buttons -->
         <template v-if="activeTab === 'consultation'">
@@ -120,7 +119,7 @@
               ]"
               @click="handleContractModeChange('offer')"
             >
-              Offer
+              {{ t('survey.header.offer') }}
             </button>
             <button
               :class="[
@@ -131,7 +130,7 @@
               ]"
               @click="handleContractModeChange('contract')"
             >
-              Contract
+              {{ t('survey.header.contract') }}
             </button>
           </div>
 
@@ -205,11 +204,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface Investment {
   id: string
   name: string
   icon: string
+  is_default?: boolean
 }
 
 interface Scenario {
@@ -259,11 +262,11 @@ const emit = defineEmits<{
   'select-contract': [contractId: string]
 }>()
 
-const viewModes = [
-  { value: 'photos', label: 'Photos' },
-  { value: 'data', label: 'Data' },
-  { value: 'all', label: 'All' }
-] as const
+const viewModes = computed(() => [
+  { value: 'photos', label: t('survey.header.photos') },
+  { value: 'data', label: t('survey.header.data') },
+  { value: 'all', label: t('survey.header.all') }
+] as const)
 
 const currentViewMode = ref<'photos' | 'data' | 'all'>('all')
 const activeInvestmentFilter = ref<string>('all')
@@ -295,26 +298,26 @@ const handleContractModeChange = (mode: 'offer' | 'contract') => {
   emit('change-contract-mode', mode)
 }
 
-// Helper to get investment icons for a scenario
+// Helper to get investment icons for a scenario (filter out is_default investments)
 const getScenarioInvestmentIcons = (scenarioId: string) => {
   const investmentIds = props.scenarioInvestments[scenarioId] || []
 
   return investmentIds
     .map(id => {
       const investment = props.selectedInvestments.find(inv => inv.id === id)
-      return investment ? investment.icon : null
+      return investment && !investment.is_default ? investment.icon : null
     })
     .filter(Boolean)
 }
 
-// Helper to get investment icons for a contract
+// Helper to get investment icons for a contract (filter out is_default investments)
 const getContractInvestmentIcons = (contractId: string) => {
   const investmentIds = props.contractInvestments[contractId] || []
 
   return investmentIds
     .map(id => {
       const investment = props.selectedInvestments.find(inv => inv.id === id)
-      return investment ? investment.icon : null
+      return investment && !investment.is_default ? investment.icon : null
     })
     .filter(Boolean)
 }

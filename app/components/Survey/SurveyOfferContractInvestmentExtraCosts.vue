@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Loading state -->
     <div v-if="loading" class="text-center text-gray-500 dark:text-gray-400 py-6">
-      <p class="text-sm">Loading extra costs...</p>
+      <p class="text-sm">{{ $t('survey.extraCosts.loading') }}</p>
     </div>
 
     <!-- Extra costs by category -->
@@ -10,7 +10,7 @@
       <!-- General -->
       <div v-if="getCategoryItems('general').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Általános
+          {{ $t('survey.extraCosts.general') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -30,7 +30,7 @@
       <!-- Connections -->
       <div v-if="getCategoryItems('connections').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Csatlakozások
+          {{ $t('survey.extraCosts.connections') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -50,7 +50,7 @@
       <!-- Electric Meter -->
       <div v-if="getCategoryItems('electric_meter').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Villanyóra
+          {{ $t('survey.extraCosts.electricMeter') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -70,7 +70,7 @@
       <!-- Lightning Protection -->
       <div v-if="getCategoryItems('lightning_protection').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Villámvédelem
+          {{ $t('survey.extraCosts.lightningProtection') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -90,7 +90,7 @@
       <!-- Cables -->
       <div v-if="getCategoryItems('cables').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Kábelek
+          {{ $t('survey.extraCosts.cables') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -110,7 +110,7 @@
       <!-- Backup -->
       <div v-if="getCategoryItems('backup').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Backup
+          {{ $t('survey.extraCosts.backup') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -130,7 +130,7 @@
       <!-- Internet -->
       <div v-if="getCategoryItems('internet').length > 0" class="space-y-3">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-          Internet
+          {{ $t('survey.extraCosts.internet') }}
         </h3>
         <div class="space-y-4">
           <ExtraCostItem
@@ -151,10 +151,10 @@
       <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
           <span class="text-base font-semibold text-gray-900 dark:text-white">
-            Összesen
+            {{ $t('survey.extraCosts.total') }}
           </span>
           <span class="text-lg font-bold text-primary-600 dark:text-primary-400">
-            {{ formatPrice(totalCost) }} Ft
+            {{ formatPrice(totalCost) }}{{ $t('survey.extraCosts.currency') }}
           </span>
         </div>
       </div>
@@ -164,23 +164,30 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ExtraCostItem from './ExtraCostItem.vue'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
   scenarioId: string
+  investmentPersistName: string | string[]
 }
 
 const props = defineProps<Props>()
 
 interface ExtraCost {
   id: string
+  investment_id: string | null
   persist_name: string
   name: string
+  name_translations: any
   description: string
   price: number
   is_quantity_based: boolean
   category: string
+  info_message_translations: any
 }
 
 interface SelectedCost {
@@ -198,9 +205,31 @@ const selectedCosts = ref<SelectedCost[]>([])
 onMounted(async () => {
   try {
     const supabase = useSupabaseClient()
+
+    // Normalize to array for consistent handling
+    const persistNames = Array.isArray(props.investmentPersistName)
+      ? props.investmentPersistName
+      : [props.investmentPersistName]
+
+    // Get investment IDs based on persist_name(s)
+    const { data: investmentData, error: investmentError } = await supabase
+      .from('investments')
+      .select('id')
+      .in('persist_name', persistNames)
+
+    if (investmentError || !investmentData) {
+      console.error('Error fetching investment:', investmentError)
+      loading.value = false
+      return
+    }
+
+    const investmentIds = investmentData.map(inv => inv.id)
+
+    // Then fetch extra costs for these investment(s)
     const { data, error } = await supabase
       .from('extra_costs')
       .select('*')
+      .in('investment_id', investmentIds)
       .not('category', 'is', null)
       .order('category', { ascending: true })
       .order('name', { ascending: true })
@@ -287,20 +316,25 @@ const formatPrice = (price: number) => {
   return new Intl.NumberFormat('hu-HU').format(price)
 }
 
-// Inject update function from parent
-const updateSolarExtraCostsTotal = inject<(total: number) => void>('updateSolarExtraCostsTotal', () => {})
+// Helper to capitalize first letter
+const capitalizeFirst = (value: string | string[]) => {
+  const str = Array.isArray(value) ? value[0] : value
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+// Inject update function from parent (dynamic based on investment)
+const updateExtraCostsTotal = inject<(total: number) => void>(`update${capitalizeFirst(props.investmentPersistName)}ExtraCostsTotal`, () => {})
 
 // Watch total cost and notify parent
 watch(totalCost, (newTotal) => {
-  updateSolarExtraCostsTotal(newTotal)
+  updateExtraCostsTotal(newTotal)
 }, { immediate: true })
 </script>
 
 <script lang="ts">
-// Extra Cost Item Component
-import { defineComponent, computed } from 'vue'
+import { defineComponent } from 'vue'
 
 export default defineComponent({
-  name: 'SurveyOfferContractExtraCosts'
+  name: 'SurveyOfferContractInvestmentExtraCosts'
 })
 </script>

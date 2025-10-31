@@ -47,6 +47,7 @@ export interface MainComponent {
 export interface MainComponentCategory {
   id: string
   persist_name: string
+  name_translations: Record<string, string>
   sequence: number
 }
 

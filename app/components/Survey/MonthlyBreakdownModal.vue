@@ -38,7 +38,7 @@
 
       <!-- Annual total -->
       <div class="border-t pt-4 text-center">
-        <div class="text-sm text-gray-600 dark:text-gray-400">Annual Total</div>
+        <div class="text-sm text-gray-600 dark:text-gray-400">{{ $t('survey.monthly.annualTotal') }}</div>
         <div class="text-xl font-bold mt-1">
           {{ formatNumber(annualTotal) }} {{ unit }}
         </div>
@@ -51,13 +51,14 @@
         variant="outline"
         @click="closeModal"
       >
-        Close
+        {{ $t('survey.monthly.close') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { MonthlyBreakdown } from '~/composables/useEnergySavings'
 
 interface Props {
@@ -76,6 +77,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
+const { t } = useI18n()
+
 const isOpen = ref(false)
 
 // Sync isOpen with modelValue
@@ -87,12 +90,22 @@ watch(isOpen, (newValue) => {
   emit('update:modelValue', newValue)
 })
 
-const monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-]
+const monthNames = computed(() => [
+  t('energy.monthsShort.jan'),
+  t('energy.monthsShort.feb'),
+  t('energy.monthsShort.mar'),
+  t('energy.monthsShort.apr'),
+  t('energy.monthsShort.may'),
+  t('energy.monthsShort.jun'),
+  t('energy.monthsShort.jul'),
+  t('energy.monthsShort.aug'),
+  t('energy.monthsShort.sep'),
+  t('energy.monthsShort.oct'),
+  t('energy.monthsShort.nov'),
+  t('energy.monthsShort.dec')
+])
 
-const getMonthName = (month: number) => monthNames[month - 1]
+const getMonthName = (month: number) => monthNames.value[month - 1]
 
 const annualTotal = computed(() =>
   props.monthlyData.reduce((sum, item) => sum + item.value, 0)
@@ -130,7 +143,7 @@ const chartOptions = computed(() => ({
     }
   },
   xaxis: {
-    categories: monthNames,
+    categories: monthNames.value,
     position: 'bottom',
     labels: {
       style: {

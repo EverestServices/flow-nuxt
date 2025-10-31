@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpen"
-    title="Available Services"
+    :title="t('investments.modal.title')"
     size="xl"
     :scrollable="true"
     @close="closeModal"
@@ -14,7 +14,7 @@
             class="text-sm font-medium"
             :class="clientType === 'residential' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'"
           >
-            Residential
+            {{ t('investments.modal.residential') }}
           </span>
           <USwitch
             v-model="isCorporate"
@@ -24,7 +24,7 @@
             class="text-sm font-medium"
             :class="clientType === 'corporate' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400'"
           >
-            Corporate
+            {{ t('investments.modal.corporate') }}
           </span>
         </div>
       </div>
@@ -63,7 +63,7 @@
               ? 'text-primary-700 dark:text-primary-300'
               : 'text-gray-700 dark:text-gray-300'"
           >
-            {{ investment.name }}
+            {{ translate(investment.name_translations, investment.name) }}
           </span>
 
           <!-- Selected Checkmark -->
@@ -82,14 +82,14 @@
         variant="outline"
         @click="closeModal"
       >
-        Cancel
+        {{ t('common.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced
         variant="primary"
         :disabled="!hasSelections"
         @click="confirmSelection"
       >
-        Done
+        {{ t('investments.modal.done') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>
@@ -97,7 +97,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+
+const { t } = useI18n()
+const { translate } = useTranslatableField()
 
 interface Props {
   modelValue: boolean

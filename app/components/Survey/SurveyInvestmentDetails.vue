@@ -9,7 +9,7 @@
     <div v-else-if="investmentImpacts.length > 0" class="space-y-4">
       <!-- Header -->
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-        Selected Investments
+        {{ t('energy.selectedInvestments') }}
       </h3>
 
       <!-- Investments List -->
@@ -24,10 +24,10 @@
           </span>
           <span class="text-sm text-gray-600 dark:text-gray-400 font-mono">
             <template v-if="impact.electricityImpact !== undefined && impact.electricityImpact !== 0">
-              {{ formatNumber(Math.abs(impact.electricityImpact)) }} kWh / year
+              {{ formatNumber(Math.abs(impact.electricityImpact)) }} {{ t('energy.kwhPerYear') }}
             </template>
             <template v-else-if="impact.gasImpact !== undefined && impact.gasImpact !== 0">
-              {{ formatNumber(impact.gasImpact) }} m³ / year
+              {{ formatNumber(impact.gasImpact) }} {{ t('energy.m3PerYear') }}
             </template>
             <template v-else>
               -
@@ -43,11 +43,11 @@
           @click="showElectricityBreakdown"
         >
           <span class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            Electricity Impact
+            {{ t('energy.electricityImpact') }}
             <UIcon name="i-lucide-bar-chart-3" class="w-4 h-4 text-gray-400" />
           </span>
           <span class="text-base font-bold text-gray-900 dark:text-white font-mono">
-            {{ totalElectricityImpact >= 0 ? '+' : '' }}{{ formatNumber(totalElectricityImpact) }} kWh / year
+            {{ totalElectricityImpact >= 0 ? '+' : '' }}{{ formatNumber(totalElectricityImpact) }} {{ t('energy.kwhPerYear') }}
           </span>
         </div>
 
@@ -56,11 +56,11 @@
           @click="showGasBreakdown"
         >
           <span class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            Natural Gas Impact
+            {{ t('energy.naturalGasImpact') }}
             <UIcon name="i-lucide-bar-chart-3" class="w-4 h-4 text-gray-400" />
           </span>
           <span class="text-base font-bold text-gray-900 dark:text-white font-mono">
-            {{ totalGasImpact >= 0 ? '+' : '' }}{{ formatNumber(totalGasImpact) }} m³ / year
+            {{ totalGasImpact >= 0 ? '+' : '' }}{{ formatNumber(totalGasImpact) }} {{ t('energy.m3PerYear') }}
           </span>
         </div>
       </div>
@@ -69,10 +69,10 @@
       <div class="border-t-2 border-gray-300 dark:border-gray-600 pt-4">
         <div class="text-center space-y-1">
           <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Total CO₂ Reduction
+            {{ t('energy.totalCO2Reduction') }}
           </div>
           <div class="text-2xl font-bold text-green-600 dark:text-green-400">
-            {{ formatNumber(totalCO2Reduction) }} kg CO₂ / year
+            {{ formatNumber(totalCO2Reduction) }} {{ t('energy.co2PerYear') }}
           </div>
         </div>
       </div>
@@ -81,22 +81,22 @@
     <!-- Empty state -->
     <div v-else class="text-center py-6">
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        No investments in this scenario yet.
+        {{ t('energy.noInvestmentsYet') }}
       </p>
     </div>
 
     <!-- Monthly Breakdown Modals -->
-    <SurveyMonthlyBreakdownModal
+    <MonthlyBreakdownModal
       v-model="showElectricityModal"
-      title="Monthly Electricity Impact"
+      :title="t('energy.monthlyElectricityImpact')"
       :monthly-data="monthlyElectricityData"
       unit="kWh"
       :loading="modalLoading"
     />
 
-    <SurveyMonthlyBreakdownModal
+    <MonthlyBreakdownModal
       v-model="showGasModal"
-      title="Monthly Natural Gas Impact"
+      :title="t('energy.monthlyNaturalGasImpact')"
       :monthly-data="monthlyGasData"
       unit="m³"
       :loading="modalLoading"
@@ -106,9 +106,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useEnergySavings } from '~/composables/useEnergySavings'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -141,6 +144,7 @@ const {
 } = useEnergySavings()
 
 const supabase = useSupabaseClient()
+const { translate } = useTranslatableField()
 const loading = ref(false)
 const investmentImpacts = ref<InvestmentImpact[]>([])
 
@@ -205,18 +209,19 @@ const calculateImpacts = async () => {
     // Group components by investment (through categories)
     const impactPromises = investments.map(async (investment) => {
       const persistName = investment.persist_name
+      const translatedName = translate(investment.name_translations, investment.name)
 
       // Calculate based on investment type
       if (persistName === 'solarPanel' || persistName === 'solarPanelBattery') {
-        return await calculateSolarImpact(scenarioComponents, investment.name)
+        return await calculateSolarImpact(scenarioComponents, translatedName)
       } else if (persistName === 'heatPump') {
-        return await calculateHeatPumpImpactForInvestment(scenarioComponents, investment.name)
+        return await calculateHeatPumpImpactForInvestment(scenarioComponents, translatedName)
       } else if (persistName === 'facadeInsulation') {
-        return await calculateFacadeInsulationImpact(scenarioComponents, investment.name)
+        return await calculateFacadeInsulationImpact(scenarioComponents, translatedName)
       } else if (persistName === 'roofInsulation') {
-        return await calculateRoofInsulationImpact(scenarioComponents, investment.name)
+        return await calculateRoofInsulationImpact(scenarioComponents, translatedName)
       } else if (persistName === 'windows') {
-        return await calculateWindowsImpact(scenarioComponents, investment.name)
+        return await calculateWindowsImpact(scenarioComponents, translatedName)
       }
 
       return null

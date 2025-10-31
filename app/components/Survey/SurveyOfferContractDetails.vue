@@ -23,7 +23,7 @@
 
       <!-- Solar Extra Costs -->
       <div v-if="solarExtraCostsTotal > 0" class="flex justify-between text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
-        <span class="text-gray-700 dark:text-gray-300">Napelem rendszer járulékos költségei</span>
+        <span class="text-gray-700 dark:text-gray-300">{{ $t('survey.offerContract.solarExtraCosts') }}</span>
         <span class="text-gray-900 dark:text-white font-medium">
           {{ formatCurrency(solarExtraCostsTotal) }}
         </span>
@@ -31,7 +31,7 @@
 
       <!-- General Extra Costs -->
       <div v-if="generalExtraCostsTotal > 0" class="flex justify-between text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
-        <span class="text-gray-700 dark:text-gray-300">Extra Costs</span>
+        <span class="text-gray-700 dark:text-gray-300">{{ $t('survey.offerContract.extraCosts') }}</span>
         <span class="text-gray-900 dark:text-white font-medium">
           {{ formatCurrency(generalExtraCostsTotal) }}
         </span>
@@ -39,7 +39,7 @@
 
       <!-- Implementation Fee -->
       <div class="flex justify-between text-base font-semibold border-t border-gray-300 dark:border-gray-600 pt-3">
-        <span class="text-gray-900 dark:text-white">Kivitelezési díj</span>
+        <span class="text-gray-900 dark:text-white">{{ $t('survey.costs.implementationFee') }}</span>
         <span class="text-gray-900 dark:text-white">
           {{ formatCurrency(implementationFee) }}
         </span>
@@ -57,7 +57,7 @@
 
       <!-- Total Discounts -->
       <div v-if="discountsTotal > 0" class="flex justify-between text-sm font-semibold">
-        <span class="text-green-600 dark:text-green-400">Összes kedvezmény</span>
+        <span class="text-green-600 dark:text-green-400">{{ $t('survey.offerContract.discounts') }}</span>
         <span class="text-green-600 dark:text-green-400">
           {{ formatCurrency(discountsTotal) }}
         </span>
@@ -75,7 +75,7 @@
 
       <!-- Total -->
       <div class="flex justify-between text-lg font-bold border-t-2 border-gray-300 dark:border-gray-600 pt-3">
-        <span class="text-gray-900 dark:text-white">Összesen</span>
+        <span class="text-gray-900 dark:text-white">{{ $t('survey.costs.total') }}</span>
         <span class="text-gray-900 dark:text-white">
           {{ formatCurrency(total) }}
         </span>
@@ -86,7 +86,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -155,7 +158,7 @@ const groupedComponents = computed(() => {
   const groups = new Map<string, { name: string; components: MainComponent[] }>()
 
   mainComponents.value.forEach(component => {
-    const categoryName = component.category_name || 'Egyéb'
+    const categoryName = component.category_name || t('survey.categories.other', 'Egyéb')
     if (!groups.has(categoryName)) {
       groups.set(categoryName, { name: categoryName, components: [] })
     }
@@ -218,23 +221,23 @@ const loadData = async () => {
       if (!categoriesError && categoriesData) {
         // Category translations based on persist_name
         const categoryTranslations: Record<string, string> = {
-          'panel': 'Napelemek',
-          'inverter': 'Inverterek',
-          'battery': 'Akkumulátorok',
-          'mounting': 'Rögzítőrendszerek',
-          'insulation': 'Szigetelés',
-          'adhesive': 'Ragasztó',
-          'plaster': 'Vakolat',
-          'heat_pump': 'Hőszivattyúk',
-          'water_heater': 'Vízmelegítők',
-          'ventilation': 'Szellőztetés',
-          'other': 'Egyéb'
+          'panel': t('survey.categories.panel', 'Napelemek'),
+          'inverter': t('survey.categories.inverter', 'Inverterek'),
+          'battery': t('survey.categories.battery', 'Akkumulátorok'),
+          'mounting': t('survey.categories.mounting', 'Rögzítőrendszerek'),
+          'insulation': t('survey.categories.insulation', 'Szigetelés'),
+          'adhesive': t('survey.categories.adhesive', 'Ragasztó'),
+          'plaster': t('survey.categories.plaster', 'Vakolat'),
+          'heat_pump': t('survey.categories.heatPump', 'Hőszivattyúk'),
+          'water_heater': t('survey.categories.waterHeater', 'Vízmelegítők'),
+          'ventilation': t('survey.categories.ventilation', 'Szellőztetés'),
+          'other': t('survey.categories.other', 'Egyéb')
         }
 
         categoriesMap = Object.fromEntries(
           categoriesData.map((cat: any) => [
             cat.id,
-            categoryTranslations[cat.persist_name] || 'Egyéb'
+            categoryTranslations[cat.persist_name] || t('survey.categories.other', 'Egyéb')
           ])
         )
       }
@@ -242,11 +245,11 @@ const loadData = async () => {
 
     mainComponents.value = (componentsData || []).map((item: any) => {
       const categoryId = item.main_component?.main_component_category_id
-      const categoryName = categoryId ? (categoriesMap[categoryId] || 'Egyéb') : 'Egyéb'
+      const categoryName = categoryId ? (categoriesMap[categoryId] || t('survey.categories.other', 'Egyéb')) : t('survey.categories.other', 'Egyéb')
 
       return {
         id: item.id,
-        name: item.main_component?.name || 'Unknown',
+        name: item.main_component?.name || t('common.unknown', 'Unknown'),
         category_name: categoryName,
         totalCost: item.quantity * item.price_snapshot * (1 + props.commissionRate)
       }

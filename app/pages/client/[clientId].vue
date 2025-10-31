@@ -4,7 +4,7 @@
     <div v-if="loading" class="flex items-center justify-center py-24">
       <div class="flex items-center gap-3">
         <Icon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-blue-500" />
-        <span class="text-gray-500 dark:text-gray-400">Loading client data...</span>
+        <span class="text-gray-500 dark:text-gray-400">{{ $t('client.page.loading') }}</span>
       </div>
     </div>
 
@@ -12,7 +12,7 @@
     <UIBox v-else-if="!client" class="p-12">
       <div class="flex flex-col items-center justify-center text-center">
         <Icon name="i-lucide-user-x" class="w-16 h-16 text-gray-400 mb-4" />
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Client not found</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">{{ $t('client.page.clientNotFound') }}</h3>
         <p class="text-gray-500 dark:text-gray-400 mb-6">The client you're looking for doesn't exist or has been removed.</p>
         <UIButtonEnhanced variant="outline" @click="handleBack">
           <Icon name="i-lucide-arrow-left" class="w-4 h-4 mr-2" />
@@ -86,6 +86,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const supabase = useSupabaseClient()
@@ -149,10 +150,10 @@ const clientData = computed(() => {
       month: '2-digit',
       day: '2-digit'
     }),
-    nextAction: 'Follow up',
+    nextAction: t('client.page.followUp'),
     daysInStatus: Math.floor((Date.now() - new Date(client.value.updated_at).getTime()) / (1000 * 60 * 60 * 24)),
     priority: 'High' as const,
-    notes: client.value.notes || 'No notes available'
+    notes: client.value.notes || t('client.page.noNotesAvailable')
   }
 })
 
@@ -170,7 +171,7 @@ const addresses = computed(() => {
   if (parts.length === 0) return []
 
   return [{
-    type: 'Primary Address',
+    type: t('client.address.primary'),
     street: parts.join(', '),
     city: '',
     country: ''

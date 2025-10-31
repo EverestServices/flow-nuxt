@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-24 items-center">
-    <div class="text-2xl font-light">Profile <span class="font-black">Settings</span></div>
+    <div class="text-2xl font-light">{{ $t('settings.title') }}</div>
   </div>
 
   <div class="flex flex-col space-y-8">
@@ -12,7 +12,7 @@
           <strong class="font-black">preferences</strong>
         </div>
         <div class="text-2xl outfit font-thin text-gray-600 dark:text-gray-400 mt-4">
-          Keep your information up to date
+          {{ $t('settings.subtitle') }}
         </div>
       </div>
 
@@ -49,12 +49,12 @@
               />
             </div>
             <div class="flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Profile Photo</h3>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('settings.avatar.title') }}</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Click the camera icon to upload a new photo
+                {{ $t('settings.avatar.description') }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                JPG, PNG or GIF. Max size 5MB.
+                {{ $t('settings.avatar.requirements') }}
               </p>
               <p v-if="uploadingAvatar" class="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
                 Uploading...
@@ -71,14 +71,14 @@
       <UIBox>
         <div class="w-full p-6">
           <div class="flex justify-between mb-6">
-            <UIH2>Personal Information</UIH2>
+            <UIH2>{{ $t('settings.personalInfo.title') }}</UIH2>
           </div>
 
           <form @submit.prevent="savePersonalInfo" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  First Name
+                  {{ $t('settings.personalInfo.firstName') }}
                 </label>
                 <UIInput
                   v-model="profileData.first_name"
@@ -88,7 +88,7 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Last Name
+                  {{ $t('settings.personalInfo.lastName') }}
                 </label>
                 <UIInput
                   v-model="profileData.last_name"
@@ -100,7 +100,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
+                {{ $t('settings.personalInfo.email') }}
               </label>
               <UIInput
                 v-model="profileData.email"
@@ -108,12 +108,12 @@
                 disabled
                 class="w-full opacity-60"
               />
-              <p class="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+              <p class="text-xs text-gray-500 mt-1">{{ $t('settings.personalInfo.emailNote') }}</p>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Phone
+                {{ $t('settings.personalInfo.phone') }}
               </label>
               <UIInput
                 v-model="profileData.phone"
@@ -125,7 +125,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Job Title
+                {{ $t('settings.personalInfo.jobTitle') }}
               </label>
               <UIInput
                 v-model="profileData.job_title"
@@ -136,7 +136,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Department
+                {{ $t('settings.personalInfo.department') }}
               </label>
               <UIInput
                 v-model="profileData.department"
@@ -147,11 +147,11 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Bio
+                {{ $t('settings.personalInfo.bio') }}
               </label>
               <textarea
                 v-model="profileData.bio"
-                placeholder="Tell us about yourself..."
+                :placeholder="$t('settings.personalInfo.bioPlaceholder')"
                 rows="4"
                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               />
@@ -159,7 +159,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Location
+                {{ $t('settings.personalInfo.location') }}
               </label>
               <UIInput
                 v-model="profileData.location"
@@ -173,7 +173,7 @@
               :loading="savingPersonalInfo"
               class="w-full"
             >
-              Save Personal Information
+              {{ $t('settings.personalInfo.save') }}
             </UIButtonEnhanced>
           </form>
         </div>
@@ -183,13 +183,13 @@
       <UIBox>
         <div class="w-full p-6">
           <div class="flex justify-between mb-6">
-            <UIH2>Preferences</UIH2>
+            <UIH2>{{ $t('settings.preferences.title') }}</UIH2>
           </div>
 
           <form @submit.prevent="savePreferences" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Timezone
+                {{ $t('settings.preferences.timezone') }}
               </label>
               <UISelect
                 v-model="profileData.timezone"
@@ -200,18 +200,19 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Language
+                {{ $t('settings.preferences.language') }}
               </label>
               <UISelect
                 v-model="profileData.language"
                 :options="languageOptions"
                 class="w-full"
+                @update:model-value="handleLanguageChange"
               />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Date Format
+                {{ $t('settings.preferences.dateFormat') }}
               </label>
               <UISelect
                 v-model="profileData.date_format"
@@ -222,7 +223,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Time Format
+                {{ $t('settings.preferences.timeFormat') }}
               </label>
               <UISelect
                 v-model="profileData.time_format"
@@ -233,7 +234,7 @@
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Theme
+                {{ $t('settings.preferences.theme') }}
               </label>
               <UISelect
                 v-model="profileData.theme"
@@ -247,7 +248,7 @@
               :loading="savingPreferences"
               class="w-full"
             >
-              Save Preferences
+              {{ $t('settings.preferences.save') }}
             </UIButtonEnhanced>
           </form>
         </div>
@@ -448,6 +449,7 @@
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 const toast = useToast()
+const { locale, t } = useI18n()
 
 // Page metadata
 useHead({
@@ -506,6 +508,7 @@ const languageOptions = [
   { label: 'Spanish', value: 'es' },
   { label: 'French', value: 'fr' },
   { label: 'German', value: 'de' },
+  { label: 'Hungarian', value: 'hu' },
   { label: 'Japanese', value: 'ja' },
 ]
 
@@ -588,14 +591,14 @@ const savePersonalInfo = async () => {
     if (error) throw error
 
     toast.add({
-      title: 'Success',
-      description: 'Personal information updated successfully',
+      title: t('common.success'),
+      description: t('settings.personalInfo.saveSuccess'),
       color: 'green',
     })
   } catch (error) {
     toast.add({
-      title: 'Error',
-      description: 'Failed to update personal information',
+      title: t('common.error'),
+      description: t('settings.personalInfo.saveError'),
       color: 'red',
     })
   } finally {
@@ -620,14 +623,14 @@ const savePreferences = async () => {
     if (error) throw error
 
     toast.add({
-      title: 'Success',
-      description: 'Preferences updated successfully',
+      title: t('common.success'),
+      description: t('settings.preferences.saveSuccess'),
       color: 'green',
     })
   } catch (error) {
     toast.add({
-      title: 'Error',
-      description: 'Failed to update preferences',
+      title: t('common.error'),
+      description: t('settings.preferences.saveError'),
       color: 'red',
     })
   } finally {
@@ -737,8 +740,8 @@ const handleAvatarUpload = async (event: Event) => {
   const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   if (!validTypes.includes(file.type)) {
     toast.add({
-      title: 'Invalid file type',
-      description: 'Please upload a JPEG, PNG, GIF, or WebP image',
+      title: t('common.error'),
+      description: t('settings.avatar.invalidType'),
       color: 'red',
     })
     return
@@ -747,8 +750,8 @@ const handleAvatarUpload = async (event: Event) => {
   // Validate file size (5MB)
   if (file.size > 5 * 1024 * 1024) {
     toast.add({
-      title: 'File too large',
-      description: 'Maximum file size is 5MB',
+      title: t('common.error'),
+      description: t('settings.avatar.tooLarge'),
       color: 'red',
     })
     return
@@ -863,15 +866,15 @@ const handleAvatarUpload = async (event: Event) => {
     }
 
     toast.add({
-      title: 'Success',
-      description: 'Avatar uploaded successfully',
+      title: t('common.success'),
+      description: t('settings.avatar.uploadSuccess'),
       color: 'green',
     })
   } catch (error: any) {
     console.error('Avatar upload error:', error)
     toast.add({
-      title: 'Error',
-      description: error.message || 'Failed to upload avatar',
+      title: t('common.error'),
+      description: error.message || t('settings.avatar.uploadError'),
       color: 'red',
     })
   } finally {
@@ -881,9 +884,22 @@ const handleAvatarUpload = async (event: Event) => {
   }
 }
 
+// Handle language change
+const handleLanguageChange = async (newLanguage: string) => {
+  // Update i18n locale immediately
+  locale.value = newLanguage
+}
+
 // Fetch profile on mount
 onMounted(() => {
   fetchProfile()
+})
+
+// Watch for profileData.language changes and sync with i18n
+watch(() => profileData.value.language, (newLanguage) => {
+  if (newLanguage && locale.value !== newLanguage) {
+    locale.value = newLanguage
+  }
 })
 </script>
 

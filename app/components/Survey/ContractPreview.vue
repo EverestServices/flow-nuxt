@@ -43,7 +43,7 @@
       </h3>
       <div class="space-y-2">
         <div
-          v-for="investmentId in contractInvestments"
+          v-for="investmentId in filteredContractInvestments"
           :key="investmentId"
           class="flex items-center gap-2 text-sm"
         >
@@ -161,6 +161,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+const { translate } = useTranslatableField()
+
 interface Contract {
   id: string
   name: string
@@ -188,6 +190,14 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Filter out is_default investments
+const filteredContractInvestments = computed(() => {
+  return props.contractInvestments.filter(investmentId => {
+    const investment = props.investments.find(inv => inv.id === investmentId)
+    return investment && !investment.is_default
+  })
+})
 
 const clientName = computed(() => {
   return props.contract.client_name || props.clientData?.name || 'N/A'
@@ -221,7 +231,8 @@ const clientAddress = computed(() => {
 
 const getInvestmentName = (investmentId: string): string => {
   const investment = props.investments.find(inv => inv.id === investmentId)
-  return investment?.name || 'Unknown'
+  if (!investment) return 'Unknown'
+  return translate(investment.name_translations, investment.name)
 }
 
 const getInvestmentIcon = (investmentId: string): string => {
