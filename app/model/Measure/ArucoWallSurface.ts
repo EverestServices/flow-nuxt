@@ -65,6 +65,15 @@ export enum SurfaceType {
 export enum WindowSubType {
   DOOR = 'door',
   WINDOW = 'window',
+  TERRACE_DOOR = 'terraceDoor',
+}
+
+export enum ExternalShadingType {
+  NONE = 'none',
+  ROLLER_SHUTTER = 'redony',
+  SHUTTERS = 'zsalugater',
+  VENETIAN_BLINDS = 'zsaluzia',
+  TEXTILE_ROLLER = 'textilRolo',
 }
 export interface PolygonSurface {
   id: string;
@@ -74,5 +83,6 @@ export interface PolygonSurface {
   type?: SurfaceType;
   // Only applicable when type === SurfaceType.WINDOW_DOOR
   subType?: WindowSubType;
+  externalShading?: ExternalShadingType;
   name?: string;
 }
