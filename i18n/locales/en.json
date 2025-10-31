@@ -16,7 +16,8 @@
     "search": "Search",
     "filter": "Filter",
     "select": "Select",
-    "all": "All"
+    "all": "All",
+    "create": "Create"
   },
   "auth": {
     "login": "Login",
@@ -185,7 +186,7 @@
       "noClientsForFilter": "No clients found for selected filter",
       "startByCreating": "Start by creating a new energy consultation",
       "unknownClient": "Unknown Client",
-      "start": "Start",
+      "start": "Start Energy Consultation",
       "noDate": "No date",
       "filters": {
         "allTime": "All Time",
@@ -263,6 +264,10 @@
       "selectedValues": "Selected values",
       "compatibleValues": "Compatible values",
       "compatibilityDisabledWarning": "Compatibility check is disabled. Values may be incompatible."
+    },
+    "selectInvestments": {
+      "titleAi": "Select investments for AI Scenarios",
+      "titleManual": "Create New Scenario"
     },
     "scenarios": {
       "title": "Scenarios",

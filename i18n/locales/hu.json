@@ -16,7 +16,8 @@
     "search": "Keresés",
     "filter": "Szűrés",
     "select": "Választás",
-    "all": "Összes"
+    "all": "Összes",
+    "create": "Létrehozás"
   },
   "auth": {
     "login": "Bejelentkezés",
@@ -185,7 +186,7 @@
       "noClientsForFilter": "Nincs ügyfél a kiválasztott szűrőhöz",
       "startByCreating": "Kezdjen egy új energia konzultáció létrehozásával",
       "unknownClient": "Ismeretlen ügyfél",
-      "start": "Indítás",
+      "start": "Energia konzultáció megkezdése",
       "noDate": "Nincs dátum",
       "filters": {
         "allTime": "Összes",
@@ -263,6 +264,10 @@
       "selectedValues": "Kiválasztott értékek",
       "compatibleValues": "Kompatibilis értékek",
       "compatibilityDisabledWarning": "A kompatibilitás ellenőrzés ki van kapcsolva. Az értékek nem biztos, hogy kompatibilisek."
+    },
+    "selectInvestments": {
+      "titleAi": "Beruházások kiválasztása AI forgatókönyvekhez",
+      "titleManual": "Új forgatókönyv létrehozása"
     },
     "scenarios": {
       "title": "Forgatókönyvek",

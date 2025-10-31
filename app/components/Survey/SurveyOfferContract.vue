@@ -495,14 +495,14 @@ const discountsTotal = computed(() => {
   return discountsData.value.reduce((sum, discount) => sum + (discount.calculatedValue || 0), 0)
 })
 
-// Get scenario investment icons
+// Get scenario investment icons (filter out is_default investments)
 const getScenarioInvestmentIcons = (scenarioId: string) => {
   const investmentIds = scenarioInvestments.value[scenarioId] || []
 
   return investmentIds
     .map(id => {
       const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
-      return investment ? investment.icon : null
+      return investment && !investment.is_default ? investment.icon : null
     })
     .filter(Boolean)
 }
