@@ -41,6 +41,7 @@ import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { getTechnicalDataSummary } from '~/utils/technicalDataSummary'
 
 const { t } = useI18n()
+const { translate } = useTranslatableField()
 
 interface Props {
   surveyId: string
@@ -118,8 +119,6 @@ const getTechnicalSummaryForInvestment = (investmentId: string, investmentType: 
 
 // Build accordion items with technical summaries
 const investmentAccordionItems = computed(() => {
-  const { translate } = useTranslatableField()
-
   return scenarioInvestments.value.map(investment => {
     const technicalSummary = getTechnicalSummaryForInvestment(investment.id, investment.persist_name)
 

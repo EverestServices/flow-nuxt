@@ -93,9 +93,11 @@ const selectedExtraCosts = ref<SelectedExtraCost[]>([])
 onMounted(async () => {
   try {
     const supabase = useSupabaseClient()
+    // Only fetch general extra costs (where investment_id is NULL)
     const { data, error } = await supabase
       .from('extra_costs')
       .select('id, name, price')
+      .is('investment_id', null)
       .order('name')
 
     if (error) {

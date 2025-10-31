@@ -172,18 +172,22 @@ const { t } = useI18n()
 interface Props {
   surveyId: string
   scenarioId: string
+  investmentPersistName: string | string[]
 }
 
 const props = defineProps<Props>()
 
 interface ExtraCost {
   id: string
+  investment_id: string | null
   persist_name: string
   name: string
+  name_translations: any
   description: string
   price: number
   is_quantity_based: boolean
   category: string
+  info_message_translations: any
 }
 
 interface SelectedCost {
@@ -201,9 +205,31 @@ const selectedCosts = ref<SelectedCost[]>([])
 onMounted(async () => {
   try {
     const supabase = useSupabaseClient()
+
+    // Normalize to array for consistent handling
+    const persistNames = Array.isArray(props.investmentPersistName)
+      ? props.investmentPersistName
+      : [props.investmentPersistName]
+
+    // Get investment IDs based on persist_name(s)
+    const { data: investmentData, error: investmentError } = await supabase
+      .from('investments')
+      .select('id')
+      .in('persist_name', persistNames)
+
+    if (investmentError || !investmentData) {
+      console.error('Error fetching investment:', investmentError)
+      loading.value = false
+      return
+    }
+
+    const investmentIds = investmentData.map(inv => inv.id)
+
+    // Then fetch extra costs for these investment(s)
     const { data, error } = await supabase
       .from('extra_costs')
       .select('*')
+      .in('investment_id', investmentIds)
       .not('category', 'is', null)
       .order('category', { ascending: true })
       .order('name', { ascending: true })
@@ -290,20 +316,25 @@ const formatPrice = (price: number) => {
   return new Intl.NumberFormat('hu-HU').format(price)
 }
 
-// Inject update function from parent
-const updateSolarExtraCostsTotal = inject<(total: number) => void>('updateSolarExtraCostsTotal', () => {})
+// Helper to capitalize first letter
+const capitalizeFirst = (value: string | string[]) => {
+  const str = Array.isArray(value) ? value[0] : value
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+// Inject update function from parent (dynamic based on investment)
+const updateExtraCostsTotal = inject<(total: number) => void>(`update${capitalizeFirst(props.investmentPersistName)}ExtraCostsTotal`, () => {})
 
 // Watch total cost and notify parent
 watch(totalCost, (newTotal) => {
-  updateSolarExtraCostsTotal(newTotal)
+  updateExtraCostsTotal(newTotal)
 }, { immediate: true })
 </script>
 
 <script lang="ts">
-// Extra Cost Item Component
-import { defineComponent, computed } from 'vue'
+import { defineComponent } from 'vue'
 
 export default defineComponent({
-  name: 'SurveyOfferContractExtraCosts'
+  name: 'SurveyOfferContractInvestmentExtraCosts'
 })
 </script>

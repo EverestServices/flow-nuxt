@@ -153,10 +153,107 @@
           >
             <div class="p-4">
               <!-- Extra Costs Content -->
-              <SurveyOfferContractExtraCosts
+              <SurveyOfferContractInvestmentExtraCosts
                 v-if="selectedScenarioId"
                 :survey-id="surveyId"
                 :scenario-id="selectedScenarioId"
+                :investment-persist-name="['solarPanel', 'solarPanelBattery']"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Facade Insulation Extra Costs Accordion -->
+        <div v-if="selectedScenarioId && hasFacadeInsulationInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="facadeInsulationExtraCostsOpen = !facadeInsulationExtraCostsOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-coins" class="w-5 h-5" />
+              <span>{{ t('survey.offerContract.facadeInsulationExtraCosts') }}</span>
+            </div>
+            <UIcon
+              :name="facadeInsulationExtraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="facadeInsulationExtraCostsOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- Facade Insulation Extra Costs Content -->
+              <SurveyOfferContractInvestmentExtraCosts
+                v-if="selectedScenarioId"
+                :survey-id="surveyId"
+                :scenario-id="selectedScenarioId"
+                investment-persist-name="facadeInsulation"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Attic Floor Insulation Extra Costs Accordion -->
+        <div v-if="selectedScenarioId && hasAtticFloorInsulationInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="atticFloorInsulationExtraCostsOpen = !atticFloorInsulationExtraCostsOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-coins" class="w-5 h-5" />
+              <span>{{ t('survey.offerContract.atticFloorInsulationExtraCosts') }}</span>
+            </div>
+            <UIcon
+              :name="atticFloorInsulationExtraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="atticFloorInsulationExtraCostsOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- Attic Floor Insulation Extra Costs Content -->
+              <SurveyOfferContractInvestmentExtraCosts
+                v-if="selectedScenarioId"
+                :survey-id="surveyId"
+                :scenario-id="selectedScenarioId"
+                investment-persist-name="roofInsulation"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Windows Extra Costs Accordion -->
+        <div v-if="selectedScenarioId && hasWindowsInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="windowsExtraCostsOpen = !windowsExtraCostsOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-coins" class="w-5 h-5" />
+              <span>{{ t('survey.offerContract.windowsExtraCosts') }}</span>
+            </div>
+            <UIcon
+              :name="windowsExtraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="windowsExtraCostsOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- Windows Extra Costs Content -->
+              <SurveyOfferContractInvestmentExtraCosts
+                v-if="selectedScenarioId"
+                :survey-id="surveyId"
+                :scenario-id="selectedScenarioId"
+                investment-persist-name="windows"
               />
             </div>
           </div>
@@ -328,6 +425,9 @@ const technicalDetailsOpen = ref(true)
 const roofConfigurationOpen = ref(true)
 const compatibilityCheckOpen = ref(true)
 const extraCostsOpen = ref(true)
+const facadeInsulationExtraCostsOpen = ref(true)
+const atticFloorInsulationExtraCostsOpen = ref(true)
+const windowsExtraCostsOpen = ref(true)
 const generalExtraCostsOpen = ref(true)
 const discountsOpen = ref(true)
 const contractDetailsOpen = ref(true)
@@ -351,6 +451,42 @@ const hasSolarPanelInvestment = computed(() => {
   return investmentIds.some(id => {
     const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
     return investment && (investment.persist_name === 'solarPanel' || investment.persist_name === 'solarPanelBattery')
+  })
+})
+
+// Check if selected scenario has Facade Insulation investment
+const hasFacadeInsulationInvestment = computed(() => {
+  if (!selectedScenarioId.value) return false
+
+  const investmentIds = scenarioInvestments.value[selectedScenarioId.value] || []
+
+  return investmentIds.some(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && investment.persist_name === 'facadeInsulation'
+  })
+})
+
+// Check if selected scenario has Attic Floor Insulation investment
+const hasAtticFloorInsulationInvestment = computed(() => {
+  if (!selectedScenarioId.value) return false
+
+  const investmentIds = scenarioInvestments.value[selectedScenarioId.value] || []
+
+  return investmentIds.some(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && investment.persist_name === 'roofInsulation'
+  })
+})
+
+// Check if selected scenario has Windows investment
+const hasWindowsInvestment = computed(() => {
+  if (!selectedScenarioId.value) return false
+
+  const investmentIds = scenarioInvestments.value[selectedScenarioId.value] || []
+
+  return investmentIds.some(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && investment.persist_name === 'windows'
   })
 })
 
@@ -413,6 +549,24 @@ provide('updateVatData', (vat: number) => {
 
 provide('updateTotalPriceData', (total: number) => {
   totalPriceData.value = total
+})
+
+// Extra costs totals (for investment-specific components)
+provide('updateSolarExtraCostsTotal', (total: number) => {
+  // Can be used for validation or display purposes in the future
+  console.log('Solar extra costs total:', total)
+})
+
+provide('updateFacadeInsulationExtraCostsTotal', (total: number) => {
+  console.log('Facade insulation extra costs total:', total)
+})
+
+provide('updateRoofInsulationExtraCostsTotal', (total: number) => {
+  console.log('Roof insulation extra costs total:', total)
+})
+
+provide('updateWindowsExtraCostsTotal', (total: number) => {
+  console.log('Windows extra costs total:', total)
 })
 
 // ===================================================================
