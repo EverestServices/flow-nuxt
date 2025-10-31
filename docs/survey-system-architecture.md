@@ -1,9 +1,16 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-24
-**Version:** 2.2.0
-**Migrations:** `003_create_survey_system.sql`, `031-043_products_system.sql`, `070_add_investment_id_to_pivot_tables.sql`
+**Last Updated:** 2025-10-30
+**Version:** 2.4.0
+**Migrations:**
+- `003_create_survey_system.sql` - Core survey system
+- `031-043_products_system.sql` - Products and components
+- `070_add_investment_id_to_pivot_tables.sql` - Investment-specific tracking
+- `097-101_default_value_source_and_persistence.sql` - Default values and persistence
+- `102_add_hierarchical_survey_pages.sql` - Hierarchical pages (NEW)
+- `104_create_openings_survey_page.sql` - Openings subpage (NEW)
+- `105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages (NEW)
 
 ---
 
@@ -36,6 +43,11 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Offer/Contract page with detailed pricing** (NEW - 2025-10-24)
 - ✅ **Contract Data page with client information management** (NEW - 2025-10-24)
 - ✅ **Summary page with contract preview and digital signing** (NEW - 2025-10-24)
+- ✅ **Persistent survey answer storage with multi-instance support** (NEW - 2025-10-30)
+- ✅ **Default value inheritance across survey questions** (NEW - 2025-10-30)
+- ✅ **Dynamic readonly fields based on source data** (NEW - 2025-10-30)
+- ✅ **Hierarchical survey pages with parent-child relationships** (NEW - 2025-10-30)
+- ✅ **Automated wall metrics calculations for facade insulation** (NEW - 2025-10-30)
 
 ---
 
@@ -203,7 +215,7 @@ Additional costs catalog.
 - Linked to Scenarios OR Contracts (via `extra_cost_relations`)
 
 #### **survey_pages**
-Survey form pages/sections.
+Survey form pages/sections with hierarchical support.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -213,10 +225,22 @@ Survey form pages/sections.
 | name | VARCHAR(255) | Page name |
 | position | JSONB | Position data |
 | type | VARCHAR(100) | Page type |
+| **parent_page_id** | UUID | FK → survey_pages (nullable) ⭐ |
+| allow_multiple | BOOLEAN | Allow multiple instances |
+| allow_delete_first | BOOLEAN | Allow deleting first instance |
+| item_name_template | VARCHAR(255) | Template for instance names |
+
+⭐ **NEW - 2025-10-30:** Hierarchical page support
 
 **Relations:**
 - Many-to-Many with Surveys (via `survey_survey_pages`) with position field
 - 1 Page → Many Questions
+- 1 Parent Page → Many Subpages (self-referential)
+
+**Hierarchical Structure:**
+- `parent_page_id = NULL`: Root-level pages
+- `parent_page_id = <uuid>`: Subpages nested under a parent
+- Example: "Falak" (Walls) parent → "Nyílászárók" (Openings) subpage
 
 #### **survey_questions**
 Questions within survey pages.
@@ -230,6 +254,8 @@ Questions within survey pages.
 | name | VARCHAR(255) | Question name |
 | type | ENUM | Question type (text, textarea, switch, etc.) |
 | default_value | TEXT | Default value |
+| **default_value_source_question_id** | UUID | FK → survey_questions (nullable) ⭐ |
+| **is_readonly** | BOOLEAN | Field is readonly (default false) ⭐ |
 | placeholder_value | VARCHAR(500) | Placeholder text |
 | options | JSONB | Options array (for dropdown, etc.) |
 | is_required | BOOLEAN | Is required |
@@ -241,6 +267,8 @@ Questions within survey pages.
 | unit | VARCHAR(50) | Unit (e.g., m², kWp) |
 | width | INTEGER | UI width |
 
+⭐ **NEW - 2025-10-30:** Default value inheritance and readonly support
+
 **Question Types:**
 - `text`, `textarea`, `switch`, `dropdown`
 - `title`, `phase_toggle`, `dual_toggle`
@@ -250,9 +278,15 @@ Questions within survey pages.
 **Relations:**
 - 1 Page → Many Questions
 - Many Questions → Many Answers
+- 1 Question → 1 Source Question (optional, self-referential)
+
+**Default Value Inheritance:**
+- Questions can inherit default values from other questions via `default_value_source_question_id`
+- When source question value changes, dependent questions auto-update (via database trigger)
+- Supports both regular pages and allow_multiple pages with item_group
 
 #### **survey_answers**
-Answers to survey questions.
+Answers to survey questions with multi-instance and hierarchical support.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -262,10 +296,32 @@ Answers to survey questions.
 | survey_id | UUID | FK → surveys |
 | survey_question_id | UUID | FK → survey_questions |
 | answer | TEXT | Answer value |
+| **item_group** | INTEGER | Instance number for allow_multiple pages (nullable) ⭐ |
+| **parent_item_group** | INTEGER | Parent instance number for hierarchical pages (nullable) ⭐ |
+
+⭐ **NEW - 2025-10-30:** Multi-instance and hierarchical support
 
 **Relations:**
 - 1 Survey → Many Answers
 - 1 Question → Many Answers (different surveys)
+
+**Unique Constraint:**
+- `UNIQUE (survey_id, survey_question_id, COALESCE(item_group, -1), COALESCE(parent_item_group, -1))`
+- Ensures one answer per question per survey per instance per parent instance
+
+**Item Group Behavior:**
+- `item_group = NULL, parent_item_group = NULL`: Regular pages (single instance)
+- `item_group = 0,1,2..., parent_item_group = NULL`: Root allow_multiple pages
+- `item_group = 0,1,2..., parent_item_group = 0,1,2...`: Hierarchical subpage instances
+
+**Hierarchical Example:**
+```
+Wall #0 (parent_item_group: null, item_group: 0)
+  → Opening #0 (parent_item_group: 0, item_group: 0)
+  → Opening #1 (parent_item_group: 0, item_group: 1)
+Wall #1 (parent_item_group: null, item_group: 1)
+  → Opening #0 (parent_item_group: 1, item_group: 0)
+```
 
 #### **document_categories**
 Photo/document categories.
@@ -530,6 +586,23 @@ All entities have:
 - `updated_at: string` (TIMESTAMPTZ)
 
 Plus specific fields as documented in Database Schema section.
+
+**SurveyQuestion Interface (NEW fields - 2025-10-30):**
+```typescript
+interface SurveyQuestion {
+  // ... existing fields
+  default_value_source_question_id?: string  // UUID of source question
+  is_readonly?: boolean                       // Field is readonly
+}
+```
+
+**SurveyAnswer Interface (NEW field - 2025-10-30):**
+```typescript
+interface SurveyAnswer {
+  // ... existing fields
+  item_group?: number | null  // Instance number for allow_multiple pages
+}
+```
 
 ### Extended Types with Relations
 
@@ -1338,8 +1411,481 @@ const response = store.investmentResponses[investment.id]?.[question.name]
 
 ---
 
+## Advanced Features
+
+### Survey Answer Persistence (NEW - 2025-10-30)
+
+**Overview:**
+Survey answers are now automatically saved to the database in real-time, enabling data persistence across sessions and support for multi-instance survey pages.
+
+**Key Components:**
+
+#### Database Layer
+- **Table:** `survey_answers`
+- **New Column:** `item_group` (INTEGER, nullable)
+- **Unique Index:** `idx_survey_answers_unique ON (survey_id, survey_question_id, COALESCE(item_group, -1))`
+
+#### Store Methods
+
+**Location:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+// Save regular question answer
+async saveResponse(questionName: string, value: any)
+
+// Save answer for allow_multiple page instances
+async saveInstanceResponse(pageId: string, instanceIndex: number, questionName: string, value: any)
+
+// Load all existing answers on survey initialization
+async loadExistingAnswers(surveyId: string)
+```
+
+**Behavior:**
+1. **Auto-save:** All input changes trigger immediate database save
+2. **Upsert Logic:** Updates existing answer or inserts new one
+3. **Type Conversion:** All values converted to strings for database storage
+4. **Error Handling:** Graceful error logging without UI disruption
+
+#### Multi-Instance Support
+
+**Use Case:** Survey pages with `allow_multiple: true` (e.g., multiple wall surfaces)
+
+```typescript
+// Example: 3 wall surfaces
+survey_answers:
+  - { survey_id, question_id: 'wall_type', answer: 'Brick', item_group: 0 }
+  - { survey_id, question_id: 'wall_type', answer: 'Concrete', item_group: 1 }
+  - { survey_id, question_id: 'wall_type', answer: 'Wood', item_group: 2 }
+```
+
+**Frontend State:**
+```typescript
+pageInstances[investmentId][pageId].instances = [
+  { wall_type: 'Brick', wall_thickness: 30, ... },      // item_group 0
+  { wall_type: 'Concrete', wall_thickness: 40, ... },   // item_group 1
+  { wall_type: 'Wood', wall_thickness: 20, ... }        // item_group 2
+]
+```
+
+---
+
+### Default Value Inheritance (NEW - 2025-10-30)
+
+**Overview:**
+Questions can automatically inherit and sync values from other questions, enabling reuse of common data across survey sections.
+
+**Use Case:**
+"Basic Data" page captures "External Wall Structure" → Automatically populates "Wall Structure" field on all "Facade Insulation" wall instances.
+
+#### Database Schema
+
+**survey_questions Table:**
+```sql
+ALTER TABLE survey_questions
+ADD COLUMN default_value_source_question_id UUID REFERENCES survey_questions(id) ON DELETE SET NULL;
+
+ALTER TABLE survey_questions
+ADD COLUMN is_readonly BOOLEAN DEFAULT FALSE;
+```
+
+#### Database Trigger
+
+**Function:** `sync_dependent_question_answers()`
+
+**Trigger:** Fires on `INSERT OR UPDATE OF answer ON survey_answers`
+
+**Behavior:**
+1. Detects when a source question's answer changes
+2. Finds all dependent questions (`default_value_source_question_id` matches)
+3. Updates dependent question answers in database:
+   - **Regular pages:** Simple insert/update with `item_group = NULL`
+   - **Allow_multiple pages:** Updates ALL existing instances
+
+```sql
+CREATE TRIGGER trigger_sync_dependent_answers
+    AFTER INSERT OR UPDATE OF answer ON public.survey_answers
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_dependent_question_answers();
+```
+
+#### Frontend Implementation
+
+**Location:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+// Load default values when creating new instance
+async loadDefaultValuesForInstance(pageId: string, instanceIndex: number)
+
+// Sync dependent fields in frontend state when source changes
+async syncDependentQuestionsInState(sourceQuestionId: string, newValue: string)
+
+// Ensure first instance has default values
+async ensurePageInstancesInitialized(pageId: string)
+```
+
+**Component Integration:**
+```vue
+// SurveyPropertyAssessment.vue
+watch(activePageId, async (newPageId) => {
+  if (!newPageId) return
+  const page = activePage.value
+  if (page?.allow_multiple) {
+    await store.ensurePageInstancesInitialized(newPageId)
+  }
+})
+```
+
+**Workflow:**
+1. **Initial Load:** When navigating to allow_multiple page, check for empty first instance → load defaults
+2. **New Instance:** When adding new instance (`addPageInstance`), automatically load defaults
+3. **Source Change:** When source question updates → sync frontend state for immediate UI update
+4. **Database Sync:** Database trigger ensures backend data stays consistent
+
+**Source Value Clearing:**
+- When source becomes empty → dependent fields remain editable and keep manual values
+- Frontend sync skips empty source values to preserve user input
+
+---
+
+### Dynamic Readonly Fields (NEW - 2025-10-30)
+
+**Overview:**
+Form fields can dynamically become readonly based on whether their source question has a value.
+
+**Behavior:**
+1. **Source Empty:** Field is editable, user can enter custom values
+2. **Source Filled:** Field becomes readonly (disabled), displays inherited value
+3. **Source Cleared:** Field becomes editable again, retains previous value
+
+#### Frontend Logic
+
+**Location:** `/app/components/Survey/SurveyQuestionRenderer.vue`
+
+```typescript
+const isEffectivelyReadonly = computed(() => {
+  if (!props.question.is_readonly) return false
+
+  // If has default_value_source, check if SOURCE field has value
+  if (props.question.default_value_source_question_id) {
+    // Find source question and check its value
+    const sourceValue = store.getResponse(sourceQuestion.name)
+    const hasSourceValue = sourceValue !== undefined &&
+                          sourceValue !== null &&
+                          sourceValue !== ''
+    return hasSourceValue  // Only readonly if source has value
+  }
+
+  return true  // Regular is_readonly behavior
+})
+```
+
+**UI Implementation:**
+```vue
+<UIInput
+  :model-value="modelValue"
+  :readonly="isEffectivelyReadonly"
+  :disabled="isEffectivelyReadonly"
+  class="flex-1"
+/>
+```
+
+**Styling:**
+- Readonly fields: `opacity-60`, `cursor-not-allowed`, `disabled` state
+- Applies to all input types: text, textarea, dropdown, switch, slider, toggles, orientation selector
+
+**Example Flow:**
+```
+1. Basic Data → "External Wall Structure" = "" (empty)
+   → Facade Insulation → "Wall Structure" = editable ✓
+
+2. User fills Basic Data → "External Wall Structure" = "Brick"
+   → Facade Insulation → "Wall Structure" = "Brick" (readonly, grayed out) ✓
+
+3. User clears Basic Data → "External Wall Structure" = ""
+   → Facade Insulation → "Wall Structure" = "Brick" (editable again) ✓
+```
+
+---
+
+### Integration Example
+
+**Complete Workflow: Basic Data → Facade Insulation**
+
+```typescript
+// Migration 099: Setup default_value_source
+INSERT INTO survey_questions (
+  survey_page_id, name, type,
+  default_value_source_question_id,  // Points to Basic Data question
+  is_readonly                          // Set to true
+) VALUES (
+  facade_wall_page_id,
+  'wall_structure',
+  'dropdown',
+  basic_data_wall_structure_id,      // Source question ID
+  true
+);
+```
+
+**User Interaction:**
+1. Navigate to "Facade Insulation" → "Walls" page (allow_multiple)
+2. First wall instance auto-created → `ensurePageInstancesInitialized` triggered
+3. Default values loaded from "Basic Data" → `loadDefaultValuesForInstance`
+4. Field readonly if source has value → `isEffectivelyReadonly = true`
+5. User adds 2nd wall → `addPageInstance` → defaults auto-loaded
+6. User changes Basic Data → `syncDependentQuestionsInState` → all walls update instantly
+7. All changes saved to database → `saveInstanceResponse` with `item_group`
+
+**Database Result:**
+```sql
+SELECT * FROM survey_answers WHERE question_id = 'wall_structure';
+
+survey_id | question_id    | answer    | item_group
+----------|----------------|-----------|------------
+uuid-123  | wall_structure | Brick     | 0
+uuid-123  | wall_structure | Brick     | 1
+uuid-123  | wall_structure | Concrete  | 2  -- User manually changed this one
+```
+
+---
+
+### Hierarchical Survey Pages (NEW - 2025-10-30)
+
+**Overview:**
+Survey pages can now have parent-child relationships, enabling nested data entry structures where each parent instance can have multiple child instances.
+
+**Use Case:**
+"Falak" (Walls) page is the parent, "Nyílászárók" (Openings) is the subpage. Each wall can have multiple openings independently.
+
+#### Database Schema
+
+```sql
+-- Parent page reference
+ALTER TABLE survey_pages
+ADD COLUMN parent_page_id UUID REFERENCES survey_pages(id) ON DELETE CASCADE;
+
+-- Parent instance reference
+ALTER TABLE survey_answers
+ADD COLUMN parent_item_group INTEGER;
+
+-- Unique constraint updated
+CREATE UNIQUE INDEX idx_survey_answers_unique_with_parent
+ON survey_answers (
+  survey_id,
+  survey_question_id,
+  COALESCE(item_group, -1),
+  COALESCE(parent_item_group, -1)
+);
+```
+
+#### Store Structure
+
+```typescript
+pageInstances: {
+  [investmentId]: {
+    [pageId]: {
+      instances: [...],           // Root page instances
+      subpageInstances: {         // Subpage instances grouped by parent
+        [parentItemGroup]: [...]  // Each parent has its own child instances
+      }
+    }
+  }
+}
+```
+
+#### Store Methods
+
+```typescript
+// Get all subpages for a parent
+getSubPages(parentPageId: string): SurveyPage[]
+
+// Get subpage instances for specific parent
+getSubPageInstances(subpageId: string, parentItemGroup: number): any[]
+
+// Add subpage instance under parent
+addSubPageInstance(subpageId: string, parentItemGroup: number): void
+
+// Save subpage answer
+saveSubPageInstanceResponse(
+  subpageId: string,
+  parentItemGroup: number,
+  instanceIndex: number,
+  questionName: string,
+  value: any
+): Promise<void>
+```
+
+#### UI Structure
+
+Hierarchical pages render as nested accordions:
+
+```vue
+<UAccordion>  <!-- Parent: Wall #1 -->
+  <div>
+    <!-- Wall questions -->
+
+    <div v-for="subpage in getSubPages(wallPageId)">
+      <h5>{{ subpage.name }}</h5>  <!-- "Nyílászárók" -->
+
+      <UAccordion>  <!-- Child: Opening #1 -->
+        <!-- Opening questions -->
+      </UAccordion>
+
+      <UAccordion>  <!-- Child: Opening #2 -->
+        <!-- Opening questions -->
+      </UAccordion>
+
+      <UButton @click="addSubPageInstance(subpage.id, wallIndex)">
+        Add Opening
+      </UButton>
+    </div>
+  </div>
+</UAccordion>
+```
+
+#### Migration Files
+
+- **102_add_hierarchical_survey_pages.sql** - Adds parent_page_id and parent_item_group support
+- **104_create_openings_survey_page.sql** - Creates Nyílászárók subpage under Falak
+- **105_add_planned_investment_and_site_conditions_pages.sql** - Additional facade insulation pages
+
+---
+
+### Automated Wall Metrics Calculations (NEW - 2025-10-30)
+
+**Overview:**
+Real-time calculations for facade insulation metrics, automatically updating as users input wall and opening data.
+
+**Use Case:**
+Calculate net facade area by subtracting opening areas from gross wall area, with special handling for reveal (káva) surfaces.
+
+#### Calculation Methods
+
+**Location:** `/app/components/Survey/SurveyPropertyAssessment.vue:463-552`
+
+```typescript
+// Per-wall calculations
+const calculateWallMetrics = (pageId: string, parentItemGroup: number) => {
+  // 1. Get wall dimensions
+  const wallLength = getInstanceQuestionValue(pageId, parentItemGroup, 'wall_length')
+  const wallHeight = getInstanceQuestionValue(pageId, parentItemGroup, 'wall_height')
+  const foundationHeight = getInstanceQuestionValue(pageId, parentItemGroup, 'foundation_height')
+
+  // 2. Calculate basic areas (m²)
+  const bruttoHomlokzat = wallLength * wallHeight
+  const bruttoLabazatNelkul = wallLength * (wallHeight - foundationHeight)
+  const labazatFeluletePostpone = wallLength * foundationHeight
+
+  // 3. Get openings for this wall
+  const openings = getSubPageInstances(openingsPageId, parentItemGroup)
+
+  let nyilaszarokFeluletePostpone = 0
+  let kavaFeluletek = 0
+
+  openings.forEach(opening => {
+    const type = getSubPageInstanceQuestionValue(..., 'opening_type')
+    const width = Number(...) / 100  // cm to m
+    const height = Number(...) / 100
+    const quantity = Number(...)
+    const revealDepth = Number(...) / 100
+
+    // Opening surface area
+    nyilaszarokFeluletePostpone += width * height * quantity
+
+    // Reveal (káva) calculation - opening type specific
+    if (type === 'Ablak') {
+      // Window: 4 sides (full perimeter)
+      kavaFeluletek += (width * 2 + height * 2) * revealDepth * quantity
+    } else if (type === 'Ajtó' || type === 'Erkélyajtó') {
+      // Door: 3 sides (no bottom)
+      kavaFeluletek += (width + height * 2) * revealDepth * quantity
+    }
+  })
+
+  // 4. Net facade area
+  const nettoHomlokzat = bruttoLabazatNelkul - nyilaszarokFeluletePostpone
+
+  return { bruttoHomlokzat, bruttoLabazatNelkul, labazatFeluletePostpone,
+          nyilaszarokFeluletePostpone, nettoHomlokzat, kavaFeluletek }
+}
+
+// Aggregate calculations for all walls
+const calculateAllWallsMetrics = (pageId: string) => {
+  const instances = getPageInstances(pageId)
+  let totals = { /* ... */ }
+
+  instances.forEach((instance, index) => {
+    const metrics = calculateWallMetrics(pageId, index)
+    // Sum up all metrics
+  })
+
+  return totals
+}
+```
+
+#### Calculation Formulas
+
+1. **Homlokzat bruttó (Gross facade):**
+   ```
+   wall_length × wall_height
+   ```
+
+2. **Homlokzat bruttó, lábazat nélkül (Gross without foundation):**
+   ```
+   wall_length × (wall_height - foundation_height)
+   ```
+
+3. **Lábazat felülete (Foundation surface):**
+   ```
+   wall_length × foundation_height
+   ```
+
+4. **Nyílászárók felülete (Opening surface):**
+   ```
+   Σ (opening_width × opening_height × opening_quantity)
+   Unit: cm → m (divide by 100)
+   ```
+
+5. **Homlokzat nettó (Net facade):**
+   ```
+   (Gross without foundation) - (Total openings)
+   ```
+
+6. **Káva felületek (Reveal surfaces):**
+   - **Windows (Ablak):** 4 sides
+     ```
+     Σ ((width × 2 + height × 2) × reveal_depth × quantity)
+     ```
+   - **Doors (Ajtó/Erkélyajtó):** 3 sides
+     ```
+     Σ ((width + height × 2) × reveal_depth × quantity)
+     ```
+   Unit: cm → m (divide by 100)
+
+#### UI Display
+
+**Per-Wall Metrics:**
+- Displayed in accordion inside each wall instance
+- Background: Blue (`bg-blue-50` / `dark:bg-blue-900/20`)
+- Collapsible by default
+
+**Total Metrics:**
+- Displayed below "Add Wall" button
+- Background: Green (`bg-green-50` / `dark:bg-green-900/20`)
+- Only shown when walls exist
+- Aggregates all wall metrics
+
+**Real-Time Updates:**
+- Calculations update instantly as user types
+- Automatic recalculation when openings added/removed
+- No manual refresh required
+
+**Component Location:** `/app/components/Survey/SurveyPropertyAssessment.vue:340-382`
+
+---
+
 ## Related Documentation
 
+- [Survey Page Feature Documentation](features/SURVEY_PAGE.md) - Complete survey page feature documentation
 - [Consultation Page Details](survey-consultation-page.md) - Complete Consultation page documentation
 - [Property Assessment Page](survey-property-assessment.md) - Property Assessment page documentation
 - [Contract Data Page](survey-contract-data-page.md) - Contract Data page documentation
