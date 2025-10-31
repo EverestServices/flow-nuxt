@@ -197,7 +197,12 @@ const loading = ref(false)
 const contracts = computed(() => contractsStore.contracts)
 
 const getContractInvestments = (contractId: string): string[] => {
-  return contractsStore.contractInvestments[contractId] || []
+  const investmentIds = contractsStore.contractInvestments[contractId] || []
+  // Filter out is_default investments
+  return investmentIds.filter(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && !investment.is_default
+  })
 }
 
 const getInvestmentName = (investmentId: string): string => {

@@ -512,6 +512,36 @@ const isPointInPolygon = (pt: Point, points: Point[]): boolean => {
   return inside;
 };
 
+// Hit-test for polygon edges (topmost first). Returns the segment endpoints if within threshold.
+const findEdgeUnderPoint = (
+  pt: Point,
+): { polyId: string; index: number; a: Point; b: Point } | null => {
+  const list = polygons.value as PolygonSurface[];
+  let best: { polyId: string; index: number; a: Point; b: Point; dist: number } | null = null;
+  for (let pIdx = list.length - 1; pIdx >= 0; pIdx--) {
+    const poly = list[pIdx];
+    if (!poly || poly.visible === false || !poly.closed || poly.points.length < 2) continue;
+    const n = poly.points.length;
+    let localBest: { polyId: string; index: number; a: Point; b: Point; dist: number } | null = null;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const a = poly.points[i]!;
+      const b = poly.points[j]!;
+      const { dist } = pointSegmentDistance(pt, a, b);
+      if (!localBest || dist < localBest.dist) localBest = { polyId: poly.id, index: i, a, b, dist };
+    }
+    if (localBest && localBest.dist < 0.02) {
+      // Topmost polygon hit found
+      return { polyId: localBest.polyId, index: localBest.index, a: localBest.a, b: localBest.b };
+    }
+    if (!best || (localBest && localBest.dist < best.dist)) best = localBest;
+  }
+  if (best && best.dist < 0.02) {
+    return { polyId: best.polyId, index: best.index, a: best.a, b: best.b };
+  }
+  return null;
+};
+
 const calculatePolygonArea = (
   points: Point[],
   pixelSize: number,
@@ -945,9 +975,16 @@ const togglePolygonEditing = () => {
 const handleCanvasClick = (event: MouseEvent) => {
   const clickPoint = normalizePoint(getCanvasCoords(event));
 
-  // 1) Calibration mode: only allow drawing if explicitly started (override allowed)
+  // 1) Calibration mode: allow cloning an existing polygon edge as reference
   if (calibrationMode.value) {
     if (referenceSet.value && !allowRefOverride.value) return;
+    const hit = findEdgeUnderPoint(clickPoint);
+    if (hit) {
+      calibrationStart.value = { x: hit.a.x, y: hit.a.y };
+      calibrationEnd.value = { x: hit.b.x, y: hit.b.y };
+      drawAllPolygons();
+      return;
+    }
     if (!calibrationStart.value) {
       calibrationStart.value = clickPoint;
       drawAllPolygons();

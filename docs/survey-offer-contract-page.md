@@ -1,9 +1,9 @@
 # Offer/Contract Page Documentation
 
 **Created:** 2025-10-24
-**Last Updated:** 2025-10-24
-**Version:** 1.0.0
-**Related Migrations:** `070_add_investment_id_to_pivot_tables.sql`, `031_create_products_system.sql`
+**Last Updated:** 2025-10-31
+**Version:** 1.1.0
+**Related Migrations:** `070_add_investment_id_to_pivot_tables.sql`, `110_add_investment_id_to_extra_costs.sql`, `111_add_extra_costs_for_insulation_and_windows.sql`, `112_update_solar_extra_costs_investment_id.sql`, `031_create_products_system.sql`
 
 ---
 
@@ -35,16 +35,84 @@ Az Offer/Contract oldal a survey folyamat harmadik fázisa, ahol az előzőleg m
 - ✅ Component categorization with Hungarian translations
 - ✅ Roof configuration for solar installations
 - ✅ Compatibility check (panels & inverters)
-- ✅ Solar-specific extra costs management
+- ✅ Investment-specific extra costs management (NEW - 2025-10-31)
 - ✅ General extra costs management
 - ✅ Discount management
 - ✅ VAT and commission rate handling
 - ✅ Real-time price calculations
-- ✅ Investment-aware component tracking (NEW - 2025-10-24)
+- ✅ Investment-aware component tracking (2025-10-24)
 
 ---
 
 ## Recent Updates
+
+### 2025-10-31: Investment-Specific Extra Costs System
+
+**Major Features Added:**
+
+1. **Generic Extra Costs Component**
+   - Created `SurveyOfferContractInvestmentExtraCosts.vue` - reusable component for all investments
+   - Supports single investment (`string`) or multiple investments (`string[]`) via props
+   - Replaces hardcoded solar-specific component with flexible generic solution
+   - Automatically filters extra costs by investment_id(s)
+
+2. **Investment ID on Extra Costs Table**
+   - Added `investment_id` column to `extra_costs` table
+   - Foreign key relationship to `investments` table
+   - Allows linking extra costs to specific investments
+   - NULL investment_id for general (non-investment-specific) costs
+
+3. **Category-Based Extra Costs Organization**
+   - Extra costs grouped by categories: general, connections, electric_meter, lightning_protection, cables, backup, internet
+   - Each category displays only when relevant costs exist
+   - Category headers with translations
+   - Clean, organized UI per investment type
+
+4. **Multilingual Support for Extra Costs**
+   - `name_translations` JSONB field for translated extra cost names
+   - `info_message_translations` JSONB field for help tooltips
+   - Integration with `useTranslatableField()` composable
+   - `SurveyQuestionInfoTooltip` component for displaying info messages
+
+5. **Investment Extra Costs Accordions**
+   - Facade Insulation extra costs accordion
+   - Attic Floor Insulation (Roof Insulation) extra costs accordion
+   - Windows extra costs accordion
+   - Solar Panel extra costs accordion (updated to use new generic component)
+   - Each accordion only visible when investment exists in scenario
+
+**Database Changes:**
+- Migration 110: `investment_id` column added to `extra_costs` table with index
+- Migration 111: 40 new extra costs for facadeInsulation, roofInsulation, and windows investments
+- Migration 112: Updated existing solar panel extra costs with proper investment_id
+
+**Files Modified:**
+- `app/components/Survey/SurveyOfferContractInvestmentExtraCosts.vue` (NEW) - Generic reusable component
+- `app/components/Survey/SurveyOfferContractExtraCosts.vue` (REMOVED) - Replaced by generic component
+- `app/components/Survey/ExtraCostItem.vue` - Added translation and info tooltip support
+- `app/components/Survey/SurveyOfferContract.vue` - Added 3 new investment accordion sections
+- `i18n/locales/hu.json` - Added translations for new accordions
+- `i18n/locales/en.json` - Added translations for new accordions
+
+**Component Consolidation:**
+- **Before:** Separate hardcoded component for solar extra costs
+- **After:** Single generic component handles all investment types
+- **Benefit:** DRY principle, easier maintenance, consistent behavior across investments
+
+**Example Usage:**
+```vue
+<!-- Single investment -->
+<SurveyOfferContractInvestmentExtraCosts
+  investment-persist-name="facadeInsulation"
+/>
+
+<!-- Multiple investments (solar panel + battery) -->
+<SurveyOfferContractInvestmentExtraCosts
+  :investment-persist-name="['solarPanel', 'solarPanelBattery']"
+/>
+```
+
+---
 
 ### 2025-10-24: Investment-Specific Component Tracking
 
@@ -231,29 +299,101 @@ if (totalPanelPower > inverterCapacity × 1.2) {
 
 ---
 
-#### 6. `SurveyOfferContractExtraCosts.vue`
+#### 6. `SurveyOfferContractInvestmentExtraCosts.vue` (NEW - 2025-10-31)
 
-**Location:** `app/components/Survey/SurveyOfferContractExtraCosts.vue`
+**Location:** `app/components/Survey/SurveyOfferContractInvestmentExtraCosts.vue`
 
-**Purpose:** Napelem-specifikus járulékos költségek kezelése.
+**Purpose:** Generic, reusable component for managing investment-specific extra costs across all investment types.
+
+**Props:**
+- `surveyId: string` - Survey azonosító
+- `scenarioId: string` - Scenario azonosító
+- `investmentPersistName: string | string[]` - Investment persist name(s) to filter extra costs
 
 **Features:**
-- Solar-specific extra costs catalog loading
-- Checkbox-based selection
-- Quantity input per cost item
-- Snapshot price display
-- Comment field for custom notes
-- Data export via `provide/inject`
+- **Generic Design:** Single component handles all investment types
+- **Flexible Filtering:** Supports single or multiple investments
+- **Category Organization:** Groups costs by category (general, connections, electric_meter, lightning_protection, cables, backup, internet)
+- **Conditional Rendering:** Only shows categories that have costs
+- **Translation Support:** Displays translated names via `name_translations` field
+- **Info Tooltips:** Shows help messages via `info_message_translations`
+- **Quantity Management:** Per-cost quantity input with `is_quantity_based` flag
+- **Notes Support:** Custom notes field per cost item
+- **Real-time Total:** Calculates and displays total cost
+- **Parent Communication:** Notifies parent of total via `provide/inject`
+
+**Investment ID Normalization:**
+```typescript
+// Accepts both string and array
+const persistNames = Array.isArray(props.investmentPersistName)
+  ? props.investmentPersistName
+  : [props.investmentPersistName]
+
+// Fetch all investment IDs
+const { data: investmentData } = await supabase
+  .from('investments')
+  .select('id')
+  .in('persist_name', persistNames)
+
+// Then filter extra costs by these IDs
+const { data } = await supabase
+  .from('extra_costs')
+  .select('*')
+  .in('investment_id', investmentIds)
+```
+
+**Inject Key Generation:**
+```typescript
+// Dynamically creates inject key based on investment name
+// Example: "updateSolarPanelExtraCostsTotal"
+const capitalizeFirst = (value: string | string[]) => {
+  const str = Array.isArray(value) ? value[0] : value
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+const updateExtraCostsTotal = inject<(total: number) => void>(
+  `update${capitalizeFirst(props.investmentPersistName)}ExtraCostsTotal`,
+  () => {}
+)
+```
 
 **Data Structure:**
 ```typescript
-{
-  extra_cost_id: string,
-  snapshot_price: number,
-  quantity: number,
-  comment: string,
-  is_selected: boolean
+interface ExtraCost {
+  id: string
+  investment_id: string | null
+  persist_name: string
+  name: string
+  name_translations: Record<string, string>
+  description: string
+  price: number
+  is_quantity_based: boolean
+  category: string
+  info_message_translations: Record<string, string>
 }
+
+interface SelectedCost {
+  costId: string
+  quantity: number
+  notes: string
+}
+```
+
+**Usage Examples:**
+```vue
+<!-- Facade Insulation -->
+<SurveyOfferContractInvestmentExtraCosts
+  :survey-id="surveyId"
+  :scenario-id="scenarioId"
+  investment-persist-name="facadeInsulation"
+/>
+
+<!-- Solar Panel (combines two investments) -->
+<SurveyOfferContractInvestmentExtraCosts
+  :survey-id="surveyId"
+  :scenario-id="scenarioId"
+  :investment-persist-name="['solarPanel', 'solarPanelBattery']"
+/>
 ```
 
 ---
@@ -372,15 +512,29 @@ SurveyOfferContract.vue
 │   │               ├── Category Headers
 │   │               ├── Component Rows (UISelect + UInput + UButton)
 │   │               └── Add Component Button
-│   ├── Roof Configuration Accordion
+│   ├── Roof Configuration Accordion (if Solar Panel)
 │   │   └── SurveyOfferContractRoofConfiguration.vue
-│   ├── Compatibility Check Accordion
+│   ├── Compatibility Check Accordion (if Solar Panel)
 │   │   └── SurveyOfferContractCompatibilityCheck.vue
-│   ├── Solar Extra Costs Accordion
-│   │   └── SurveyOfferContractExtraCosts.vue
+│   ├── Solar Panel Extra Costs Accordion (if Solar Panel) [NEW - Updated]
+│   │   └── SurveyOfferContractInvestmentExtraCosts.vue
+│   │       ├── investmentPersistName: ['solarPanel', 'solarPanelBattery']
+│   │       └── ExtraCostItem components (per category)
+│   ├── Facade Insulation Extra Costs Accordion (if Facade Insulation) [NEW]
+│   │   └── SurveyOfferContractInvestmentExtraCosts.vue
+│   │       ├── investmentPersistName: 'facadeInsulation'
+│   │       └── ExtraCostItem components (per category)
+│   ├── Attic Floor Insulation Extra Costs Accordion (if Roof Insulation) [NEW]
+│   │   └── SurveyOfferContractInvestmentExtraCosts.vue
+│   │       ├── investmentPersistName: 'roofInsulation'
+│   │       └── ExtraCostItem components (per category)
+│   ├── Windows Extra Costs Accordion (if Windows) [NEW]
+│   │   └── SurveyOfferContractInvestmentExtraCosts.vue
+│   │       ├── investmentPersistName: 'windows'
+│   │       └── ExtraCostItem components (per category)
 │   ├── General Extra Costs Accordion
 │   │   └── SurveyOfferContractGeneralExtraCosts.vue
-│   └── Discounts Accordion
+│   └── Discounts Accordion (if Solar Panel)
 │       └── SurveyOfferContractDiscounts.vue
 └── Right Column
     ├── Contract Details Accordion
@@ -458,6 +612,119 @@ CREATE INDEX idx_contract_main_components_investment_id
 - ✅ Unique constraint now includes `investment_id`
 - ✅ Same component can exist for different investments in same contract
 - ✅ Index created for efficient queries
+
+---
+
+### Updated Tables (Migrations 110, 111, 112)
+
+#### **extra_costs** (NEW - 2025-10-31)
+
+```sql
+CREATE TABLE public.extra_costs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+    -- Foreign key to investments (nullable for general costs)
+    investment_id UUID REFERENCES public.investments(id) ON DELETE CASCADE,  -- NEW!
+
+    -- Cost details
+    persist_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    name_translations JSONB,  -- NEW! Multilingual support
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    is_quantity_based BOOLEAN DEFAULT false,
+    category TEXT,  -- general, connections, electric_meter, lightning_protection, cables, backup, internet
+    info_message_translations JSONB  -- NEW! Help tooltips
+);
+
+-- Performance index
+CREATE INDEX idx_extra_costs_investment_id
+    ON public.extra_costs(investment_id);
+```
+
+**Key Features:**
+- ✅ `investment_id` links extra costs to specific investments
+- ✅ NULL `investment_id` for general costs (not investment-specific)
+- ✅ `name_translations` JSONB for multilingual names
+- ✅ `info_message_translations` JSONB for help tooltips
+- ✅ `category` for organizing costs into groups
+- ✅ `is_quantity_based` flag for quantity-dependent pricing
+
+**Example Data:**
+
+```sql
+-- Facade Insulation extra cost
+INSERT INTO extra_costs (
+    investment_id,
+    persist_name,
+    name,
+    name_translations,
+    price,
+    is_quantity_based,
+    category,
+    info_message_translations
+)
+VALUES (
+    (SELECT id FROM investments WHERE persist_name = 'facadeInsulation'),
+    'facade_scaffolding',
+    'Állványzás teljes körű',
+    jsonb_build_object(
+        'hu', 'Állványzás teljes körű',
+        'en', 'Full scaffolding'
+    ),
+    350000,
+    false,
+    'general',
+    jsonb_build_object(
+        'hu', 'Teljes homlokzat állványzása szükséges a munkálatokhoz',
+        'en', 'Full facade scaffolding required for the work'
+    )
+);
+
+-- General extra cost (no investment_id)
+INSERT INTO extra_costs (
+    investment_id,
+    persist_name,
+    name,
+    price,
+    is_quantity_based,
+    category
+)
+VALUES (
+    NULL,  -- General cost, not tied to any investment
+    'general_permit',
+    'Építési engedély',
+    50000,
+    false,
+    NULL
+);
+```
+
+**Investment Filtering Examples:**
+
+```typescript
+// Get all extra costs for Facade Insulation
+const { data } = await supabase
+  .from('extra_costs')
+  .select('*')
+  .eq('investment_id', facadeInsulationId)
+
+// Get all general extra costs
+const { data } = await supabase
+  .from('extra_costs')
+  .select('*')
+  .is('investment_id', null)
+
+// Get extra costs for multiple investments (Solar Panel + Battery)
+const { data } = await supabase
+  .from('extra_costs')
+  .select('*')
+  .in('investment_id', [solarPanelId, solarBatteryId])
+```
+
+---
 
 ### Example Data Structure
 
@@ -1058,6 +1325,21 @@ watch(() => contractsStore.activeContractId, async (contractId) => {
 - [ ] Verify discounts loaded
 - [ ] Verify prices calculated correctly
 
+### Investment Extra Costs (NEW - 2025-10-31)
+- [ ] Solar Panel extra costs display correctly
+- [ ] Facade Insulation extra costs display correctly
+- [ ] Attic Floor Insulation extra costs display correctly
+- [ ] Windows extra costs display correctly
+- [ ] Extra costs grouped by category
+- [ ] Only relevant categories displayed
+- [ ] Translated names display correctly
+- [ ] Info tooltips show help messages
+- [ ] Quantity inputs work for quantity-based costs
+- [ ] Fixed price costs don't show quantity input
+- [ ] Notes field saves and loads correctly
+- [ ] Total cost calculates correctly
+- [ ] Parent receives total updates via inject
+
 ### UI/UX
 - [ ] Investment accordions expand/collapse smoothly
 - [ ] Category headers display correctly
@@ -1066,6 +1348,8 @@ watch(() => contractsStore.activeContractId, async (contractId) => {
 - [ ] Delete buttons confirm before action
 - [ ] Loading states display during operations
 - [ ] Error messages display on failures
+- [ ] Extra costs accordions only show when investment exists in scenario
+- [ ] Info message tooltips display correctly
 
 ---
 
@@ -1102,6 +1386,37 @@ watch(() => contractsStore.activeContractId, async (contractId) => {
 **Issue:** Existing data incompatible after migration
 - **Problem:** Old scenario_main_components lack `investment_id`
 - **Solution:** Run data migration to populate `investment_id` from scenario_investments
+
+### Investment Extra Costs Issues (NEW - 2025-10-31)
+
+**Issue:** Extra costs not appearing for investment
+- **Symptom:** Accordion is empty despite extra costs in database
+- **Root Cause 1:** Missing `investment_id` on extra costs records
+- **Solution:** Run migration 112 to populate investment_id for existing costs
+- **Root Cause 2:** Component using wrong `investmentPersistName` prop
+- **Solution:** Verify prop matches investment's persist_name in database
+
+**Issue:** Temporal Dead Zone error with capitalizeFirst
+- **Symptom:** "Cannot access 'capitalizeFirst' before initialization"
+- **Root Cause:** Function used in inject() before definition
+- **Solution:** Move function definition before its usage in inject call
+
+**Issue:** Translations not displaying
+- **Symptom:** English names shown instead of Hungarian
+- **Root Cause 1:** Missing `name_translations` field in database
+- **Solution:** Ensure migration 111 applied correctly with JSONB fields
+- **Root Cause 2:** useTranslatableField() not called properly
+- **Solution:** Verify composable called at top of script setup
+
+**Issue:** Info tooltips not appearing
+- **Symptom:** No tooltip icon or empty tooltip
+- **Root Cause:** Missing `info_message_translations` field
+- **Solution:** Check extra cost record has non-null info_message_translations
+
+**Issue:** Wrong extra costs in accordion
+- **Symptom:** Facade costs showing in Windows accordion
+- **Root Cause:** Incorrect investment_id in database
+- **Solution:** Verify extra costs linked to correct investment via investment_id
 
 ---
 
@@ -1151,5 +1466,5 @@ watch(() => contractsStore.activeContractId, async (contractId) => {
 ---
 
 **Document Maintainers:** Development Team
-**Last Review:** 2025-10-24
-**Next Review:** 2025-11-24
+**Last Review:** 2025-10-31
+**Next Review:** 2025-11-30

@@ -406,14 +406,14 @@ const getScenarioName = (scenarioId: string | null | undefined) => {
   return scenario?.name || ''
 }
 
-// Get contract investment icons
+// Get contract investment icons (filter out is_default investments)
 const getContractInvestmentIcons = (contractId: string) => {
   const investmentIds = contractsStore.contractInvestments[contractId] || []
 
   return investmentIds
     .map(id => {
       const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
-      return investment ? investment.icon : null
+      return investment && !investment.is_default ? investment.icon : null
     })
     .filter(Boolean)
 }
