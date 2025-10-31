@@ -26,6 +26,7 @@ export interface SurveyPage {
   allow_delete_first: boolean
   item_name_template?: string
   item_name_template_translations?: { en: string; hu: string }
+  add_button_translations?: { en: string; hu: string }
 }
 
 export interface SurveyQuestionOption {

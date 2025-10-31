@@ -266,7 +266,7 @@
                             <!-- Add Subpage Instance Button -->
                             <div class="flex justify-center pt-1">
                               <UButton
-                                :label="$t('survey.propertyAssessment.addItem', { name: translatePage(subpage.name) })"
+                                :label="getAddButtonLabel(subpage)"
                                 icon="i-lucide-plus"
                                 color="primary"
                                 variant="ghost"
@@ -328,7 +328,7 @@
                 <!-- Add Instance Button -->
                 <div class="flex justify-center pt-2">
                   <UButton
-                    :label="$t('survey.propertyAssessment.addItem', { name: translatePage(page.name) })"
+                    :label="getAddButtonLabel(page)"
                     icon="i-lucide-plus"
                     color="primary"
                     variant="outline"
@@ -480,8 +480,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
+
+const { t: $t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -733,6 +736,18 @@ const getInstanceName = (page: SurveyPage, index: number) => {
   }
   // Replace {index} placeholder with actual index (1-based)
   return page.item_name_template.replace('{index}', (index + 1).toString())
+}
+
+// Get add button label for a page (with translation support)
+const getAddButtonLabel = (page: SurveyPage): string => {
+  // If page has add_button_translations, use it
+  if (page.add_button_translations) {
+    return translate(page.add_button_translations, '')
+  }
+
+  // Otherwise, fall back to current pattern using translation key
+  const pageName = translatePage(page.name)
+  return $t('survey.propertyAssessment.addItem', { name: pageName })
 }
 
 const canDeleteInstance = (page: SurveyPage, index: number) => {
