@@ -65,6 +65,7 @@ export enum SurfaceType {
 export enum WindowSubType {
   DOOR = 'door',
   WINDOW = 'window',
+  TERRACE_DOOR = 'terraceDoor',
 }
 export interface PolygonSurface {
   id: string;

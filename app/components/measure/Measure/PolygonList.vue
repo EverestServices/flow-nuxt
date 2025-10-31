@@ -76,8 +76,9 @@
       >
         <option :value="`type:${SurfaceType.WALL_PLINTH}`">Lábazat</option>
         <option :value="`type:${SurfaceType.FACADE}`">Homlokzat</option>
-        <option value="sub:door">Ajtó</option>
+        <option value="sub:door">Bejárati ajtó</option>
         <option value="sub:window">Ablak</option>
+        <option value="sub:terraceDoor">Teraszajtó</option>
       </select>
 
       <div class="flex items-center gap-2 ml-auto">
@@ -145,7 +146,9 @@ const filteredPolygons = computed(() => props.polygons.filter((p) => p.closed));
 
 function getSelectValue(polygon: PolygonSurface): string {
   if (polygon.type === SurfaceType.WINDOW_DOOR) {
-    return polygon.subType === WindowSubType.DOOR ? 'sub:door' : 'sub:window';
+    if (polygon.subType === WindowSubType.DOOR) return 'sub:door';
+    if (polygon.subType === WindowSubType.TERRACE_DOOR) return 'sub:terraceDoor';
+    return 'sub:window';
   }
   if (polygon.type === SurfaceType.WALL_PLINTH) return `type:${SurfaceType.WALL_PLINTH}`;
   if (polygon.type === SurfaceType.FACADE) return `type:${SurfaceType.FACADE}`;
@@ -165,7 +168,9 @@ function onTypeOrSubChange(polygon: PolygonSurface, value: string) {
   } else if (value.startsWith('sub:')) {
     const s = value.slice(4);
     polygon.type = SurfaceType.WINDOW_DOOR;
-    polygon.subType = s === 'door' ? WindowSubType.DOOR : WindowSubType.WINDOW;
+    if (s === 'door') polygon.subType = WindowSubType.DOOR;
+    else if (s === 'terraceDoor') polygon.subType = WindowSubType.TERRACE_DOOR;
+    else polygon.subType = WindowSubType.WINDOW;
   }
 }
 

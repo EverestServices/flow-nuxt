@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.measure_polygons (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   wall_id UUID NOT NULL REFERENCES public.measure_walls(id) ON DELETE CASCADE,
   type measure_surface_type,
+  sub_type TEXT,                -- 'door' | 'window' | 'terraceDoor'
   name TEXT,
   visible BOOLEAN DEFAULT TRUE,
   closed BOOLEAN DEFAULT TRUE,
