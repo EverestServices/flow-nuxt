@@ -53,7 +53,7 @@
     <div
       v-for="(polygon, index) in polygons"
       :key="polygon.id"
-      class="flex items-center flex-wrap gap-2 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
+      class="flex items-center flex-nowrap gap-2 bg-base-100 p-3 border rounded-2xl border-white dark:border-black bg-white/80 dark:bg-black/80 cursor-pointer"
       :class="polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300'"
       @click="emit('select', polygon.id)"
     >
@@ -116,9 +116,13 @@
       </div>
     </div>
     <div class="text-end" v-if="filteredPolygons.length > 0">
-      <UButton @click="confirmRemoveAll()" color="error" variant="soft" size="sm" class="tracking-wider">
-        <Icon name="i-lucide-eraser" class="h-4 w-4" /> Felületek törlése
-      </UButton>
+      <button
+        @click="confirmRemoveAll()"
+        class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 ml-auto"
+      >
+        <Icon name="i-lucide-eraser" class="h-4 w-4" />
+        <span>Felületek törlése</span>
+      </button>
     </div>
   </div>
 </template>

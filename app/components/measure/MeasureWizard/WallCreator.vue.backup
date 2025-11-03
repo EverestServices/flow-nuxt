@@ -1,6 +1,6 @@
 <template>
-  <div class="py-4 space-y-6">
-    <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="py-2 space-y-4">
+    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 justify-items-center">
       <WallCard
         v-for="(wall, index) in walls"
         :key="wall.id"
@@ -12,33 +12,26 @@
         @remove-image="removeImage"
         @image-change="handleImageChange"
       />
-      <div class="w-full min-h-[300px]">
-        <button
+      <div class="w-full">
+        <UButton
+          class="w-full h-full py-25 flex flex-col justify-center items-center"
+          color="success"
           @click="addWall"
-          class="w-full h-full min-h-[300px] rounded-2xl border-2 border-dashed border-gray-600 hover:border-primary-500 bg-gray-800/50 hover:bg-gray-800 transition-all duration-200 flex flex-col justify-center items-center gap-4 group"
         >
-          <div class="flex items-center justify-center w-16 h-16 rounded-full bg-primary-500/20 group-hover:bg-primary-500/30 transition-colors">
-            <Icon name="i-lucide-plus" class="w-8 h-8 text-primary-400 group-hover:text-primary-300" />
-          </div>
-          <span class="text-xl font-medium text-gray-300 group-hover:text-white tracking-wide">
-            Új falfelület
+          <span class="flex flex-row justify-center items-center">
+            <Icon name="i-lucide-plus" class="w-30 h-30 mr-2" />
           </span>
-        </button>
+          <span class="text-3xl tracking-wider"> Új falfelület </span>
+        </UButton>
       </div>
     </div>
 
     <WallSurfaceSummaryAll />
 
-    <div class="flex justify-center pt-4">
-      <UButton
-        color="primary"
-        variant="solid"
-        size="lg"
-        class="px-6 shadow-lg hover:shadow-xl transition-shadow"
-        @click="exportExcel"
-      >
-        <Icon name="i-lucide-file-spreadsheet" class="h-5 w-5 mr-2" />
-        <span>Excel export</span>
+    <div class="flex justify-center">
+      <UButton color="primary" variant="soft" size="md" class="px-4" @click="exportExcel">
+        <Icon name="i-lucide-file-spreadsheet" class="h-5 w-5" />
+        <span class="ml-2">Excel export</span>
       </UButton>
     </div>
   </div>
@@ -103,11 +96,7 @@ function polygonBBoxM(points: Point[], imgW: number, imgH: number, mpp: number):
 function hTypeLabel(p: PolygonSurface): string {
   if (p.type === SurfaceType.WALL_PLINTH) return 'Lábazat';
   if (p.type === SurfaceType.FACADE) return 'Homlokzat';
-  if (p.type === SurfaceType.WINDOW_DOOR) {
-    if (p.subType === WindowSubType.DOOR) return 'Bejárati ajtó';
-    if (p.subType === WindowSubType.TERRACE_DOOR) return 'Teraszajtó';
-    return 'Ablak';
-  }
+  if (p.type === SurfaceType.WINDOW_DOOR) return p.subType === WindowSubType.DOOR ? 'Ajtó' : 'Ablak';
   return 'Ismeretlen';
 }
 
@@ -132,7 +121,7 @@ function exportExcel() {
           idx + 1,
           wallName,
           p.type === SurfaceType.WINDOW_DOOR ? 'Nyílászáró' : hTypeLabel(p),
-          p.type === SurfaceType.WINDOW_DOOR ? (p.subType === WindowSubType.DOOR ? 'Bejárati ajtó' : (p.subType === WindowSubType.TERRACE_DOOR ? 'Teraszajtó' : 'Ablak')) : '',
+          p.type === SurfaceType.WINDOW_DOOR ? (p.subType === WindowSubType.DOOR ? 'Ajtó' : 'Ablak') : '',
           Number(area.toFixed(2)),
           widthM ? Number(widthM.toFixed(2)) : '',
           heightM ? Number(heightM.toFixed(2)) : '',
