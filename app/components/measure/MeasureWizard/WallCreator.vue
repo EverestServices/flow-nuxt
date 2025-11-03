@@ -1,5 +1,5 @@
 <template>
-  <div class="py-4 space-y-6">
+  <div class="pt-12 pb-4 space-y-6">
     <div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       <WallCard
         v-for="(wall, index) in walls"
@@ -15,12 +15,12 @@
       <div class="w-full min-h-[300px]">
         <button
           @click="addWall"
-          class="w-full h-full min-h-[300px] rounded-2xl border-2 border-dashed border-gray-600 hover:border-primary-500 bg-gray-800/50 hover:bg-gray-800 transition-all duration-200 flex flex-col justify-center items-center gap-4 group"
+          class="w-full h-full min-h-[300px] rounded-3xl border-2 border-dashed border-white/40 dark:border-black/30 hover:border-primary-500 bg-white/10 dark:bg-black/10 hover:bg-white/20 dark:hover:bg-black/20 backdrop-blur-md transition-all duration-300 flex flex-col justify-center items-center gap-4 group shadow-lg"
         >
-          <div class="flex items-center justify-center w-16 h-16 rounded-full bg-primary-500/20 group-hover:bg-primary-500/30 transition-colors">
-            <Icon name="i-lucide-plus" class="w-8 h-8 text-primary-400 group-hover:text-primary-300" />
+          <div class="flex items-center justify-center w-16 h-16 rounded-full bg-primary-500/20 group-hover:bg-primary-500/30 transition-colors border border-primary-500/30">
+            <Icon name="i-lucide-plus" class="w-8 h-8 text-primary-600 dark:text-primary-400 group-hover:text-primary-500" />
           </div>
-          <span class="text-xl font-medium text-gray-300 group-hover:text-white tracking-wide">
+          <span class="text-xl font-medium text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white tracking-wide">
             Új falfelület
           </span>
         </button>
@@ -29,17 +29,14 @@
 
     <WallSurfaceSummaryAll />
 
-    <div class="flex justify-center pt-4">
-      <UButton
-        color="primary"
-        variant="solid"
-        size="lg"
-        class="px-6 shadow-lg hover:shadow-xl transition-shadow"
+    <div class="flex justify-center pt-6">
+      <button
         @click="exportExcel"
+        class="px-6 py-3 rounded-full bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/40 backdrop-blur-md transition-all duration-300 flex items-center gap-3 text-primary-700 dark:text-primary-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
       >
-        <Icon name="i-lucide-file-spreadsheet" class="h-5 w-5 mr-2" />
+        <Icon name="i-lucide-file-spreadsheet" class="h-5 w-5" />
         <span>Excel export</span>
-      </UButton>
+      </button>
     </div>
   </div>
 </template>
@@ -47,15 +44,19 @@
 <script setup lang="ts">
 import type { Wall, WallImage, Point, PolygonSurface } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType, WindowSubType } from '@/model/Measure/ArucoWallSurface';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
 import WallCard from './WallCard.vue';
 import WallSurfaceSummaryAll from '../Measure/WallSurfaceSummaryAll.vue';
 import { processFacadeImage } from '@/service/ArucoMeasurments/AlignFacadeService';
- 
+import { useMeasure } from '@/composables/useMeasure';
 
 const store = useWallStore();
 const walls = computed(() => Object.values(store.walls));
+const route = useRoute();
+const supabase = useSupabaseClient();
+const user = useSupabaseUser();
+const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage } = useMeasure();
 
 const generateId = (): string =>
   Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
@@ -69,14 +70,108 @@ const createEmptyImage = (): WallImage => ({
   previewUrl: '',
 });
 
-const addWall = () => {
-  const newWall: Wall = {
-    id: generateId(),
-    name: '',
-    images: [createEmptyImage()],
-    polygons: [],
-  };
-  store.setWall(newWall.id, newWall);
+// Load walls from Supabase on mount
+onMounted(async () => {
+  console.log('🔄 WallCreator mounted, loading walls from Supabase...');
+  const surveyId = String(route.params.surveyId);
+  console.log('Survey ID:', surveyId);
+
+  if (!surveyId) {
+    console.warn('No survey ID found');
+    return;
+  }
+
+  try {
+    console.log('Fetching walls from Supabase...');
+    const dbWalls = await fetchWallsBySurvey(surveyId);
+    console.log('📦 Fetched walls from DB:', dbWalls);
+
+    if (!dbWalls || dbWalls.length === 0) {
+      console.log('No walls found in DB for this survey');
+      return;
+    }
+
+    // Convert Supabase data to Wall format
+    for (const dbWall of dbWalls) {
+      console.log('Processing wall:', dbWall);
+      console.log('Wall images:', dbWall.images);
+
+      const wallImages: WallImage[] = (dbWall.images || []).map((img: any) => {
+        console.log('Processing image:', img);
+        return {
+          imageId: img.id,
+          file: null,
+          fileName: img.original_url?.split('/').pop() || null,
+          uploadStatus: 'success' as const,
+          message: null,
+          previewUrl: img.original_url || '',
+          processedImageUrl: img.processed_url || '',
+          meterPerPixel: img.meter_per_pixel,
+          processedImageWidth: img.processed_image_width,
+          processedImageHeight: img.processed_image_height,
+          referenceStart: img.reference_start ? JSON.parse(img.reference_start) : null,
+          referenceEnd: img.reference_end ? JSON.parse(img.reference_end) : null,
+          referenceLengthCm: img.reference_length_cm,
+        };
+      });
+
+      console.log('Converted wall images:', wallImages);
+
+      const wallPolygons: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => ({
+        id: p.id,
+        type: p.type,
+        subType: p.sub_type,
+        externalShading: p.external_shading,
+        name: p.name,
+        visible: p.visible,
+        closed: p.closed,
+        points: JSON.parse(p.points),
+      }));
+
+      const wall: Wall = {
+        id: dbWall.id,
+        name: dbWall.name,
+        images: wallImages.length > 0 ? wallImages : [createEmptyImage()],
+        polygons: wallPolygons,
+      };
+
+      console.log('✅ Setting wall in store:', wall);
+      store.setWall(wall.id, wall);
+    }
+
+    console.log('✅ All walls loaded successfully! Current store:', store.walls);
+  } catch (err) {
+    console.error('❌ Failed to load walls from Supabase:', err);
+    // Ha nem sikerül betölteni, használjuk a localStorage-ból amit már van
+  }
+});
+
+const addWall = async () => {
+  const surveyId = String(route.params.surveyId);
+
+  try {
+    // Create wall in Supabase DB
+    const dbWall = await createWall(surveyId, '');
+
+    // Create wall in store with Supabase ID
+    const newWall: Wall = {
+      id: dbWall.id,
+      name: '',
+      images: [createEmptyImage()],
+      polygons: [],
+    };
+    store.setWall(newWall.id, newWall);
+  } catch (err) {
+    console.error('Failed to create wall in Supabase:', err);
+    // Fallback to local-only wall
+    const newWall: Wall = {
+      id: generateId(),
+      name: '',
+      images: [createEmptyImage()],
+      polygons: [],
+    };
+    store.setWall(newWall.id, newWall);
+  }
 };
 
 function polygonAreaM2(points: Point[], imgW: number, imgH: number, mpp: number): number {
@@ -177,22 +272,74 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
   image.file = file;
   image.fileName = file.name;
   image.uploadStatus = 'pending';
-  image.message = 'Feldolgozás folyamatban...';
+  image.message = 'Feldolgozás és feltöltés folyamatban...';
   image.previewUrl = URL.createObjectURL(file);
   store.setWall(wall.id, wall);
 
   try {
+    // 1. Feldolgozzuk az API-val (ArUco marker detection)
     const res = await processFacadeImage(file);
 
+    // 2. Feltöltjük Supabase Storage-ba és mentjük a DB-be
+    let uploadedUrl: string | null = null;
+
+    try {
+      // Szerezzük meg a company_id-t
+      const { data: profile, error: profileErr } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('user_id', user.value?.id)
+        .single();
+
+      if (profileErr) {
+        console.error('Profile fetch error:', profileErr);
+        throw profileErr;
+      }
+
+      const companyId = profile?.company_id;
+      console.log('Company ID:', companyId, 'Wall ID:', wall.id, 'Survey ID:', route.params.surveyId);
+
+      if (companyId) {
+        // Feltöltjük az eredeti képet Storage-ba
+        const surveyId = String(route.params.surveyId);
+        console.log('Attempting upload to Supabase Storage...');
+        const originalUpload = await uploadImage(file, companyId, surveyId, wall.id, 'original');
+        console.log('Upload successful! URL:', originalUpload.publicUrl);
+        uploadedUrl = originalUpload.publicUrl;
+
+        // Mentjük a kép metaadatait a DB-be
+        console.log('Inserting wall image metadata...');
+        await insertWallImage(wall.id, {
+          originalUrl: originalUpload.publicUrl,
+          processedUrl: res.image_url,
+          meterPerPixel: res.real_pixel_size,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        console.log('Wall image metadata saved successfully!');
+      } else {
+        console.warn('No company ID found, skipping upload');
+      }
+    } catch (uploadErr: any) {
+      console.error('Supabase Storage upload failed:', uploadErr);
+      console.error('Error details:', JSON.stringify(uploadErr, null, 2));
+      // Nem dobunk hibát, folytatjuk blob URL-lel
+    }
+
+    // Használjuk a Supabase URL-t ha van, különben blob URL
     image.uploadStatus = 'success';
-    image.message = 'A fájl sikeresen feldolgozva.';
-    image.processedImageUrl = res.image_url;
+    image.message = uploadedUrl ? 'A fájl sikeresen feltöltve és feldolgozva.' : 'A fájl sikeresen feldolgozva.';
+    image.processedImageUrl = res.image_url; // API által feldolgozott kép URL
+    image.previewUrl = uploadedUrl || URL.createObjectURL(file); // Supabase URL vagy blob fallback
     image.meterPerPixel = res.real_pixel_size;
     store.setWall(wall.id, wall);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Feldolgozás hiba:', err);
     image.uploadStatus = 'failed';
-    image.message = 'Hiba történt a feldolgozás során. Próbáld újra.';
+    image.message = err?.message || 'Hiba történt a feldolgozás során. Próbáld újra.';
     store.setWall(wall.id, wall);
   }
 };

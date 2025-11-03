@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full rounded-3xl bg-white/50 border border-white/50 dark:border-black/50 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+  <div class="w-full rounded-3xl bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white dark:border-black/10 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:bg-white/30 dark:hover:bg-black/30">
     <!-- KÉP -->
     <div class="relative w-full aspect-video ">
       <!-- Ha van kép és feldolgozva, akkor a képre kattintva is menjen mérésre -->
@@ -25,7 +25,7 @@
       <!-- Ha nincs kép -->
       <label
         v-else
-        class="w-full h-full flex flex-col items-center justify-center text-center text-gray-400 border-2 border-dashed border-gray-600 hover:border-primary-500 cursor-pointer hover:bg-gray-800 transition-colors"
+        class="w-full h-full flex flex-col items-center justify-center text-center text-gray-700 dark:text-gray-300 border-2 border-dashed border-white/50 dark:border-black/30 hover:border-primary-500 dark:hover:border-primary-500 cursor-pointer hover:bg-white/20 dark:hover:bg-black/20 transition-all backdrop-blur-xs"
       >
         <Icon name="i-lucide-camera" class="w-10 h-10 mb-2" />
         <p class="text-sm font-medium">Tölts fel egy képet a falról!</p>
@@ -61,12 +61,12 @@
       <!-- KÉP ÁLLAPOT -->
       <div
         v-if="wall.images[0]?.uploadStatus"
-        class="absolute bottom-2 left-2 text-sm flex items-center gap-2 bg-gray-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg"
+        class="absolute bottom-2 left-2 text-sm flex items-center gap-2 bg-white/20 dark:bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-white/30 dark:border-black/20"
       >
         <UBadge :color="statusColor(wall.images[0]?.uploadStatus)" size="xs" class="capitalize font-semibold">
           {{ wall.images[0]?.uploadStatus }}
         </UBadge>
-        <span class="text-gray-300 text-xs">
+        <span class="text-gray-800 dark:text-gray-300 text-xs font-medium">
           {{ wall.images[0]?.message }}
         </span>
       </div>
@@ -85,20 +85,21 @@
     </div>
 
     <!-- TARTALOM -->
-    <div class="p-4 space-y-3">
+    <div class="p-5 space-y-4">
       <!-- FEJLÉC -->
       <div class="flex justify-between items-center">
-        <div class="flex items-center gap-2 font-medium text-gray-200">
-          <Icon name="i-lucide-brick-wall" class="w-6 h-6 text-primary-400" />
-          <span class="text-lg font-bold">#{{ index + 1 }}</span>
+        <div class="flex items-center gap-3 font-medium">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary-500/20 backdrop-blur-xs border border-primary-500/30">
+            <span class="text-lg font-bold text-primary-600 dark:text-primary-400">#{{ index + 1 }}</span>
+          </div>
 
           <span
             v-if="!editingName"
-            class="inline-flex items-center cursor-pointer font-semibold text-primary-400 border border-primary-500 rounded-lg px-3 py-1.5 bg-gray-700 hover:bg-gray-600 transition-colors"
+            class="inline-flex items-center cursor-pointer font-semibold text-gray-800 dark:text-gray-200 border border-white/40 dark:border-black/20 rounded-full px-4 py-2 bg-white/20 dark:bg-black/20 hover:bg-white/30 dark:hover:bg-black/30 transition-all backdrop-blur-xs shadow-sm"
             @click="startEditing"
           >
             <span class="pr-2 leading-none">{{ wall.name || 'Névtelen fal' }}</span>
-            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0" />
+            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0 opacity-60" />
           </span>
 
           <UInput
@@ -112,15 +113,13 @@
           />
         </div>
 
-        <UButton
+        <button
           v-if="canRemove"
-          variant="ghost"
-          color="error"
-          class="p-1"
           @click="$emit('remove', wall.id)"
+          class="p-2 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 transition-all backdrop-blur-xs text-red-600 dark:text-red-400"
         >
-          <Icon name="i-lucide-trash-2" class="w-7" />
-        </UButton>
+          <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+        </button>
       </div>
 
       <!-- ÖSSZEGZÉS -->
