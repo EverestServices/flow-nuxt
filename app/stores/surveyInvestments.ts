@@ -672,15 +672,12 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         if (checkError) throw checkError
 
         if (existing) {
-          // Update existing answer
           const { error: updateError } = await supabase
             .from('survey_answers')
             .update({ answer: String(value) })
             .eq('id', existing.id)
-
           if (updateError) throw updateError
         } else {
-          // Insert new answer
           const { error: insertError } = await supabase
             .from('survey_answers')
             .insert({
@@ -689,7 +686,6 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
               answer: String(value),
               item_group: null
             })
-
           if (insertError) throw insertError
         }
 
