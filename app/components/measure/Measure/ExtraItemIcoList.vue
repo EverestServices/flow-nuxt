@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-base-100 p-4 rounded-xl shadow-inner mt-3 border border-base-300">
+  <div class="bg-base-100 p-4 rounded-2xl bg-white/80 dark:bg-black/80 shadow-inner mt-3 border border-white dark:border-black">
     <div class="">
       <h3 class="text-lg font-semibold mb-2 text-secondary">Extra tételek</h3>
       <div
