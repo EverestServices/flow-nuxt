@@ -13,6 +13,7 @@
       :contracts="contracts"
       :active-contract-id="activeContract?.id"
       :contract-investments="contractInvestments"
+      :hide-investment-controls="isMeasureRoute"
       @back="handleBack"
       @toggle-investment="handleToggleInvestment"
       @edit-client="handleEditClient"
@@ -90,8 +91,9 @@
       </template>
     </div>
 
-    <!-- Footer -->
+    <!-- Footer (hidden in marker mode) -->
     <SurveyFooter
+      v-if="!isMeasureRoute"
       :active-tab="activeTab"
       :show-property-actions="activeTab === 'property-assessment'"
       :missing-items-count="missingItemsCount"
@@ -214,34 +216,74 @@
       </template>
     </SurveyFooter>
 
-    <!-- Missing Items Floating Icon - Only visible on property-assessment tab -->
-    <button
-      v-if="activeTab === 'property-assessment' && missingItemsCount > 0"
-      class="fixed bottom-3 right-3 w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group z-50"
-      @click="handleShowMissingItems"
-    >
-      <div class="relative">
-        <Icon name="i-lucide-alert-triangle" class="w-6 h-6" />
-        <span class="absolute -top-3 -right-3 bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-          {{ missingItemsCount }}
-        </span>
-      </div>
-    </button>
-
-    <!-- Mode Selector Dropdown - Bottom Left (Only on property-assessment tab) -->
+    <!-- Floating Button Isle - Bottom Right (Only on property-assessment tab) -->
     <div
       v-if="activeTab === 'property-assessment'"
-      class="fixed bottom-3 left-3 z-30"
+      class="mode-selector-container fixed bottom-3 right-3 flex flex-col items-end gap-3 z-50"
     >
-      <UISelect
-        v-model="displayMode"
-        :options="[
-          { label: t('survey.header.graphicMode'), value: 'graphic' },
-          { label: t('survey.header.markerMode'), value: 'marker' }
-        ]"
-        size="md"
-        class="w-48 rounded-full"
-      />
+      <!-- Mode Options - Animated popup above button -->
+      <Transition
+        enter-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-200 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-2"
+      >
+        <div
+          v-if="showModeOptions"
+          class="flex flex-col gap-2"
+        >
+          <button
+            @click="selectMode('graphic')"
+            class="px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+            :class="displayMode === 'graphic'
+              ? 'bg-primary-500 text-white'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+          >
+            <Icon name="i-lucide-image" class="w-4 h-4" />
+            <span class="text-sm font-medium">{{ t('survey.header.graphicMode') }}</span>
+          </button>
+          <button
+            @click="selectMode('marker')"
+            class="px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+            :class="displayMode === 'marker'
+              ? 'bg-primary-500 text-white'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+          >
+            <Icon name="i-lucide-pencil-ruler" class="w-4 h-4" />
+            <span class="text-sm font-medium">{{ t('survey.header.markerMode') }}</span>
+          </button>
+        </div>
+      </Transition>
+
+      <!-- Bottom row of floating buttons -->
+      <div class="flex items-center gap-3">
+        <!-- Mode Selector Button -->
+        <button
+          @click="toggleModeOptions"
+          class="w-12 h-12 rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
+        >
+          <Icon
+            :name="displayMode === 'graphic' ? 'i-lucide-image' : 'i-lucide-pencil-ruler'"
+            class="w-6 h-6"
+          />
+        </button>
+
+        <!-- Missing Items Button -->
+        <button
+          v-if="missingItemsCount > 0"
+          class="w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
+          @click="handleShowMissingItems"
+        >
+          <div class="relative">
+            <Icon name="i-lucide-alert-triangle" class="w-6 h-6" />
+            <span class="absolute -top-3 -right-3 bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {{ missingItemsCount }}
+            </span>
+          </div>
+        </button>
+      </div>
     </div>
 
     <!-- Fotó feltöltési felugró ablak -->
@@ -346,7 +388,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
@@ -485,9 +527,29 @@ const showVisualization = ref<boolean>(true)
 // Display mode - graphic or marker
 const displayMode = ref<'graphic' | 'marker'>('graphic')
 
+// Mode options popup state
+const showModeOptions = ref(false)
+
+// Close mode options when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (showModeOptions.value && !target.closest('.mode-selector-container')) {
+    showModeOptions.value = false
+  }
+}
+
 // Watch displayMode changes and trigger marker mode toggle
 watch(displayMode, (newMode) => {
   handleToggleMarkerMode(newMode === 'marker')
+})
+
+// Add click outside listener when mode options are shown
+watch(showModeOptions, (isOpen) => {
+  if (isOpen) {
+    document.addEventListener('click', handleClickOutside)
+  } else {
+    document.removeEventListener('click', handleClickOutside)
+  }
 })
 
 // Sync displayMode with route
@@ -541,6 +603,11 @@ onMounted(async () => {
   await loadSurveyData()
   // Load all survey-related data with a single optimized query
   await loadSurveyWithRelations(surveyId.value)
+})
+
+// Cleanup event listeners
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 const loadSurveyData = async () => {
@@ -681,6 +748,15 @@ const handleToggleMarkerMode = (enabled: boolean) => {
     // OFF → leave measure if currently there
     if (isMeasureRoute.value) router.push(`/survey/${id}`)
   }
+}
+
+const toggleModeOptions = () => {
+  showModeOptions.value = !showModeOptions.value
+}
+
+const selectMode = (mode: 'graphic' | 'marker') => {
+  displayMode.value = mode
+  showModeOptions.value = false
 }
 
 const handleShowMissingItems = () => {

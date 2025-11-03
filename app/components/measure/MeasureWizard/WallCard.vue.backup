@@ -1,7 +1,7 @@
 <template>
-  <div class="w-full rounded-3xl bg-white/50 border border-white/50 dark:border-black/50 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+  <div class="card bg-base-100 w-full shadow-md border border-base-300 overflow-hidden">
     <!-- KÉP -->
-    <div class="relative w-full aspect-video ">
+    <div class="relative w-full aspect-video bg-base-200">
       <!-- Ha van kép és feldolgozva, akkor a képre kattintva is menjen mérésre -->
       <RouterLink
         v-if="(wall.images[0]?.processedImageUrl || wall.images[0]?.previewUrl) && wall.images[0]?.uploadStatus === 'success'"
@@ -10,7 +10,7 @@
       >
         <img
           :src="wall.images[0].processedImageUrl || wall.images[0].previewUrl"
-          class="object-cover w-full h-64"
+          class="object-cover w-full h-full"
           alt="Falfotó"
         />
       </RouterLink>
@@ -18,17 +18,17 @@
       <img
         v-else-if="wall.images[0]?.processedImageUrl || wall.images[0]?.previewUrl"
         :src="wall.images[0].processedImageUrl || wall.images[0].previewUrl"
-        class="object-cover w-full h-64"
+        class="object-cover w-full h-full"
         alt="Falfotó"
       />
 
       <!-- Ha nincs kép -->
       <label
         v-else
-        class="w-full h-full flex flex-col items-center justify-center text-center text-gray-400 border-2 border-dashed border-gray-600 hover:border-primary-500 cursor-pointer hover:bg-gray-800 transition-colors"
+        class="w-full h-full flex flex-col items-center justify-center text-center text-base-content/70 border-2 border-dashed border-base-content/30 cursor-pointer"
       >
-        <Icon name="i-lucide-camera" class="w-10 h-10 mb-2" />
-        <p class="text-sm font-medium">Tölts fel egy képet a falról!</p>
+        <Icon name="i-lucide-camera" class="w-10 h-10 opacity-40 mb-2" />
+        <p class="text-sm">Tölts fel egy képet a falról!</p>
         <input
           type="file"
           accept="image/*"
@@ -40,12 +40,16 @@
       <!-- STÁTUSZ -->
       <span
         role="alert"
-        class="absolute top-2 left-2 px-3 py-1.5 rounded-lg flex items-center gap-2 backdrop-blur-sm font-medium text-sm shadow-lg"
+        class="absolute top-2 left-2 px-2 py-0.5 border-x-4 flex items-center gap-1 bg-white shadow"
         :class="{
-          'bg-red-500/90 text-white': wallStatus === 'error',
-          'bg-yellow-500/90 text-white': wallStatus === 'pending',
-          'bg-green-500/90 text-white': wallStatus === 'ready',
-          'bg-gray-700/90 text-gray-200': wallStatus === 'unknown',
+          'text-error/90': wallStatus === 'error',
+          'text-warning': wallStatus === 'pending',
+          'text-success': wallStatus === 'ready',
+          'text-base-content': wallStatus === 'unknown',
+          'border-error/70': wallStatus === 'error',
+          'border-warning/80': wallStatus === 'pending',
+          'border-success/80': wallStatus === 'ready',
+          'border-base-content/80': wallStatus === 'unknown',
         }"
       >
         <span class="flex items-center gap-1">
@@ -61,12 +65,12 @@
       <!-- KÉP ÁLLAPOT -->
       <div
         v-if="wall.images[0]?.uploadStatus"
-        class="absolute bottom-2 left-2 text-sm flex items-center gap-2 bg-gray-900/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg"
+        class="absolute bottom-2 left-2 text-sm flex items-center gap-2 bg-white/90 px-2 py-1 rounded shadow-lg"
       >
-        <UBadge :color="statusColor(wall.images[0]?.uploadStatus)" size="xs" class="capitalize font-semibold">
+        <UBadge :color="statusColor(wall.images[0]?.uploadStatus)" size="xs" class="capitalize">
           {{ wall.images[0]?.uploadStatus }}
         </UBadge>
-        <span class="text-gray-300 text-xs">
+        <span class="opacity-70">
           {{ wall.images[0]?.message }}
         </span>
       </div>
@@ -85,16 +89,16 @@
     </div>
 
     <!-- TARTALOM -->
-    <div class="p-4 space-y-3">
+    <div class="p-3 pt-2 space-y-2">
       <!-- FEJLÉC -->
       <div class="flex justify-between items-center">
-        <div class="flex items-center gap-2 font-medium text-gray-200">
-          <Icon name="i-lucide-brick-wall" class="w-6 h-6 text-primary-400" />
+        <div class="flex items-center gap-2 font-medium text-base-content">
+          <Icon name="i-lucide-brick-wall" class="w-7 h-7" />
           <span class="text-lg font-bold">#{{ index + 1 }}</span>
 
           <span
             v-if="!editingName"
-            class="inline-flex items-center cursor-pointer font-semibold text-primary-400 border border-primary-500 rounded-lg px-3 py-1.5 bg-gray-700 hover:bg-gray-600 transition-colors"
+            class="inline-flex items-center cursor-pointer font-semibold text-primary border border-primary rounded-full pl-3 pr-2 py-1 bg-white"
             @click="startEditing"
           >
             <span class="pr-2 leading-none">{{ wall.name || 'Névtelen fal' }}</span>

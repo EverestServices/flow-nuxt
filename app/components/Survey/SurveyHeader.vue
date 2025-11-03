@@ -13,7 +13,7 @@
         />
 
         <!-- Property Assessment specific buttons -->
-        <template v-if="activeTab === 'property-assessment'" >
+        <template v-if="activeTab === 'property-assessment' && !hideInvestmentControls" >
           <!-- Investment Button -->
           <button
             class="inline-flex items-center gap-2 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-l border-white pl-4 pr-4 h-8"
@@ -79,6 +79,42 @@
             </button>
           </div>
         </template>
+
+        <!-- Investment Filter Toggle -->
+        <div v-if="!hideInvestmentControls" class="flex items-center rounded-full gap-1">
+          <!-- Individual Investment Buttons -->
+          <button
+              v-for="investment in selectedInvestments"
+              :key="investment.id"
+              :class="[
+                'px-2 py-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer',
+                activeInvestmentFilter === investment.id
+                  ? 'bg-white dark:bg-gray-600 shadow-sm'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+              ]"
+              @click="handleInvestmentFilterChange(investment.id)"
+          >
+            <UIcon
+                :name="investment.icon"
+                class="w-4 h-4"
+                :class="activeInvestmentFilter === investment.id
+                  ? 'text-gray-900 dark:text-white'
+                  : 'text-gray-600 dark:text-gray-400'"
+            />
+          </button>
+          <!-- All Button -->
+          <button
+              :class="[
+                'px-3 py-1 rounded-md text-sm font-medium transition-colors',
+                activeInvestmentFilter === 'all'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+              ]"
+              @click="handleInvestmentFilterChange('all')"
+          >
+            {{ t('survey.header.all') }}
+          </button>
+        </div>
 
         <!-- Consultation specific buttons -->
         <template v-if="activeTab === 'consultation'">
@@ -163,7 +199,7 @@
       <!-- Right Section -->
       <div class="flex items-center gap-4">
         <!-- Property Assessment specific controls -->
-        <template v-if="showModeToggle">
+        <template v-if="showModeToggle && !hideInvestmentControls">
           <!-- View Mode Toggle -->
           <div class="flex items-center p-1 border-r border-white/20 pr-3 h-9">
             <button
@@ -230,6 +266,7 @@ interface Props {
   activeTab: string
   clientName: string
   showModeToggle?: boolean
+  hideInvestmentControls?: boolean
   selectedInvestments?: Investment[]
   scenarios?: Scenario[]
   activeScenarioId?: string | null
@@ -242,6 +279,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showModeToggle: false,
+  hideInvestmentControls: false,
   selectedInvestments: () => [],
   scenarios: () => [],
   scenarioInvestments: () => ({}),

@@ -17,7 +17,7 @@ const colorClass = computed(() => ({
 
 <template>
   <div
-    class="rounded-md border shadow-sm px-2 py-2 flex flex-col items-center text-center"
+    class="rounded-2xl border-white dark:border-black shadow-sm px-2 py-2 flex flex-col items-center text-center"
     :class="[colorClass.bg, colorClass.border]"
   >
     <!-- Slotos ikon -->
