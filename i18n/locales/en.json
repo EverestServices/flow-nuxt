@@ -16,7 +16,8 @@
     "search": "Search",
     "filter": "Filter",
     "select": "Select",
-    "all": "All"
+    "all": "All",
+    "create": "Create"
   },
   "auth": {
     "login": "Login",
@@ -134,6 +135,9 @@
     "monthlyNaturalGasImpact": "Monthly Natural Gas Impact",
     "totalCO2Reduction": "Total CO₂ Reduction",
     "co2PerYear": "kg CO₂ / year",
+    "kwhPerYear": "kWh / year",
+    "m3PerYear": "m³ / year",
+    "noInvestmentsYet": "No investments in this scenario yet.",
     "years": "years",
     "ftPerYear": "Ft / year",
     "months": {
@@ -182,7 +186,7 @@
       "noClientsForFilter": "No clients found for selected filter",
       "startByCreating": "Start by creating a new energy consultation",
       "unknownClient": "Unknown Client",
-      "start": "Start",
+      "start": "Start Energy Consultation",
       "noDate": "No date",
       "filters": {
         "allTime": "All Time",
@@ -239,6 +243,9 @@
       "roofConfiguration": "Roof Configuration",
       "compatibilityCheck": "Compatibility Check",
       "solarExtraCosts": "Solar Panel System Additional Costs",
+      "facadeInsulationExtraCosts": "Facade Insulation Additional Costs",
+      "atticFloorInsulationExtraCosts": "Attic Floor Insulation Additional Costs",
+      "windowsExtraCosts": "Windows Additional Costs",
       "extraCosts": "Extra Costs",
       "discounts": "Discounts",
       "contractDetails": "Contract Details",
@@ -257,6 +264,10 @@
       "selectedValues": "Selected values",
       "compatibleValues": "Compatible values",
       "compatibilityDisabledWarning": "Compatibility check is disabled. Values may be incompatible."
+    },
+    "selectInvestments": {
+      "titleAi": "Select investments for AI Scenarios",
+      "titleManual": "Create New Scenario"
     },
     "scenarios": {
       "title": "Scenarios",

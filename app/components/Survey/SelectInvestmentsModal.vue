@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpen"
-    :title="mode === 'ai' ? 'Select investments for AI Scenarios' : 'Create New Scenario'"
+    :title="mode === 'ai' ? $t('survey.selectInvestments.titleAi') : $t('survey.selectInvestments.titleManual')"
     size="xl"
     :scrollable="true"
     @close="closeModal"
@@ -10,7 +10,7 @@
       <!-- Investments Grid -->
       <div class="grid grid-cols-3 gap-4">
         <button
-          v-for="investment in selectedInvestments"
+          v-for="investment in filteredInvestments"
           :key="investment.id"
           class="flex flex-col items-center justify-center p-6 rounded-lg border-2 transition-all hover:scale-105"
           :class="isInvestmentSelected(investment.id)
@@ -60,14 +60,14 @@
         variant="outline"
         @click="closeModal"
       >
-        Cancel
+        {{ $t('common.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced
         variant="primary"
         :disabled="!hasSelectedInvestments"
         @click="handleCreate"
       >
-        Create
+        {{ $t('common.create') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>
@@ -106,12 +106,16 @@ const isOpen = ref(false)
 // Local selection state for the modal
 const localSelectedIds = ref<string[]>([])
 
-// Initialize local selections with all investments selected
+// Initialize local selections with all investments selected (excluding is_default)
 const initializeSelections = () => {
-  localSelectedIds.value = props.selectedInvestments.map(inv => inv.id)
+  localSelectedIds.value = filteredInvestments.value.map(inv => inv.id)
 }
 
 // Computed
+const filteredInvestments = computed(() => {
+  return props.selectedInvestments.filter(inv => !inv.is_default)
+})
+
 const hasSelectedInvestments = computed(() => localSelectedIds.value.length > 0)
 
 // Methods

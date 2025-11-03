@@ -16,7 +16,8 @@
     "search": "Keresés",
     "filter": "Szűrés",
     "select": "Választás",
-    "all": "Összes"
+    "all": "Összes",
+    "create": "Létrehozás"
   },
   "auth": {
     "login": "Bejelentkezés",
@@ -134,6 +135,9 @@
     "monthlyNaturalGasImpact": "Havi földgáz hatás",
     "totalCO2Reduction": "Teljes CO₂ csökkentés",
     "co2PerYear": "kg CO₂ / év",
+    "kwhPerYear": "kWh / év",
+    "m3PerYear": "m³ / év",
+    "noInvestmentsYet": "Ebben a forgatókönyvben még nincsenek beruházások.",
     "years": "év",
     "ftPerYear": "Ft / év",
     "months": {
@@ -182,7 +186,7 @@
       "noClientsForFilter": "Nincs ügyfél a kiválasztott szűrőhöz",
       "startByCreating": "Kezdjen egy új energia konzultáció létrehozásával",
       "unknownClient": "Ismeretlen ügyfél",
-      "start": "Indítás",
+      "start": "Energia konzultáció megkezdése",
       "noDate": "Nincs dátum",
       "filters": {
         "allTime": "Összes",
@@ -239,6 +243,9 @@
       "roofConfiguration": "Tető konfiguráció",
       "compatibilityCheck": "Kompatibilitás ellenőrzés",
       "solarExtraCosts": "Napelem rendszer járulékos költségei",
+      "facadeInsulationExtraCosts": "Homlokzati szigetelés járulékos költségei",
+      "atticFloorInsulationExtraCosts": "Padlásfödém szigetelés járulékos költségei",
+      "windowsExtraCosts": "Nyílászárók járulékos költségei",
       "extraCosts": "Extra költségek",
       "discounts": "Kedvezmények",
       "contractDetails": "Szerződés részletei",
@@ -257,6 +264,10 @@
       "selectedValues": "Kiválasztott értékek",
       "compatibleValues": "Kompatibilis értékek",
       "compatibilityDisabledWarning": "A kompatibilitás ellenőrzés ki van kapcsolva. Az értékek nem biztos, hogy kompatibilisek."
+    },
+    "selectInvestments": {
+      "titleAi": "Beruházások kiválasztása AI forgatókönyvekhez",
+      "titleManual": "Új forgatókönyv létrehozása"
     },
     "scenarios": {
       "title": "Forgatókönyvek",

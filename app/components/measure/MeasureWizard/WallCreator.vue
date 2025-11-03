@@ -96,7 +96,11 @@ function polygonBBoxM(points: Point[], imgW: number, imgH: number, mpp: number):
 function hTypeLabel(p: PolygonSurface): string {
   if (p.type === SurfaceType.WALL_PLINTH) return 'Lábazat';
   if (p.type === SurfaceType.FACADE) return 'Homlokzat';
-  if (p.type === SurfaceType.WINDOW_DOOR) return p.subType === WindowSubType.DOOR ? 'Ajtó' : 'Ablak';
+  if (p.type === SurfaceType.WINDOW_DOOR) {
+    if (p.subType === WindowSubType.DOOR) return 'Bejárati ajtó';
+    if (p.subType === WindowSubType.TERRACE_DOOR) return 'Teraszajtó';
+    return 'Ablak';
+  }
   return 'Ismeretlen';
 }
 
@@ -121,7 +125,7 @@ function exportExcel() {
           idx + 1,
           wallName,
           p.type === SurfaceType.WINDOW_DOOR ? 'Nyílászáró' : hTypeLabel(p),
-          p.type === SurfaceType.WINDOW_DOOR ? (p.subType === WindowSubType.DOOR ? 'Ajtó' : 'Ablak') : '',
+          p.type === SurfaceType.WINDOW_DOOR ? (p.subType === WindowSubType.DOOR ? 'Bejárati ajtó' : (p.subType === WindowSubType.TERRACE_DOOR ? 'Teraszajtó' : 'Ablak')) : '',
           Number(area.toFixed(2)),
           widthM ? Number(widthM.toFixed(2)) : '',
           heightM ? Number(heightM.toFixed(2)) : '',
