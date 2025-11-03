@@ -64,9 +64,9 @@
         <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
       </div>
       <UISelect
-        :model-value="modelValue || question.default_value"
-        :options="translatedOptions.map(opt => opt.value)"
-        :placeholder="questionPlaceholder || 'Select an option'"
+        :model-value="modelValue || question.default_value || ''"
+        :options="dropdownOptions"
+        :placeholder="question.is_required ? (questionPlaceholder || 'Select an option') : undefined"
         :required="question.is_required"
         :disabled="isEffectivelyReadonly"
         size="md"
@@ -203,6 +203,26 @@
       </div>
     </div>
 
+    <!-- Calculated Field (read-only card showing computed value) -->
+    <div v-else-if="question.type === 'calculated'">
+      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ questionLabel }}
+            </span>
+            <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+          </div>
+          <span class="text-lg font-semibold text-gray-900 dark:text-white">
+            {{ calculatedValue }}
+            <span v-if="questionUnit" class="text-sm text-gray-500 dark:text-gray-400 ml-1">
+              {{ questionUnit }}
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Fallback for unknown types -->
     <div v-else class="text-sm text-gray-500 dark:text-gray-400">
       Unsupported question type: {{ question.type }}
@@ -269,6 +289,19 @@ const translatedOptions = computed(() => {
   }
 
   return []
+})
+
+// Get options with empty option for non-required dropdowns
+const dropdownOptions = computed(() => {
+  const options = [...translatedOptions.value]
+
+  // Add placeholder as empty option at the beginning if not required
+  if (!props.question.is_required && props.question.type === 'dropdown') {
+    const placeholderText = questionPlaceholder.value || 'Válasszon opciót'
+    options.unshift({ value: '', label: placeholderText })
+  }
+
+  return options
 })
 
 // Create a computed v-model for the toggle
@@ -361,5 +394,63 @@ const isEffectivelyReadonly = computed(() => {
 
   // Otherwise, just use is_readonly
   return true
+})
+
+// Calculate value for calculated fields
+const calculatedValue = computed(() => {
+  if (props.question.type !== 'calculated' || !props.question.options) {
+    return '—'
+  }
+
+  try {
+    const formula = props.question.options as { operation: string; fields: string[]; decimals?: number }
+
+    if (!formula.operation || !formula.fields || formula.fields.length === 0) {
+      return '—'
+    }
+
+    // Get values for all fields in the formula
+    const values: number[] = []
+    for (const fieldName of formula.fields) {
+      const value = store.getResponse(fieldName)
+      const numValue = parseFloat(value)
+
+      if (isNaN(numValue) || value === null || value === undefined || value === '') {
+        return '—'
+      }
+
+      values.push(numValue)
+    }
+
+    // Perform the calculation
+    let result = 0
+    switch (formula.operation) {
+      case 'multiply':
+        result = values.reduce((acc, val) => acc * val, 1)
+        break
+      case 'add':
+        result = values.reduce((acc, val) => acc + val, 0)
+        break
+      case 'subtract':
+        result = values.reduce((acc, val, idx) => idx === 0 ? val : acc - val, 0)
+        break
+      case 'divide':
+        result = values.reduce((acc, val, idx) => {
+          if (idx === 0) return val
+          if (val === 0) return 0 // Prevent division by zero
+          return acc / val
+        }, 0)
+        break
+      default:
+        return '—'
+    }
+
+    // Format with specified decimals (default 2)
+    const decimals = formula.decimals ?? 2
+    return result.toFixed(decimals)
+  } catch (error) {
+    console.error('Error calculating value:', error)
+    return '—'
+  }
 })
 </script>

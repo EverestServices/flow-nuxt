@@ -112,6 +112,8 @@ export const useROICalculations = () => {
 
   /**
    * Get current annual electricity consumption from survey answers
+   * Note: annual_electricity_consumption question was removed from Basic Data
+   * This function now primarily uses household_data or falls back to default
    */
   const getCurrentElectricityConsumption = async (surveyId: string): Promise<number> => {
     // Try to get from household_data first
@@ -128,7 +130,7 @@ export const useROICalculations = () => {
       return isAnnual ? consumption : consumption * 12
     }
 
-    // Otherwise get from survey answers
+    // Otherwise get from survey answers (fallback for legacy data)
     const { data: answers } = await supabase
       .from('survey_answers')
       .select(`
@@ -152,6 +154,8 @@ export const useROICalculations = () => {
 
   /**
    * Get current annual gas consumption from survey answers
+   * Note: annual_gas_consumption question was removed from Basic Data
+   * This function now primarily falls back to default or could use household_data if implemented
    */
   const getCurrentGasConsumption = async (surveyId: string): Promise<number> => {
     const { data: survey } = await supabase
@@ -161,7 +165,7 @@ export const useROICalculations = () => {
       .single()
 
     // Check if consumption is in m³ (gas) - this would need additional field
-    // For now, get from survey answers
+    // For now, get from survey answers (fallback for legacy data)
     const { data: answers } = await supabase
       .from('survey_answers')
       .select(`
