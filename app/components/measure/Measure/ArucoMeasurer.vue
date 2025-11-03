@@ -35,6 +35,20 @@
           />
         </div>
       </div>
+
+      <!-- Orientation selector under header divider -->
+      <div class="mb-3">
+        <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
+        <select
+          :value="wallOrientation || ''"
+          @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
+          class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+        >
+          <option value="">—</option>
+          <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
+        </select>
+      </div>
+
       <PolygonList
         v-if="imageRef"
         :wallId="wall.id"
@@ -230,6 +244,7 @@
 
 <script lang="ts" setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect, unref } from 'vue';
+import { Orientation } from '@/model/Measure/ArucoWallSurface';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
@@ -253,6 +268,21 @@ const wallName = computed<string>({
     }
   },
 });
+const orientationOptions: Orientation[] = [
+  Orientation.N, Orientation.NW, Orientation.W, Orientation.SW,
+  Orientation.S, Orientation.SE, Orientation.E, Orientation.NE,
+];
+const wallOrientation = computed<Orientation | null>({
+  get: () => (wall.value?.orientation ?? null) as Orientation | null,
+  set: (val: Orientation | null) => {
+    if (wall.value) {
+      store.setWall(wall.value.id, { ...wall.value, orientation: val ?? undefined });
+    }
+  },
+});
+const onOrientationChange = (val: string) => {
+  wallOrientation.value = (val ? (val as Orientation) : null);
+};
 const editingWallName = ref<boolean>(false);
 const startEditingWallName = () => {
   editingWallName.value = true;
