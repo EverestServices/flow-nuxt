@@ -277,7 +277,7 @@
         <div
           ref="zoomContainerRef"
           class="overflow-auto w-full h-full"
-          :class="isViewMode && isDragging ? 'cursor-grabbing' : isViewMode ? 'cursor-grab' : ''"
+          :class="isDragging ? 'cursor-grabbing' : (isViewMode || (isSpacePressed && zoomScale > 1.0)) ? 'cursor-grab' : ''"
           style="display: grid; place-items: center;"
           @mousedown="handleContainerMouseDown"
           @mousemove="handleContainerMouseMove"
@@ -470,10 +470,11 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const zoomContainerRef = ref<HTMLDivElement | null>(null);
 const zoomWrapperRef = ref<HTMLDivElement | null>(null);
 
-// Drag to pan in view mode
+// Drag to pan in view mode or draw mode with spacebar
 const isDragging = ref(false);
 const dragStart = ref({ x: 0, y: 0 });
 const scrollStart = ref({ x: 0, y: 0 });
+const isSpacePressed = ref(false);
 const polygons = computed({
   get: () => wall.value?.polygons ?? [],
   set: (newPolygons) => {
@@ -1381,9 +1382,14 @@ const handleMouseUp = () => {
   isDragging.value = false;
 };
 
-// Pan/drag handlers for view mode
+// Pan/drag handlers for view mode or draw mode with spacebar
 const handleContainerMouseDown = (event: MouseEvent) => {
-  if (!isViewMode.value || !zoomContainerRef.value) return;
+  if (!zoomContainerRef.value) return;
+
+  // Allow drag in view mode OR in draw mode with spacebar pressed and zoomed in
+  const canDrag = isViewMode.value || (isSpacePressed.value && zoomScale.value > 1.0);
+  if (!canDrag) return;
+
   // Only start drag if clicking on the container itself (not on buttons or other elements)
   if (event.target !== zoomContainerRef.value && !zoomWrapperRef.value?.contains(event.target as Node)) return;
 
@@ -1658,10 +1664,18 @@ const handleResize = () => {
 };
 
 const onKeydown = (e: KeyboardEvent) => {
-  if (!editPointsMode.value) return;
   const target = e.target as HTMLElement | null;
   const tn = target?.tagName?.toLowerCase() || '';
   const isTyping = tn === 'input' || tn === 'textarea' || (target as any)?.isContentEditable;
+
+  // Handle spacebar for drag mode
+  if (e.code === 'Space' && !isTyping && !isViewMode.value && zoomScale.value > 1.0) {
+    e.preventDefault();
+    isSpacePressed.value = true;
+    return;
+  }
+
+  if (!editPointsMode.value) return;
   if (isTyping) return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (selectedPoints.value.size > 0) {
@@ -1671,15 +1685,26 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 };
 
+const onKeyup = (e: KeyboardEvent) => {
+  if (e.code === 'Space') {
+    isSpacePressed.value = false;
+    if (isDragging.value && !isViewMode.value) {
+      isDragging.value = false;
+    }
+  }
+};
+
 onMounted(() => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('keydown', onKeydown);
+  window.addEventListener('keyup', onKeyup);
   const canvas = canvasRef.value;
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
   window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('keyup', onKeyup);
   const canvas = canvasRef.value;
 });
 
@@ -1696,6 +1721,22 @@ watch(
   },
   { deep: true },
 );
+
+// Auto-hide sidebar when drawing, show when polygon closed
+watch(
+  () => ({ mode: editingMode.value, polygon: currentPolygon.value, pointCount: currentPolygon.value?.points.length }),
+  (state) => {
+    if (state.mode && state.polygon && state.pointCount && state.pointCount > 0) {
+      // Drawing in progress - hide sidebar
+      sidebarVisible.value = false;
+    } else if (state.mode && !state.polygon) {
+      // Polygon closed or cancelled - show sidebar
+      sidebarVisible.value = true;
+    }
+  },
+  { deep: true }
+);
+
 watch(meterPerPixel, () => {
   void nextTick(() => {
     drawAllPolygons();
