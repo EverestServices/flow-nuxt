@@ -1,16 +1,18 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-30
-**Version:** 2.4.0
+**Last Updated:** 2025-11-03
+**Version:** 2.5.0
 **Migrations:**
 - `003_create_survey_system.sql` - Core survey system
 - `031-043_products_system.sql` - Products and components
 - `070_add_investment_id_to_pivot_tables.sql` - Investment-specific tracking
 - `097-101_default_value_source_and_persistence.sql` - Default values and persistence
-- `102_add_hierarchical_survey_pages.sql` - Hierarchical pages (NEW)
-- `104_create_openings_survey_page.sql` - Openings subpage (NEW)
-- `105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages (NEW)
+- `102_add_hierarchical_survey_pages.sql` - Hierarchical pages
+- `104_create_openings_survey_page.sql` - Openings subpage
+- `105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages
+- `136_add_conditional_value_copy_rules.sql` - Conditional value copy rules (NEW)
+- `137_remove_old_default_value_source_refs.sql` - Cleanup old references (NEW)
 
 ---
 
@@ -48,6 +50,7 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Dynamic readonly fields based on source data** (NEW - 2025-10-30)
 - ✅ **Hierarchical survey pages with parent-child relationships** (NEW - 2025-10-30)
 - ✅ **Automated wall metrics calculations for facade insulation** (NEW - 2025-10-30)
+- ✅ **Conditional value copy rules with flexible condition-based copying** (NEW - 2025-11-03)
 
 ---
 
@@ -322,6 +325,54 @@ Wall #0 (parent_item_group: null, item_group: 0)
 Wall #1 (parent_item_group: null, item_group: 1)
   → Opening #0 (parent_item_group: 1, item_group: 0)
 ```
+
+#### **survey_value_copy_rules**
+Conditional rules for copying values between survey questions.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
+| **condition_question_id** | UUID | FK → survey_questions - Question that determines if copy should happen ⭐ |
+| **condition_value** | TEXT | Value that condition must have for copy to occur ⭐ |
+| **source_question_id** | UUID | FK → survey_questions - Question from which to copy ⭐ |
+| **target_question_id** | UUID | FK → survey_questions - Question to which value should be copied ⭐ |
+
+⭐ **NEW - 2025-11-03:** Conditional value copy rules
+
+**Purpose:**
+Enables conditional value copying based on switch/checkbox states. More flexible than `default_value_source_question_id`.
+
+**Example Rules:**
+1. **IF** "Falak mindenhol megegyező típusúak" (switch) = `true`
+   **THEN** Copy "Fal típusa" → All "Fal szerkezete" instances
+
+2. **IF** "Fal vastagsága mindenhol megegyezik" (switch) = `true`
+   **THEN** Copy "Fal vastagsága átlag" → All "Fal vastagsága" instances
+
+3. **IF** "Lábazat típusa mindenhol megegyezik" (switch) = `true`
+   **THEN** Copy "Lábazat típusa átlag" → All "Lábazat típusa" instances
+
+**Behavior:**
+- Trigger fires on any `survey_answers` INSERT/UPDATE
+- Checks if changed question is involved in any copy rule (as condition or source)
+- Evaluates condition: If condition_question's answer equals condition_value
+- If condition met: Copies source_question value to ALL instances of target_question
+- Uses check-then-insert/update pattern (not ON CONFLICT) to avoid constraint issues
+
+**Database Trigger:**
+```sql
+CREATE TRIGGER trigger_sync_conditional_value_copy
+    AFTER INSERT OR UPDATE OF answer ON public.survey_answers
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_conditional_value_copy();
+```
+
+**Relations:**
+- condition_question_id → survey_questions (the switch/condition)
+- source_question_id → survey_questions (the value to copy)
+- target_question_id → survey_questions (destination, usually in allow_multiple page)
 
 #### **document_categories**
 Photo/document categories.
@@ -1327,7 +1378,7 @@ If migrating from previous survey implementation:
 **Documentation:** `/docs/`
 
 **Created by:** Claude Code
-**Last Updated:** 2025-10-21
+**Last Updated:** 2025-11-03
 
 ---
 
@@ -1880,6 +1931,209 @@ const calculateAllWallsMetrics = (pageId: string) => {
 - No manual refresh required
 
 **Component Location:** `/app/components/Survey/SurveyPropertyAssessment.vue:340-382`
+
+---
+
+### Conditional Value Copy Rules (NEW - 2025-11-03)
+
+**Overview:**
+A flexible system for copying values between survey questions based on conditional rules. More powerful than simple `default_value_source_question_id` as it allows condition evaluation before copying.
+
+**Key Difference:**
+- **`default_value_source_question_id`**: ALWAYS copies value (no conditions)
+- **`survey_value_copy_rules`**: Only copies when condition is met (e.g., switch is ON)
+
+#### Database Schema
+
+**survey_value_copy_rules Table:**
+```sql
+CREATE TABLE IF NOT EXISTS public.survey_value_copy_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    condition_question_id UUID NOT NULL,  -- The switch/checkbox
+    condition_value TEXT NOT NULL,        -- Expected value (e.g., "true")
+    source_question_id UUID NOT NULL,     -- Where to copy FROM
+    target_question_id UUID NOT NULL,     // Where to copy TO
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Indexes:**
+- `idx_copy_rules_condition` ON `condition_question_id`
+- `idx_copy_rules_source` ON `source_question_id`
+- `idx_copy_rules_target` ON `target_question_id`
+
+#### Database Trigger
+
+**Function:** `sync_conditional_value_copy()`
+
+**Trigger:** Fires on `INSERT OR UPDATE OF answer ON survey_answers`
+
+**Behavior:**
+1. Detects if changed question is involved in any copy rule (as condition OR source)
+2. For each matching rule:
+   - Get current value of condition_question
+   - Check if value equals condition_value
+   - If YES: Copy source_question value to ALL instances of target_question
+   - If NO: Do nothing
+3. Uses **check-then-insert/update pattern** (NOT `ON CONFLICT`) to avoid unique constraint issues
+
+```sql
+CREATE TRIGGER trigger_sync_conditional_value_copy
+    AFTER INSERT OR UPDATE OF answer ON public.survey_answers
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_conditional_value_copy();
+```
+
+**Important:** Uses explicit SELECT → IF EXISTS → UPDATE ELSE INSERT instead of ON CONFLICT to avoid "42P10" errors.
+
+#### Implemented Rules
+
+**Migration 136** creates three copy rules for facade insulation:
+
+1. **Wall Structure Rule**
+   - **Condition:** "Falak mindenhol megegyező típusúak" (walls_uniform_type) = `true`
+   - **Source:** Alapadatok → "Fal típusa" (exterior_wall_structure)
+   - **Target:** Homlokzati szigetelés - Falak → "Fal szerkezete" (wall_structure)
+   - **Effect:** When switch is ON, all wall instances get the same structure type
+
+2. **Wall Thickness Rule**
+   - **Condition:** "Fal vastagsága mindenhol megegyezik" (wall_thickness_uniform) = `true`
+   - **Source:** Homlokzati szigetelés - Alapadatok → "Fal vastagsága átlag" (wall_thickness_avg)
+   - **Target:** Homlokzati szigetelés - Falak → "Fal vastagsága" (wall_thickness)
+   - **Effect:** When switch is ON, all wall instances get the same thickness
+
+3. **Foundation Type Rule**
+   - **Condition:** "Lábazat típusa mindenhol megegyezik" (foundation_type_uniform) = `true`
+   - **Source:** Homlokzati szigetelés - Alapadatok → "Lábazat típusa átlag" (foundation_type_avg)
+   - **Target:** Homlokzati szigetelés - Falak → "Lábazat típusa" (foundation_type)
+   - **Effect:** When switch is ON, all wall instances get the same foundation type
+
+#### Frontend Implementation
+
+**Location:** `/app/stores/surveyInvestments.ts`
+
+```typescript
+// Called after saveResponse() to refresh frontend state
+async refreshCopiedValuesFromRules(changedQuestionId: string) {
+  if (!this.currentSurveyId) return
+
+  try {
+    const supabase = useSupabaseClient()
+
+    // 1. Query copy rules involving this question
+    const { data: rules } = await supabase
+      .from('survey_value_copy_rules')
+      .select('*')
+      .or(`condition_question_id.eq.${changedQuestionId},source_question_id.eq.${changedQuestionId}`)
+
+    if (!rules || rules.length === 0) return
+
+    // 2. For each rule, check if condition is met
+    for (const rule of rules) {
+      const { data: conditionAnswer } = await supabase
+        .from('survey_answers')
+        .select('answer')
+        .eq('survey_id', this.currentSurveyId)
+        .eq('survey_question_id', rule.condition_question_id)
+        .is('item_group', null)
+        .maybeSingle()
+
+      // 3. Only proceed if condition matches
+      const conditionMet = conditionAnswer?.answer === rule.condition_value
+      if (!conditionMet) continue
+
+      // 4. Find target question info (page, investment)
+      const targetQuestionInfo = this.findQuestionById(rule.target_question_id)
+      if (!targetQuestionInfo) continue
+
+      // 5. Reload all target instance values from database
+      const { data: answers } = await supabase
+        .from('survey_answers')
+        .select('item_group, answer')
+        .eq('survey_id', this.currentSurveyId)
+        .eq('survey_question_id', rule.target_question_id)
+        .not('item_group', 'is', null)
+
+      // 6. Update frontend state with fresh values
+      if (answers && answers.length > 0) {
+        const instances = this.pageInstances[investmentId][pageId].instances
+        for (const answer of answers) {
+          instances[answer.item_group][targetQuestion.name] = answer.answer
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error refreshing copied values from rules:', error)
+  }
+}
+```
+
+**Integration Point:**
+```typescript
+async saveResponse(questionName: string, value: any) {
+  // ... save to database ...
+
+  // Sync dependent questions (old system)
+  await this.syncDependentQuestionsInState(questionId, String(value))
+
+  // Refresh conditional copies (new system)
+  await this.refreshCopiedValuesFromRules(questionId)
+}
+```
+
+#### User Workflow Example
+
+**Scenario:** User sets "Fal típusa" = "Brick" with uniform wall types
+
+1. **User clicks switch:** "Falak mindenhol megegyező típusúak" → ON
+   - `saveResponse('walls_uniform_type', 'true')` called
+   - Database trigger evaluates condition → copies nothing yet (no source value)
+
+2. **User sets wall type:** "Fal típusa" → "Brick"
+   - `saveResponse('exterior_wall_structure', 'Brick')` called
+   - Database trigger evaluates condition → switch is ON
+   - Database trigger copies "Brick" to ALL wall instances
+   - `refreshCopiedValuesFromRules()` called
+   - Frontend state refreshed → UI shows "Brick" in all wall structure fields
+
+3. **User toggles switch OFF:** "Falak mindenhol megegyező típusúak" → OFF
+   - Database trigger stops copying
+   - Existing values remain (no automatic deletion)
+   - User can now manually edit each wall's structure independently
+
+4. **User toggles switch ON again:** "Falak mindenhol megegyező típusúak" → ON
+   - Database trigger resumes copying
+   - ALL wall instances get current "Fal típusa" value (overwrites manual changes)
+
+#### Migration Notes
+
+**Migration 136:** Creates table, trigger, and 3 copy rules
+
+**Migration 137:** Cleans up old `default_value_source_question_id` references
+- Removes `default_value_source_question_id` from target questions now using copy rules
+- Prevents both systems from running simultaneously
+- Ensures only conditional logic applies
+
+**Why separate migrations?**
+- Migration 136 ran first (creates new system)
+- Migration 137 removes old references (prevents conflicts)
+- Questions transitioned from unconditional to conditional copying
+
+#### Advantages Over default_value_source
+
+1. **Conditional Logic:** Copy only when needed (switch ON)
+2. **Bulk Operations:** Update ALL instances in one trigger execution
+3. **Flexible Conditions:** Any question + any value can be a condition
+4. **Multi-Rule Support:** Multiple rules can target same question
+5. **Frontend Sync:** Automatic refresh keeps UI consistent with database
+
+#### Limitations
+
+- **Trigger Overhead:** Evaluates rules on every answer INSERT/UPDATE
+- **No Partial Matching:** Condition must exactly match (no ranges, no patterns)
+- **Overwrite Behavior:** Always overwrites target values when condition is met
+- **No History:** Previous values are lost when rule applies
 
 ---
 
