@@ -137,8 +137,17 @@ export interface ExtraCost {
   id: string
   created_at: string
   updated_at: string
+  investment_id: string | null
   name: string
+  name_translations: any // JSONB
+  persist_name: string | null
+  description: string | null
   price: number | null
+  is_quantity_based: boolean
+  category: string | null
+  info_message_translations: any // JSONB
+  is_default_selected: boolean
+  sequence: number | null
 }
 
 export interface ExtraCostRelation {

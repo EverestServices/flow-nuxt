@@ -231,6 +231,7 @@ onMounted(async () => {
       .select('*')
       .in('investment_id', investmentIds)
       .not('category', 'is', null)
+      .order('sequence', { ascending: true, nullsFirst: false })
       .order('category', { ascending: true })
       .order('name', { ascending: true })
 
