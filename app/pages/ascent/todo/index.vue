@@ -13,7 +13,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.totalTasks') }}</p>
-          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ todos?.length || 0 }}</h3>
+          <UIH3 class="mt-2">{{ todos?.length || 0 }}</UIH3>
         </div>
         <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-list-todo" class="w-8 h-8 text-blue-500" />
@@ -25,7 +25,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.pending') }}</p>
-          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ pendingTodos?.length || 0 }}</h3>
+          <UIH3 class="mt-2">{{ pendingTodos?.length || 0 }}</UIH3>
         </div>
         <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-clock" class="w-8 h-8 text-yellow-600" />
@@ -37,7 +37,7 @@
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.completed') }}</p>
-          <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ completedTodos?.length || 0 }}</h3>
+          <UIH3 class="mt-2">{{ completedTodos?.length || 0 }}</UIH3>
         </div>
         <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
           <Icon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
@@ -375,6 +375,7 @@ import type { Todo } from '~/composables/useTodos'
 import TodoEditModal from '~/components/modals/TodoEditModal.vue'
 import UIBox from '~/components/UI/Box.vue'
 import UIH2 from '~/components/UI/H2.vue'
+import UIH3 from '~/components/UI/H3.vue'
 import UIButtonEnhanced from '~/components/UI/ButtonEnhanced.vue'
 import UIBadge from '~/components/UI/Badge.vue'
 import UIAlert from '~/components/UI/Alert.vue'
