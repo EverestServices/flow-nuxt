@@ -1,7 +1,7 @@
 <template>
   <div class="bg-[#e7eae9] dark:bg-slate-800">
     <!-- User Avatar (fixed top right) - Click to show menu -->
-    <div class="fixed top-2 right-8 z-50 cursor-pointer group" @click="menuOpen = true">
+    <div class="fixed top-2 right-4 z-50 cursor-pointer group" @click="menuOpen = true">
       <div class="relative">
         <img
           :src="userAvatar"
@@ -18,7 +18,7 @@
     </div>
 
     <!-- Main Content - Full Width -->
-    <div class="min-h-screen w-screen pl-8 pr-8">
+    <div class="min-h-screen w-screen px-4">
       <slot></slot>
     </div>
 

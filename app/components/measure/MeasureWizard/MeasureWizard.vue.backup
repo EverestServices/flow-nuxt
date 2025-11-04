@@ -1,25 +1,36 @@
 <template>
-  <div class="min-h-screen">
-    <div class="">
+  <div class="max-w-8xl mx-auto px-4 py-6">
+    <h2 class="text-4xl text-primary font-extralight mb-4 tracking-widest text-center hidden">
+      Falfelületek varázsló
+    </h2>
 
-      <WallProgressStepper />
+    <WallProgressStepper class="mb-4" />
 
-      <!-- A lépés tartalma -->
-      <slot />
+    <!-- A lépés tartalma -->
+    <slot />
 
-      <!-- Navigációs gombok -->
-      <div v-if="!isInMeasure" class="mt-8 flex justify-center">
-        <UButton
-          color="primary"
-          size="lg"
-          class="px-6"
-          :disabled="!isValidToProceed"
-          @click="goToFirstMeasure"
-        >
-          <Icon name="i-lucide-drafting-compass" class="w-5 h-5 mr-2" />
-          Mérés indítása
-        </UButton>
-      </div>
+    <!-- Navigációs gombok -->
+    <div v-if="!isInMeasure" class="mt-6 text-right">
+      <UButton color="primary" class="pl-3" :disabled="!isValidToProceed" @click="goToFirstMeasure">
+        <Icon name="i-lucide-drafting-compass" />
+        Mérés indítása
+      </UButton>
+    </div>
+
+    <div v-else class="mt-6 flex justify-between items-center">
+      <UButton color="neutral" class="pl-2" @click="goToPrevWall">
+        <Icon name="i-lucide-chevron-left" />
+        Előző
+      </UButton>
+      <UButton
+        color="primary"
+        class="ml-auto pr-2"
+        :disabled="!isValidToProceed"
+        @click="goToNextWall"
+      >
+        Következő
+        <Icon name="i-lucide-chevron-right" />
+      </UButton>
     </div>
   </div>
 </template>

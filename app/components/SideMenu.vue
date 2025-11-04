@@ -232,7 +232,7 @@
     </div>
   </Transition>
 
-  <div class="w-14 h-14 bg-white rounded-full top-5 right-8 fixed z-20" @click="menuOpen=true">
+  <div class="w-14 h-14 bg-white rounded-full top-5 right-4 fixed z-20" @click="menuOpen=true">
     <div class="relative">
       <img :src="userAvatar" alt="User Avatar" class="w-14 h-14 rounded-full" />
       <OnlineStatusBadge

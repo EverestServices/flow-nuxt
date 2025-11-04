@@ -53,72 +53,80 @@
     <div
       v-for="(polygon, index) in polygons"
       :key="polygon.id"
-      class="flex items-center flex-wrap gap-2 bg-base-100 p-3 border rounded-xl shadow-sm cursor-pointer"
-      :class="polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300'"
+      class="bg-base-100 px-3 pt-3 border rounded-2xl border-white dark:border-black bg-white/80 dark:bg-black/80 cursor-pointer border-b border-gray-200 dark:border-gray-700"
+      :class="[
+        polygon.id === selectedId ? 'border-primary ring-2 ring-primary/60 bg-primary/5' : 'border-base-300',
+        polygon.type === SurfaceType.WINDOW_DOOR && polygon.subType === WindowSubType.WINDOW ? 'pb-2' : 'pb-3'
+      ]"
       @click="emit('select', polygon.id)"
     >
-      <UButton
-        :color="polygon.visible === false ? 'neutral' : 'primary'"
-        variant="soft"
-        size="sm"
-        class="aspect-square p-2"
-        @click.stop="toggleVisibility(index)"
-        :title="polygon.visible === false ? 'Megjelenítés' : 'Elrejtés'"
-      >
-        <Icon v-if="polygon.visible === false" name="i-lucide-eye-off" class="w-5 h-5" />
-        <Icon v-else name="i-lucide-eye" class="w-5 h-5" />
-      </UButton>
-      <select
-        :value="getSelectValue(polygon)"
-        @change="onTypeOrSubChange(polygon, ($event.target as HTMLSelectElement).value)"
-        class="w-48 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-        @click.stop
-      >
-        <option :value="`type:${SurfaceType.WALL_PLINTH}`">Lábazat</option>
-        <option :value="`type:${SurfaceType.FACADE}`">Homlokzat</option>
-        <option value="sub:door">Bejárati ajtó</option>
-        <option value="sub:window">Ablak</option>
-        <option value="sub:terraceDoor">Teraszajtó</option>
-      </select>
-
-      <div class="flex items-center gap-2 ml-auto">
-        <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
-          {{ formatArea(polygon) }} m²
-        </div>
+      <div class="flex items-center gap-2">
         <UButton
-          @click.stop="deletePolygon(polygon)"
-          variant="ghost"
-          color="error"
+          :color="polygon.visible === false ? 'neutral' : 'primary'"
+          variant="soft"
           size="sm"
-          :title="`Törlés`"
+          class="aspect-square p-2"
+          @click.stop="toggleVisibility(index)"
+          :title="polygon.visible === false ? 'Megjelenítés' : 'Elrejtés'"
         >
-          <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+          <Icon v-if="polygon.visible === false" name="i-lucide-eye-off" class="w-5 h-5" />
+          <Icon v-else name="i-lucide-eye" class="w-5 h-5" />
         </UButton>
+        <select
+          :value="getSelectValue(polygon)"
+          @change="onTypeOrSubChange(polygon, ($event.target as HTMLSelectElement).value)"
+          class="w-48 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+          @click.stop
+        >
+          <option :value="`type:${SurfaceType.WALL_PLINTH}`">Lábazat</option>
+          <option :value="`type:${SurfaceType.FACADE}`">Homlokzat</option>
+          <option value="sub:door">Bejárati ajtó</option>
+          <option value="sub:window">Ablak</option>
+          <option value="sub:terraceDoor">Teraszajtó</option>
+        </select>
+
+        <div class="flex items-center gap-2 ml-auto">
+          <div class="text-sm font-semibold text-right whitespace-nowrap min-w-12">
+            {{ formatArea(polygon) }} m²
+          </div>
+          <UButton
+            @click.stop="deletePolygon(polygon)"
+            variant="ghost"
+            color="error"
+            size="sm"
+            :title="`Törlés`"
+          >
+            <Icon name="i-lucide-trash-2" class="w-5 h-5" />
+          </UButton>
+        </div>
       </div>
 
       <div
         v-if="polygon.type === SurfaceType.WINDOW_DOOR && polygon.subType === WindowSubType.WINDOW"
-        class="w-full order-last flex items-center gap-2 mt-2"
+        class="mt-2 pl-[52px]"
         @click.stop
       >
-        <span class="text-sm text-gray-600">Külső árnyékoló típusa:</span>
         <select
           :value="polygon.externalShading ?? ExternalShadingType.NONE"
           @change="polygon.externalShading = ($event.target as HTMLSelectElement).value as any"
-          class="h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+          class="w-48 h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
         >
-          <option :value="ExternalShadingType.NONE">nincs</option>
-          <option :value="ExternalShadingType.ROLLER_SHUTTER">redőny</option>
-          <option :value="ExternalShadingType.SHUTTERS">zsalugáter</option>
-          <option :value="ExternalShadingType.VENETIAN_BLINDS">zsalúzia</option>
-          <option :value="ExternalShadingType.TEXTILE_ROLLER">textil roló</option>
+          <option :value="ExternalShadingType.NONE">Külső árnyékoló: nincs</option>
+          <option :value="ExternalShadingType.ROLLER_SHUTTER">Külső árnyékoló: redőny</option>
+          <option :value="ExternalShadingType.SHUTTERS">Külső árnyékoló: zsalugáter</option>
+          <option :value="ExternalShadingType.VENETIAN_BLINDS">Külső árnyékoló: zsalúzia</option>
+          <option :value="ExternalShadingType.TEXTILE_ROLLER">Külső árnyékoló: textil roló</option>
         </select>
       </div>
     </div>
     <div class="text-end" v-if="filteredPolygons.length > 0">
-      <UButton @click="confirmRemoveAll()" color="error" variant="soft" size="sm" class="tracking-wider">
-        <Icon name="i-lucide-eraser" class="h-4 w-4" /> Felületek törlése
-      </UButton>
+      <button
+        @click="confirmRemoveAll()"
+        class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 ml-auto"
+      >
+        <Icon name="i-lucide-eraser" class="h-4 w-4" />
+        <span>Felületek törlése</span>
+      </button>
     </div>
   </div>
 </template>

@@ -1,303 +1,61 @@
 <template>
-  <!-- Error Alert - Fixed Position -->
-  <div v-if="error" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md">
-    <UAlert color="error" variant="soft">
-      <template #title>Hiba történt!</template>
-      <template #description>{{ error }}</template>
-    </UAlert>
+  <div class="grid grid-cols-1 gap-4">
+    <div class="max-w-md">
+      <UAlert v-if="error" color="error" variant="soft">
+        <template #title>Hiba történt!</template>
+        <template #description>{{ error }}</template>
+      </UAlert>
+    </div>
   </div>
-  
-  <!-- Zoom Controls - Fixed to Screen Top Center -->
-  <Transition
-    enter-active-class="transition-all duration-500 ease-out"
-    enter-from-class="opacity-0 -translate-y-4"
-    enter-to-class="opacity-100 translate-y-0"
-    leave-active-class="transition-all duration-300 ease-in"
-    leave-from-class="opacity-100 translate-y-0"
-    leave-to-class="opacity-0 -translate-y-4"
-  >
-    <div v-if="imageSrc" class="pointer-events-auto fixed left-1/2 -translate-x-1/2 top-3 z-40 bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 rounded-full backdrop-blur-xs flex h-12 items-center gap-1 px-3 shadow-sm">
-      <button
-        @click="zoomBy(-0.1)"
-        class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-      >
-        <Icon name="i-lucide-zoom-out" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-      <span class="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ (zoomScale * 100).toFixed(0) }}%</span>
-      <button
-        @click="() => gotoZoom(1)"
-        class="px-3 py-1 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors text-sm font-medium text-gray-700 dark:text-gray-300"
-      >
-        100%
-      </button>
-      <button
-        @click="zoomBy(+0.1)"
-        class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-      >
-        <Icon name="i-lucide-zoom-in" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-      <div class="h-6 w-px bg-gray-400/30 mx-1"></div>
-      <span class="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">{{ pixelPerMeterLabel }}</span>
-      <span v-if="referenceSet" class="px-2 py-1 rounded-full bg-green-500/20 text-green-700 dark:text-green-300 text-xs font-semibold">
-        Referencia OK
-      </span>
-      <div class="h-6 w-px bg-gray-400/30 mx-1"></div>
-      <button
-        @click="handleUndo"
-        class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-        title="Visszavonás"
-      >
-        <Icon name="i-lucide-undo-2" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-      <button
-        @click="handleRedo"
-        class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-        title="Mégis"
-      >
-        <Icon name="i-lucide-redo-2" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-      <button
-        @click="resetCurrentEdit"
-        class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-        title="Reset"
-      >
-        <Icon name="i-lucide-rotate-ccw" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-    </div>
-  </Transition>
 
-  <!-- Mode Selector - Fixed to Screen Bottom Center -->
-  <Transition
-    enter-active-class="transition-all duration-500 ease-out"
-    enter-from-class="opacity-0 translate-y-8"
-    enter-to-class="opacity-100 translate-y-0"
-    leave-active-class="transition-all duration-300 ease-in"
-    leave-from-class="opacity-100 translate-y-0"
-    leave-to-class="opacity-0 translate-y-8"
-  >
-    <div v-if="imageSrc" class="pointer-events-auto fixed left-1/2 -translate-x-1/2 bottom-3 z-40 bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 rounded-full backdrop-blur-xs flex h-12 items-center gap-1 px-2 shadow-sm">
-      <button
-        @click="() => setMode('view')"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-          isViewMode
-            ? 'bg-primary-600 text-white shadow-sm'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-        ]"
-      >
-        View
-      </button>
-      <button
-        @click="() => setMode('draw')"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-          editingMode
-            ? 'bg-primary-600 text-white shadow-sm'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-        ]"
-      >
-        Draw Surface
-      </button>
-      <button
-        @click="() => setMode('edit')"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-          editPointsMode
-            ? 'bg-primary-600 text-white shadow-sm'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-        ]"
-      >
-        Edit
-      </button>
-      <button
-        @click="() => setMode('calibrate')"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-          calibrationMode
-            ? 'bg-warning-500 text-white shadow-sm'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-        ]"
-      >
-        Setup Reference
-      </button>
-    </div>
-  </Transition>
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" v-if="imageSrc">
+    <div class="absolute z-30 w-96 bg-white/20 backdrop-blur-xs">
+      <div class="mb-3 pb-3 border-b-1 border-secondary/30 flex items-center justify-between gap-3">
+        <UButton :to="`/survey/${String(route.params.surveyId)}/measure`" color="neutral">
+          <Icon name="i-lucide-layout-list" class="h-5 w-5" />Vissza a falfelületek listára
+        </UButton>
 
-  <!-- Action Buttons - Fixed to Screen Bottom Left (Only in View Mode) -->
-  <Transition
-    enter-active-class="transition-all duration-500 ease-out"
-    enter-from-class="opacity-0 translate-x-8"
-    enter-to-class="opacity-100 translate-x-0"
-    leave-active-class="transition-all duration-300 ease-in"
-    leave-from-class="opacity-100 translate-x-0"
-    leave-to-class="opacity-0 translate-x-8"
-  >
-    <div v-if="imageSrc && isViewMode" class="pointer-events-auto fixed left-3 bottom-3 z-40 bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 rounded-full backdrop-blur-xs flex h-12 items-center gap-1 px-2 shadow-sm">
-      <button
-        @click="navigateToPreviousWall"
-        :disabled="!previousWall"
-        :class="[
-          'px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1',
-          previousWall
-            ? 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-            : 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
-        ]"
-        title="Előző fal"
-      >
-        <Icon name="i-lucide-chevron-left" class="w-4 h-4" />
-        <span>Előző</span>
-      </button>
-
-      <button
-        @click="downloadWithPolygons"
-        class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 shadow-sm"
-        title="Letöltés"
-      >
-        <Icon name="i-lucide-download" class="w-4 h-4" />
-        <span>Letöltés</span>
-      </button>
-
-      <button
-        @click="navigateToNextWall"
-        :disabled="!nextWall"
-        :class="[
-          'px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1',
-          nextWall
-            ? 'text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30'
-            : 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
-        ]"
-        title="Következő fal"
-      >
-        <span>Következő</span>
-        <Icon name="i-lucide-chevron-right" class="w-4 h-4" />
-      </button>
-    </div>
-  </Transition>
-
-  <!-- Main Layout Wrapper: Flex in View Mode, Fixed in Edit Modes -->
-  <div
-    v-if="imageSrc"
-    :class="isViewMode ? 'flex h-screen w-full gap-6' : 'fixed inset-0'"
-  >
-    <!-- Sidebar Open Button - Only visible when sidebar is closed in Edit modes -->
-    <div
-      v-if="!isViewMode && !sidebarVisible"
-      class="fixed left-2 top-1/2 -translate-y-1/2 z-50 pointer-events-auto"
-    >
-      <button
-        @click="sidebarVisible = true"
-        class="bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 backdrop-blur-xs rounded-full p-2.5 hover:bg-white/30 dark:hover:bg-black/30 transition-colors shadow-lg"
-      >
-        <Icon name="i-lucide-panel-left-open" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
-    </div>
-
-    <!-- Sidebar: Normal in View Mode, Floating in Edit Modes -->
-    <Transition
-      enter-active-class="transition-transform duration-300 ease-out"
-      enter-from-class="-translate-x-full"
-      enter-to-class="translate-x-0"
-      leave-active-class="transition-transform duration-300 ease-in"
-      leave-from-class="translate-x-0"
-      leave-to-class="-translate-x-full"
-    >
-      <div
-        v-if="sidebarVisible"
-        :class="[
-          'p-4 overflow-y-auto',
-          isViewMode
-            ? 'flex-shrink-0 w-[400px] h-[calc(100vh-140px)] my-auto bg-white dark:bg-black/20 border border-gray-200 dark:border-gray-800 rounded-3xl'
-            : 'absolute left-3 top-[68px] bottom-[68px] z-30 w-96 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 dark:border-black/10'
-        ]"
-      >
-        <!-- Header -->
-        <div class="mb-4 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2">
-            <button
-              @click="router.push(`/survey/${String(route.params.surveyId)}/measure`)"
-              class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-            >
-              <Icon name="i-lucide-layout-list" class="h-5 w-5 text-gray-700 dark:text-gray-300" />
-            </button>
-
-            <!-- Close Button - Only in Edit modes -->
-            <button
-              v-if="!isViewMode"
-              @click="sidebarVisible = false"
-              class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
-            >
-              <Icon name="i-lucide-panel-left-close" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
-
-          <div class="flex-1 min-w-0">
-            <div
-              v-if="!editingWallName"
-              @click="startEditingWallName"
-              class="flex items-center gap-2 px-3 py-2 rounded-full bg-white/20 dark:bg-black/20 border border-white/40 dark:border-black/10 hover:bg-white/30 dark:hover:bg-black/30 transition-all duration-200 cursor-pointer backdrop-blur-xs"
-            >
-              <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ wallName || 'Névtelen fal' }}</span>
-              <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400" />
-            </div>
-            <input
-              v-else
-              v-model="wallName"
-              type="text"
-              class="w-full px-3 py-2 rounded-full bg-white/20 dark:bg-black/20 border border-white/40 dark:border-black/10 text-sm font-medium text-gray-800 dark:text-gray-200 backdrop-blur-xs focus:outline-none focus:ring-2 focus:ring-primary-500/50"
-              @blur="stopEditingWallName"
-              @keyup.enter="stopEditingWallName"
-            />
-          </div>
-        </div>
-
-        <!-- Divider -->
-        <div class="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent mb-4"></div>
-
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
-          <select
-            :value="wallOrientation || ''"
-            @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+        <div class="ml-2">
+          <span
+            v-if="!editingWallName"
+            class="inline-flex items-center cursor-pointer font-semibold text-primary border border-primary rounded-full pl-3 pr-2 py-1 bg-white"
+            @click="startEditingWallName"
           >
-            <option value="">—</option>
-            <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
+            <span class="pr-2 leading-none">{{ wallName || 'Névtelen fal' }}</span>
+            <Icon name="i-lucide-pencil" class="h-4 w-4 shrink-0" />
+          </span>
+          <UInput
+            v-else
+            v-model="wallName"
+            type="text"
+            size="sm"
+            class="h-7 w-[12rem]"
+            @blur="stopEditingWallName"
+            @keyup.enter="stopEditingWallName"
+          />
         </div>
-
-        <PolygonList
-          v-if="imageRef"
-          :wallId="wall.id"
-          v-model:polygons="polygons"
-          :meterPerPixel="meterPerPixel"
-          :image-natural-height="imageRef.naturalHeight"
-          :image-natural-width="imageRef.naturalWidth"
-          :selected-id="selectedPolygonId ?? ''"
-          @removePoligon="removePoligonsById"
-          @removeAllPoligon="removeAllPoligon"
-          @updateVisibility="onUpdateVisibility"
-          @select="onListSelect"
-        />
-
-        <ExtraItemIcoList />
       </div>
-    </Transition>
+      <PolygonList
+        v-if="imageRef"
+        :wallId="wall.id"
+        v-model:polygons="polygons"
+        :meterPerPixel="meterPerPixel"
+        :image-natural-height="imageRef.naturalHeight"
+        :image-natural-width="imageRef.naturalWidth"
+        :selected-id="selectedPolygonId ?? ''"
+        @removePoligon="removePoligonsById"
+        @removeAllPoligon="removeAllPoligon"
+        @updateVisibility="onUpdateVisibility"
+        @select="onListSelect"
+      />
 
-    <!-- Image Container: Flex-1 in View Mode, Full in Edit Modes -->
-    <div :class="isViewMode ? 'flex-1 min-w-0 relative' : 'w-full h-full'">
-      <div class="w-full h-full">
-        <div
-          ref="zoomContainerRef"
-          class="overflow-auto w-full h-full"
-          :class="isDragging ? 'cursor-grabbing' : (isViewMode || (isSpacePressed && zoomScale > 1.0)) ? 'cursor-grab' : ''"
-          style="display: grid; place-items: center;"
-          @mousedown="handleContainerMouseDown"
-          @mousemove="handleContainerMouseMove"
-          @mouseup="handleContainerMouseUp"
-          @mouseleave="handleContainerMouseUp"
-        >
+      <ExtraItemIcoList />
+    </div>
+    <div class="col-span-4">
+      <div class="relative">
+        <div ref="zoomContainerRef" class="overflow-auto border rounded-3xl" style="height: 70vh">
           <div
-            class="relative"
+            class="relative inline-block"
             ref="zoomWrapperRef"
             :style="{
               width: `${imageWidth * zoomScale}px`,
@@ -308,10 +66,7 @@
               :src="imageSrc"
               ref="imageRef"
               @load="onImageLoad"
-              :class="[
-                'select-none pointer-events-none w-full h-full',
-                isViewMode ? 'rounded-3xl' : ''
-              ]"
+              class="select-none pointer-events-none w-full h-full"
             />
             <canvas
               ref="canvasRef"
@@ -353,39 +108,111 @@
         </div>
         <!-- Absolute overlays pinned to outer wrapper (not scrolling with content) -->
         <div class="pointer-events-none absolute inset-0 z-20">
+          <div class="pointer-events-auto absolute right-2 top-2 flex items-center gap-2">
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="zoomBy(-0.1)">
+              <Icon name="i-lucide-zoom-out" class="w-5 h-5" />
+            </UButton>
+            <UBadge color="neutral" size="sm">{{ (zoomScale * 100).toFixed(0) }}%</UBadge>
+            <UButton size="md" color="neutral" variant="soft" class="px-3 py-2 rounded-full" @click="() => gotoZoom(1)">
+              100%
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="zoomBy(+0.1)">
+              <Icon name="i-lucide-zoom-in" class="w-5 h-5" />
+            </UButton>
+            <UBadge color="neutral" size="sm">{{ pixelPerMeterLabel }}</UBadge>
+            <UBadge v-if="referenceSet" color="success" size="sm" class="px-2 py-1">
+              Referenciapont beállítva
+            </UBadge>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleUndo">
+              <Icon name="i-lucide-undo-2" class="w-5 h-5" />
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="handleRedo">
+              <Icon name="i-lucide-redo-2" class="w-5 h-5" />
+            </UButton>
+            <UButton size="md" color="neutral" variant="soft" class="p-2 rounded-full" @click="resetCurrentEdit">
+              <Icon name="i-lucide-rotate-ccw" class="w-5 h-5" />
+            </UButton>
+          </div>
 
+          <div class="pointer-events-auto absolute left-1/2 -translate-x-1/2 bottom-2 bg-base-100/80 backdrop-blur rounded-full shadow px-2 py-1 flex items-center gap-1">
+            <UButton
+              size="md"
+              :color="!editingMode && !calibrationMode && !editPointsMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('view')"
+            >
+              View
+            </UButton>
+            <UButton
+              size="md"
+              :color="editingMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('draw')"
+            >
+              Draw Surface
+            </UButton>
+            <UButton
+              size="md"
+              :color="editPointsMode ? 'primary' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('edit')"
+            >
+              Edit
+            </UButton>
+            <UButton
+              size="md"
+              :color="calibrationMode ? 'warning' : 'neutral'"
+              variant="soft"
+              @click="() => setMode('calibrate')"
+            >
+              Setup Reference
+            </UButton>
+          </div>
 
-          <!-- Bottom-left: Reference controls (only in calibration mode) -->
+          <!-- Bottom-left: Download composed image with polygons -->
+          <div class="pointer-events-auto absolute left-2 bottom-2">
+            <UButton size="md" color="primary" variant="solid" class="px-3 py-2 rounded-full" @click="downloadWithPolygons">
+              <Icon name="i-lucide-download" class="w-5 h-5" /> Letöltés
+            </UButton>
+          </div>
+
+          <!-- Top-left: Reference controls (only in calibration mode) -->
           <div
             v-if="calibrationMode"
-            class="pointer-events-auto absolute left-3 bottom-3 flex items-center gap-1 bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 rounded-full backdrop-blur-xs h-12 px-2 shadow-sm"
+            class="pointer-events-auto absolute left-2 top-2 flex items-center gap-1 bg-base-100/80 backdrop-blur rounded-full shadow px-2 py-1"
           >
-            <button
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
               @click="onStartNewReference"
-              class="px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30"
               title="Új referencia hozzáadása"
             >
               <Icon name="i-lucide-wand-2" class="w-4 h-4" />
-              <span class="hidden sm:inline">Új hozzáadása</span>
-            </button>
-            <button
+              <span class="ml-1 hidden sm:inline">Új hozzáadása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="neutral"
               :disabled="!referenceSet"
               @click="onChangeReferenceLength"
-              class="px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 hover:bg-white/30 dark:hover:bg-black/30"
               title="Referencia méret módosítása"
             >
               <Icon name="i-lucide-ruler" class="w-4 h-4" />
-              <span class="hidden sm:inline">Méret módosítása</span>
-            </button>
-            <button
+              <span class="ml-1 hidden sm:inline">Méret módosítása</span>
+            </UButton>
+            <UButton
+              size="md"
+              variant="soft"
+              color="error"
               :disabled="!referenceSet"
               @click="onClearReference"
-              class="px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-red-600 dark:text-red-400 hover:bg-red-500/20"
               title="Referencia törlése"
             >
               <Icon name="i-lucide-trash-2" class="w-4 h-4" />
-              <span class="hidden sm:inline">Törlés</span>
-            </button>
+              <span class="ml-1 hidden sm:inline">Törlés</span>
+            </UButton>
           </div>
 
           <!-- Calibration helper (only message, no buttons) -->
@@ -403,16 +230,14 @@
 
 <script lang="ts" setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect, unref } from 'vue';
-import { Orientation } from '@/model/Measure/ArucoWallSurface';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
 import { useWallStore, clonePolygonData } from '@/stores/WallStore';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 const store = useWallStore();
 const route = useRoute();
-const router = useRouter();
 const wallId = computed(() => String(route.params.wallId));
 const wall = computed<Wall>(() => {
   const mapRaw = unref(store.walls) as Record<string, Wall> | undefined;
@@ -420,32 +245,6 @@ const wall = computed<Wall>(() => {
   const w = map[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
-
-// Wall navigation
-const allWalls = computed(() => Object.values(store.walls));
-const currentWallIndex = computed(() =>
-  allWalls.value.findIndex((w) => w.id === wallId.value)
-);
-const previousWall = computed(() => {
-  const index = currentWallIndex.value;
-  return index > 0 ? allWalls.value[index - 1] : null;
-});
-const nextWall = computed(() => {
-  const index = currentWallIndex.value;
-  return index >= 0 && index < allWalls.value.length - 1 ? allWalls.value[index + 1] : null;
-});
-
-const navigateToPreviousWall = () => {
-  if (previousWall.value) {
-    router.push(`/survey/${String(route.params.surveyId)}/measure/${previousWall.value.id}`);
-  }
-};
-
-const navigateToNextWall = () => {
-  if (nextWall.value) {
-    router.push(`/survey/${String(route.params.surveyId)}/measure/${nextWall.value.id}`);
-  }
-};
 const wallName = computed<string>({
   get: () => wall.value?.name ?? '',
   set: (val: string) => {
@@ -454,21 +253,6 @@ const wallName = computed<string>({
     }
   },
 });
-const orientationOptions: Orientation[] = [
-  Orientation.N, Orientation.NW, Orientation.W, Orientation.SW,
-  Orientation.S, Orientation.SE, Orientation.E, Orientation.NE,
-];
-const wallOrientation = computed<Orientation | null>({
-  get: () => (wall.value?.orientation ?? null) as Orientation | null,
-  set: (val: Orientation | null) => {
-    if (wall.value) {
-      store.setWall(wall.value.id, { ...wall.value, orientation: val ?? undefined });
-    }
-  },
-});
-const onOrientationChange = (val: string) => {
-  wallOrientation.value = (val ? (val as Orientation) : null);
-};
 const editingWallName = ref<boolean>(false);
 const startEditingWallName = () => {
   editingWallName.value = true;
@@ -497,12 +281,6 @@ const imageRef = ref<HTMLImageElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const zoomContainerRef = ref<HTMLDivElement | null>(null);
 const zoomWrapperRef = ref<HTMLDivElement | null>(null);
-
-// Drag to pan in view mode or draw mode with spacebar
-const isDragging = ref(false);
-const dragStart = ref({ x: 0, y: 0 });
-const scrollStart = ref({ x: 0, y: 0 });
-const isSpacePressed = ref(false);
 const polygons = computed({
   get: () => wall.value?.polygons ?? [],
   set: (newPolygons) => {
@@ -549,12 +327,6 @@ const highlightRef = ref<boolean>(false);
 const showSavedReference = ref<boolean>(false);
 const allowRefOverride = ref<boolean>(false);
 
-// Computed property to check if we're in view mode (not editing)
-const isViewMode = computed(() => !editingMode.value && !editPointsMode.value && !calibrationMode.value);
-
-// Sidebar visibility toggle
-const sidebarVisible = ref(true);
-
 const referenceSet = computed(() => Boolean(firstImage.value?.referenceStart && firstImage.value?.referenceEnd));
 
 const calibrationPx = computed(() => {
@@ -579,17 +351,14 @@ const calibrationInfoText = computed(() => {
 });
 
 const calibrationMidOverlay = computed(() => {
-  if (!calibrationMode.value || !calibrationStart.value || !imageRef.value || !canvasRef.value) return null as { x: number; y: number } | null;
+  if (!calibrationMode.value || !calibrationStart.value || !imageRef.value) return null as { x: number; y: number } | null;
   const endNorm = calibrationEnd.value ?? mousePos.value;
   if (!endNorm) return null as { x: number; y: number } | null;
   const p1 = denormalizePoint(calibrationStart.value);
   const p2 = denormalizePoint(endNorm);
   const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-  // Use canvas position which is always aligned with the image
-  const canvasRect = canvasRef.value.getBoundingClientRect();
-  const wrapperRect = zoomWrapperRef.value?.getBoundingClientRect();
-  if (!wrapperRect) return { x: mid.x, y: mid.y };
-  return { x: canvasRect.left - wrapperRect.left + mid.x, y: canvasRect.top - wrapperRect.top + mid.y };
+  // shift by the image's offset inside the wrapper to align with canvas positioning
+  return { x: imageRef.value.offsetLeft + mid.x, y: imageRef.value.offsetTop + mid.y };
 });
 
 // Ensure saved reference always applies: compute meterPerPixel from stored reference points + length
@@ -607,7 +376,7 @@ const recalcMeterPerPixelFromReference = (): boolean => {
 };
 
 const singlePointOverlay = computed(() => {
-  if (!editPointsMode.value || selectedPoints.value.size !== 1 || !imageRef.value || !canvasRef.value) return null as { x: number; y: number } | null;
+  if (!editPointsMode.value || selectedPoints.value.size !== 1 || !imageRef.value) return null as { x: number; y: number } | null;
   const firstKey = Array.from(selectedPoints.value)[0];
   if (!firstKey) return null as { x: number; y: number } | null;
   const parts = firstKey.split(':');
@@ -619,13 +388,8 @@ const singlePointOverlay = computed(() => {
   if (!poly || !pt) return null as { x: number; y: number } | null;
   const p = denormalizePoint(pt);
   const wrapper = zoomWrapperRef.value;
-  const canvasRect = canvasRef.value.getBoundingClientRect();
-  const wrapperRect = wrapper?.getBoundingClientRect();
-  if (!wrapperRect) return { x: p.x + 16, y: p.y - 16 };
-  const offsetX = canvasRect.left - wrapperRect.left;
-  const offsetY = canvasRect.top - wrapperRect.top;
-  let x = offsetX + p.x + 16; // offset right
-  let y = offsetY + p.y - 16; // offset up
+  let x = imageRef.value.offsetLeft + p.x + 16; // offset right
+  let y = imageRef.value.offsetTop + p.y - 16; // offset up
   if (wrapper) {
     const maxX = wrapper.clientWidth - 8;
     const maxY = wrapper.clientHeight - 8;
@@ -746,36 +510,6 @@ const isPointInPolygon = (pt: Point, points: Point[]): boolean => {
     if (intersect) inside = !inside;
   }
   return inside;
-};
-
-// Hit-test for polygon edges (topmost first). Returns the segment endpoints if within threshold.
-const findEdgeUnderPoint = (
-  pt: Point,
-): { polyId: string; index: number; a: Point; b: Point } | null => {
-  const list = polygons.value as PolygonSurface[];
-  let best: { polyId: string; index: number; a: Point; b: Point; dist: number } | null = null;
-  for (let pIdx = list.length - 1; pIdx >= 0; pIdx--) {
-    const poly = list[pIdx];
-    if (!poly || poly.visible === false || !poly.closed || poly.points.length < 2) continue;
-    const n = poly.points.length;
-    let localBest: { polyId: string; index: number; a: Point; b: Point; dist: number } | null = null;
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      const a = poly.points[i]!;
-      const b = poly.points[j]!;
-      const { dist } = pointSegmentDistance(pt, a, b);
-      if (!localBest || dist < localBest.dist) localBest = { polyId: poly.id, index: i, a, b, dist };
-    }
-    if (localBest && localBest.dist < 0.02) {
-      // Topmost polygon hit found
-      return { polyId: localBest.polyId, index: localBest.index, a: localBest.a, b: localBest.b };
-    }
-    if (!best || (localBest && localBest.dist < best.dist)) best = localBest;
-  }
-  if (best && best.dist < 0.02) {
-    return { polyId: best.polyId, index: best.index, a: best.a, b: best.b };
-  }
-  return null;
 };
 
 const calculatePolygonArea = (
@@ -1194,8 +928,6 @@ const setMode = (mode: Mode) => {
   recalcMeterPerPixelFromReference();
 
   void nextTick(() => {
-    // Recalculate optimal zoom for the new mode
-    calculateOptimalZoom();
     drawAllPolygons();
   });
 };
@@ -1213,16 +945,9 @@ const togglePolygonEditing = () => {
 const handleCanvasClick = (event: MouseEvent) => {
   const clickPoint = normalizePoint(getCanvasCoords(event));
 
-  // 1) Calibration mode: allow cloning an existing polygon edge as reference
+  // 1) Calibration mode: only allow drawing if explicitly started (override allowed)
   if (calibrationMode.value) {
     if (referenceSet.value && !allowRefOverride.value) return;
-    const hit = findEdgeUnderPoint(clickPoint);
-    if (hit) {
-      calibrationStart.value = { x: hit.a.x, y: hit.a.y };
-      calibrationEnd.value = { x: hit.b.x, y: hit.b.y };
-      drawAllPolygons();
-      return;
-    }
     if (!calibrationStart.value) {
       calibrationStart.value = clickPoint;
       drawAllPolygons();
@@ -1407,41 +1132,6 @@ const handleMouseMove = (event: MouseEvent) => {
 const handleMouseUp = () => {
   draggingPoint.value = null;
   dragSnapshot.value = null;
-  isDragging.value = false;
-};
-
-// Pan/drag handlers for view mode or draw mode with spacebar
-const handleContainerMouseDown = (event: MouseEvent) => {
-  if (!zoomContainerRef.value) return;
-
-  // Allow drag in view mode OR in draw mode with spacebar pressed and zoomed in
-  const canDrag = isViewMode.value || (isSpacePressed.value && zoomScale.value > 1.0);
-  if (!canDrag) return;
-
-  // Only start drag if clicking on the container itself (not on buttons or other elements)
-  if (event.target !== zoomContainerRef.value && !zoomWrapperRef.value?.contains(event.target as Node)) return;
-
-  isDragging.value = true;
-  dragStart.value = { x: event.clientX, y: event.clientY };
-  scrollStart.value = {
-    x: zoomContainerRef.value.scrollLeft,
-    y: zoomContainerRef.value.scrollTop,
-  };
-  event.preventDefault();
-};
-
-const handleContainerMouseMove = (event: MouseEvent) => {
-  if (!isDragging.value || !zoomContainerRef.value) return;
-
-  const dx = event.clientX - dragStart.value.x;
-  const dy = event.clientY - dragStart.value.y;
-
-  zoomContainerRef.value.scrollLeft = scrollStart.value.x - dx;
-  zoomContainerRef.value.scrollTop = scrollStart.value.y - dy;
-};
-
-const handleContainerMouseUp = () => {
-  isDragging.value = false;
 };
 
 const highlightStoredReference = () => {
@@ -1637,10 +1327,11 @@ const downloadWithPolygons = () => {
 };
 const imageWidth = ref(0);
 const imageHeight = ref(0);
-
-// Calculate optimal zoom scale based on current mode
-const calculateOptimalZoom = () => {
+const onImageLoad = () => {
   if (!imageRef.value || !zoomContainerRef.value) return;
+
+  imageWidth.value = imageRef.value.naturalWidth;
+  imageHeight.value = imageRef.value.naturalHeight;
 
   const container = zoomContainerRef.value;
   const availableW = container.clientWidth;
@@ -1649,23 +1340,8 @@ const calculateOptimalZoom = () => {
   const scaleX = availableW / imageWidth.value;
   const scaleY = availableH / imageHeight.value;
 
-  // In View mode: fit image inside container (contain)
-  // In Edit modes: fill container with image (cover)
-  if (isViewMode.value) {
-    zoomScale.value = Math.min(scaleX, scaleY);
-  } else {
-    zoomScale.value = Math.max(scaleX, scaleY);
-  }
-};
-
-const onImageLoad = () => {
-  if (!imageRef.value || !zoomContainerRef.value) return;
-
-  imageWidth.value = imageRef.value.naturalWidth;
-  imageHeight.value = imageRef.value.naturalHeight;
-
-  // Set initial zoom
-  calculateOptimalZoom();
+  // Azt a scale-t válasszuk, amelyik **teljesen belefér** (kisebb arány)
+  zoomScale.value = Math.min(scaleX, scaleY);
 
   // ⬇️ Itt update-eljük a store-ban az image-et is
   if (wall.value && wall.value.images && wall.value.images.length > 0) {
@@ -1692,18 +1368,10 @@ const handleResize = () => {
 };
 
 const onKeydown = (e: KeyboardEvent) => {
+  if (!editPointsMode.value) return;
   const target = e.target as HTMLElement | null;
   const tn = target?.tagName?.toLowerCase() || '';
   const isTyping = tn === 'input' || tn === 'textarea' || (target as any)?.isContentEditable;
-
-  // Handle spacebar for drag mode
-  if (e.code === 'Space' && !isTyping && !isViewMode.value && zoomScale.value > 1.0) {
-    e.preventDefault();
-    isSpacePressed.value = true;
-    return;
-  }
-
-  if (!editPointsMode.value) return;
   if (isTyping) return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (selectedPoints.value.size > 0) {
@@ -1713,26 +1381,15 @@ const onKeydown = (e: KeyboardEvent) => {
   }
 };
 
-const onKeyup = (e: KeyboardEvent) => {
-  if (e.code === 'Space') {
-    isSpacePressed.value = false;
-    if (isDragging.value && !isViewMode.value) {
-      isDragging.value = false;
-    }
-  }
-};
-
 onMounted(() => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('keydown', onKeydown);
-  window.addEventListener('keyup', onKeyup);
   const canvas = canvasRef.value;
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
   window.removeEventListener('keydown', onKeydown);
-  window.removeEventListener('keyup', onKeyup);
   const canvas = canvasRef.value;
 });
 
@@ -1749,22 +1406,6 @@ watch(
   },
   { deep: true },
 );
-
-// Auto-hide sidebar when drawing, show when polygon closed
-watch(
-  () => ({ mode: editingMode.value, polygon: currentPolygon.value, pointCount: currentPolygon.value?.points.length }),
-  (state) => {
-    if (state.mode && state.polygon && state.pointCount && state.pointCount > 0) {
-      // Drawing in progress - hide sidebar
-      sidebarVisible.value = false;
-    } else if (state.mode && !state.polygon) {
-      // Polygon closed or cancelled - show sidebar
-      sidebarVisible.value = true;
-    }
-  },
-  { deep: true }
-);
-
 watch(meterPerPixel, () => {
   void nextTick(() => {
     drawAllPolygons();
