@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS public.measure_walls (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   survey_id UUID NOT NULL REFERENCES public.surveys(id) ON DELETE CASCADE,
-  name TEXT
+  name TEXT,
+  orientation TEXT
 );
 
 CREATE TABLE IF NOT EXISTS public.measure_wall_images (
