@@ -467,6 +467,25 @@
       "noComponentsAdded": "Még nincsenek komponensek hozzáadva. Kattints a \"Komponens hozzáadása\" gombra komponensek hozzáadásához."
     }
   },
+  "wizard": {
+    "list": {
+      "title": "Ajánlat/Szerződés varázsló",
+      "offerForNewClient": "Ajánlat új ügyfél részére",
+      "contractForNewClient": "Szerződés új ügyfél részére",
+      "searchPlaceholder": "Ügyfelek keresése...",
+      "noWizardsFound": "Nincs ajánlat vagy szerződés",
+      "noClientsForFilter": "Nincs ügyfél a kiválasztott szűrőhöz",
+      "startByCreating": "Kezdjen egy új ajánlat vagy szerződés létrehozásával",
+      "filters": {
+        "allTime": "Összes",
+        "today": "Ma",
+        "yesterday": "Tegnap",
+        "thisWeek": "Ezen a héten",
+        "lastWeek": "Múlt héten",
+        "pending": "Függőben"
+      }
+    }
+  },
   "client": {
     "header": {
       "back": "Vissza",

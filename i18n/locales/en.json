@@ -467,6 +467,25 @@
       "noComponentsAdded": "No components added yet. Click \"Add Component\" to add components."
     }
   },
+  "wizard": {
+    "list": {
+      "title": "Offer/Contract Wizard",
+      "offerForNewClient": "Offer for new Client",
+      "contractForNewClient": "Contract for new Client",
+      "searchPlaceholder": "Search clients...",
+      "noWizardsFound": "No offers or contracts found",
+      "noClientsForFilter": "No clients found for selected filter",
+      "startByCreating": "Start by creating a new offer or contract",
+      "filters": {
+        "allTime": "All Time",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "lastWeek": "Last Week",
+        "pending": "Pending"
+      }
+    }
+  },
   "client": {
     "header": {
       "back": "Back",
