@@ -23,7 +23,7 @@
           class="text-base font-semibold text-gray-900 dark:text-white outfit"
           :class="{ 'line-through opacity-60': todo?.completed }"
         >
-          {{ todo?.title || 'No title' }}
+          {{ todo?.title || $t('todo.item.noTitle') }}
         </h3>
 
         <!-- Row 3: Description -->
@@ -60,12 +60,12 @@
           <div
             v-if="isColleagueOnline(assignedColleague)"
             class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"
-            :title="`${getColleagueName(assignedColleague)} is online`"
+            :title="`${getColleagueName(assignedColleague)} ${$t('todo.item.isOnline')}`"
           ></div>
           <div
             v-else
             class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gray-400 rounded-full border-2 border-white shadow-sm"
-            :title="`${getColleagueName(assignedColleague)} was last seen ${formatLastActivity(assignedColleague.last_activity)}`"
+            :title="`${getColleagueName(assignedColleague)} ${$t('todo.item.lastSeen', { time: formatLastActivity(assignedColleague.last_activity) })}`"
           ></div>
         </div>
 
@@ -108,6 +108,7 @@ defineEmits<{
 }>()
 
 // Composables
+const { t } = useI18n()
 const {
   colleagues,
   loading: loadingColleagues,
@@ -136,14 +137,14 @@ const formatLastActivity = (lastActivity?: string): string => {
   const lastActivityDate = new Date(lastActivity)
   const diffMinutes = Math.floor((now.getTime() - lastActivityDate.getTime()) / (1000 * 60))
 
-  if (diffMinutes < 1) return 'just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  if (diffMinutes < 1) return t('todo.time.justNow')
+  if (diffMinutes < 60) return t('todo.time.minutesAgo', { n: diffMinutes })
 
   const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffHours < 24) return t('todo.time.hoursAgo', { n: diffHours })
 
   const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffDays < 7) return t('todo.time.daysAgo', { n: diffDays })
 
   return lastActivityDate.toLocaleDateString()
 }
@@ -165,13 +166,25 @@ const getPriorityVariant = (priority?: string): 'danger' | 'warning' | 'info' | 
 
 // Format priority text
 const formatPriority = (priority?: string): string => {
-  if (!priority) return 'No Priority'
-  return priority.charAt(0).toUpperCase() + priority.slice(1)
+  if (!priority) return t('todo.priority.noPriority')
+
+  switch (priority) {
+    case 'urgent':
+      return t('todo.priority.urgent')
+    case 'high':
+      return t('todo.priority.high')
+    case 'medium':
+      return t('todo.priority.medium')
+    case 'low':
+      return t('todo.priority.low')
+    default:
+      return priority.charAt(0).toUpperCase() + priority.slice(1)
+  }
 }
 
 // Format due date
 const formatDueDate = (dueDate?: string): string => {
-  if (!dueDate) return 'No due date'
+  if (!dueDate) return t('todo.item.noDueDate')
 
   const date = new Date(dueDate)
   const now = new Date()

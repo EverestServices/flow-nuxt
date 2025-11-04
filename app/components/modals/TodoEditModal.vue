@@ -1,7 +1,7 @@
 <template>
   <UIModal
     v-model="isOpenInternal"
-    title="Edit Task"
+    :title="$t('todo.editModal.title')"
     size="md"
     :closeable="!loading"
     @close="handleClose"
@@ -10,8 +10,8 @@
       <!-- Title -->
       <UIInput
         v-model="formData.title"
-        label="Title"
-        placeholder="Task title"
+        :label="$t('todo.editModal.fields.title')"
+        :placeholder="$t('todo.editModal.fields.titlePlaceholder')"
         required
         :disabled="loading"
         clearable
@@ -24,8 +24,8 @@
       <!-- Description -->
       <UITextarea
         v-model="formData.description"
-        label="Description"
-        placeholder="Task description (optional)"
+        :label="$t('todo.editModal.fields.description')"
+        :placeholder="$t('todo.editModal.fields.descriptionPlaceholder')"
         :rows="4"
         :max-length="500"
         :disabled="loading"
@@ -36,7 +36,7 @@
         <!-- Priority -->
         <UISelect
           v-model="formData.priority"
-          label="Priority"
+          :label="$t('todo.editModal.fields.priority')"
           :options="priorityOptions"
           :disabled="loading"
         />
@@ -44,8 +44,8 @@
         <!-- Category -->
         <UIInput
           v-model="formData.category"
-          label="Category"
-          placeholder="e.g., Work"
+          :label="$t('todo.editModal.fields.category')"
+          :placeholder="$t('todo.editModal.fields.categoryPlaceholder')"
           :disabled="loading"
         >
           <template #prefix>
@@ -57,7 +57,7 @@
       <!-- Due Date -->
       <UIInput
         v-model="formData.due_date"
-        label="Due Date"
+        :label="$t('todo.editModal.fields.dueDate')"
         type="date"
         :disabled="loading"
       >
@@ -73,8 +73,8 @@
             <Icon name="i-lucide-check-circle" class="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <p class="font-medium text-gray-900 dark:text-white outfit">Task Status</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Mark as completed when done</p>
+            <p class="font-medium text-gray-900 dark:text-white outfit">{{ $t('todo.editModal.fields.taskStatus') }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $t('todo.editModal.fields.taskStatusDescription') }}</p>
           </div>
         </div>
         <UISwitch
@@ -86,7 +86,7 @@
 
       <!-- Error Alert -->
       <UIAlert v-if="error" variant="danger" dismissible @dismiss="error = null">
-        Failed to update task. Please try again.
+        {{ $t('todo.errors.failedToUpdateRetry') }}
       </UIAlert>
     </form>
 
@@ -96,7 +96,7 @@
         @click="handleClose"
         :disabled="loading"
       >
-        Cancel
+        {{ $t('todo.actions.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced
         variant="primary"
@@ -107,7 +107,7 @@
         <template #icon>
           <Icon v-if="!loading" name="i-lucide-save" class="w-5 h-5" />
         </template>
-        Save Changes
+        {{ $t('todo.actions.saveChanges') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>
@@ -140,6 +140,9 @@ const emit = defineEmits<{
   updated: [todo: Todo]
 }>()
 
+// Composables
+const { t } = useI18n()
+
 // State
 const loading = ref(false)
 const error = ref(false)
@@ -153,12 +156,12 @@ const isOpenInternal = computed({
 })
 
 // Priority options
-const priorityOptions = [
-  { label: '🔴 Urgent', value: 'urgent' },
-  { label: '🟠 High', value: 'high' },
-  { label: '🟡 Medium', value: 'medium' },
-  { label: '🟢 Low', value: 'low' }
-]
+const priorityOptions = computed(() => [
+  { label: t('todo.priority.urgentEmoji'), value: 'urgent' },
+  { label: t('todo.priority.highEmoji'), value: 'high' },
+  { label: t('todo.priority.mediumEmoji'), value: 'medium' },
+  { label: t('todo.priority.lowEmoji'), value: 'low' }
+])
 
 const formData = ref({
   title: '',

@@ -1,8 +1,8 @@
 <template>
   <div class="flex h-24 items-center justify-between">
     <div>
-      <div class="text-2xl font-light outfit">Todo</div>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Organize and track your daily tasks efficiently</p>
+      <div class="text-2xl font-light outfit">{{ $t('todo.title') }}</div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $t('todo.subtitle') }}</p>
     </div>
     <Modals-Todo-Create @created="handleTodoCreated" @updated="handleTodoUpdated" />
   </div>
@@ -12,7 +12,7 @@
     <UIBox padding="p-6" class="hover:scale-105 transition-transform">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Total Tasks</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.totalTasks') }}</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ todos?.length || 0 }}</h3>
         </div>
         <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center">
@@ -24,7 +24,7 @@
     <UIBox padding="p-6" class="hover:scale-105 transition-transform">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Pending</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.pending') }}</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ pendingTodos?.length || 0 }}</h3>
         </div>
         <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
@@ -36,7 +36,7 @@
     <UIBox padding="p-6" class="hover:scale-105 transition-transform">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">Completed</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400 outfit">{{ $t('todo.statistics.completed') }}</p>
           <h3 class="text-4xl font-black outfit mt-2 text-black dark:text-white">{{ completedTodos?.length || 0 }}</h3>
         </div>
         <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
@@ -52,7 +52,7 @@
     <div class="col-span-2">
       <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300 font-medium">
         <Icon name="i-lucide-filter" class="w-5 h-5" />
-        <span>Filters</span>
+        <span>{{ $t('todo.filters.label') }}</span>
       </div>
     </div>
 
@@ -68,7 +68,7 @@
             <template #icon>
               <span class="w-2 h-2 rounded-full bg-gray-400"></span>
             </template>
-            All
+            {{ $t('todo.filters.all') }}
           </UIButtonEnhanced>
           <UIButtonEnhanced
             @click="currentFilter = 'overdue'"
@@ -78,7 +78,7 @@
             <template #icon>
               <span class="w-2 h-2 rounded-full bg-red-500"></span>
             </template>
-            Overdue
+            {{ $t('todo.filters.overdue') }}
           </UIButtonEnhanced>
           <UIButtonEnhanced
             @click="currentFilter = 'today'"
@@ -88,7 +88,7 @@
             <template #icon>
               <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
             </template>
-            Today
+            {{ $t('todo.filters.today') }}
           </UIButtonEnhanced>
           <UIButtonEnhanced
             @click="currentFilter = 'next3days'"
@@ -98,7 +98,7 @@
             <template #icon>
               <span class="w-2 h-2 rounded-full bg-green-500"></span>
             </template>
-            Next 3 days
+            {{ $t('todo.filters.next3days') }}
           </UIButtonEnhanced>
         </div>
 
@@ -107,7 +107,7 @@
           <UIInput
             v-model="searchQuery"
             type="text"
-            placeholder="ToDo - Search..."
+            :placeholder="$t('todo.filters.searchPlaceholder')"
             size="sm"
             :block="false"
           >
@@ -147,7 +147,7 @@
       </div>
 
       <!-- Error State -->
-      <UIAlert v-else-if="error" variant="danger" :title="'Error Loading Tasks'" dismissible @dismiss="error = null">
+      <UIAlert v-else-if="error" variant="danger" :title="$t('todo.errors.errorLoadingTasks')" dismissible @dismiss="error = null">
         {{ error }}
       </UIAlert>
 
@@ -157,7 +157,7 @@
           <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
             <Icon name="i-lucide-inbox" class="w-12 h-12 text-gray-400" />
           </div>
-          <UIH2 class="mb-2">No tasks found</UIH2>
+          <UIH2 class="mb-2">{{ $t('todo.emptyStates.noTasksFound') }}</UIH2>
           <p class="text-gray-600 dark:text-gray-400 mb-6">
             {{ getEmptyStateMessage() }}
           </p>
@@ -165,7 +165,7 @@
             <template #icon>
               <Icon name="i-lucide-plus" class="w-5 h-5" />
             </template>
-            Create Task
+            {{ $t('todo.actions.createTask') }}
           </UIButtonEnhanced>
         </div>
       </UIBox>
@@ -176,7 +176,7 @@
         <div class="flex items-center justify-between mb-6">
           <!-- Left: Page Size Selector -->
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Show</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ $t('todo.pagination.show') }}</span>
             <UISelect
               v-model="pageSize"
               :options="[5, 10, 20, 50]"
@@ -184,7 +184,7 @@
               :block="false"
               class="w-20"
             />
-            <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ $t('todo.pagination.entries') }}</span>
           </div>
 
           <!-- Center: Pagination Controls -->
@@ -241,7 +241,7 @@
 
           <!-- Right: Results Summary -->
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing {{ startIndex + 1 }} to {{ endIndex }} of {{ filteredTodos.length }} results
+            {{ $t('todo.pagination.showing', { start: startIndex + 1, end: endIndex, total: filteredTodos.length }) }}
           </div>
         </div>
 
@@ -261,7 +261,7 @@
         <div class="flex items-center justify-between mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <!-- Left: Page Size Selector -->
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Show</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ $t('todo.pagination.show') }}</span>
             <UISelect
               v-model="pageSize"
               :options="[5, 10, 20, 50]"
@@ -269,7 +269,7 @@
               :block="false"
               class="w-20"
             />
-            <span class="text-sm text-gray-600 dark:text-gray-400">entries</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ $t('todo.pagination.entries') }}</span>
           </div>
 
           <!-- Center: Pagination Controls -->
@@ -326,7 +326,7 @@
 
           <!-- Right: Results Summary -->
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            Showing {{ startIndex + 1 }} to {{ endIndex }} of {{ filteredTodos.length }} results
+            {{ $t('todo.pagination.showing', { start: startIndex + 1, end: endIndex, total: filteredTodos.length }) }}
           </div>
         </div>
       </UIBox>
@@ -336,27 +336,27 @@
   <!-- Delete Confirmation Modal -->
   <UIModal
     v-model="showDeleteModal"
-    title="Delete Task"
+    :title="$t('todo.deleteModal.title')"
     size="sm"
   >
-    <UIAlert variant="warning" title="Warning" :hide-icon="false">
-      Are you sure you want to delete this task? This action cannot be undone.
+    <UIAlert variant="warning" :title="$t('todo.deleteModal.warning')" :hide-icon="false">
+      {{ $t('todo.deleteModal.confirmMessage') }}
     </UIAlert>
 
     <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Task:</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ $t('todo.deleteModal.taskLabel') }}</p>
       <p class="font-medium text-black dark:text-white">{{ todoToDelete?.title }}</p>
     </div>
 
     <template #footer>
       <UIButtonEnhanced variant="ghost" @click="showDeleteModal = false">
-        Cancel
+        {{ $t('todo.actions.cancel') }}
       </UIButtonEnhanced>
       <UIButtonEnhanced variant="danger" @click="handleDeleteTodo">
         <template #icon>
           <Icon name="i-lucide-trash-2" class="w-5 h-5" />
         </template>
-        Delete Task
+        {{ $t('todo.actions.deleteTask') }}
       </UIButtonEnhanced>
     </template>
   </UIModal>
@@ -408,19 +408,22 @@ const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 const todoToDelete = ref<Todo | null>(null)
 
+// Composables
+const { t } = useI18n()
+
 // Category menu items
-const categories = [
-  { key: 'all', label: 'All', count: 0 },
-  { key: 'tickets', label: 'Tickets', count: 0 },
-  { key: 'news', label: 'News', count: 0 },
-  { key: 'back_in_car', label: 'Back in the car', count: 0 },
-  { key: 'courses_exams', label: 'Courses & Exams', count: 0 },
-  { key: 'energy_consultation', label: 'Energy Consultation', count: 0 },
-  { key: 'leads_to_clients', label: 'Leads to Clients', count: 0 },
-  { key: 'contract_to_collect', label: 'Contract to Collect', count: 0 },
-  { key: 'todo_made_by_me', label: 'ToDo made by me', count: 0 },
-  { key: 'completed', label: 'Completed', count: 0 }
-]
+const categories = computed(() => [
+  { key: 'all', label: t('todo.categories.all'), count: 0 },
+  { key: 'tickets', label: t('todo.categories.tickets'), count: 0 },
+  { key: 'news', label: t('todo.categories.news'), count: 0 },
+  { key: 'back_in_car', label: t('todo.categories.backInCar'), count: 0 },
+  { key: 'courses_exams', label: t('todo.categories.coursesExams'), count: 0 },
+  { key: 'energy_consultation', label: t('todo.categories.energyConsultation'), count: 0 },
+  { key: 'leads_to_clients', label: t('todo.categories.leadsToClients'), count: 0 },
+  { key: 'contract_to_collect', label: t('todo.categories.contractToCollect'), count: 0 },
+  { key: 'todo_made_by_me', label: t('todo.categories.todoMadeByMe'), count: 0 },
+  { key: 'completed', label: t('todo.categories.completed'), count: 0 }
+])
 
 // Helper functions for date filtering
 const isToday = (date: string | null): boolean => {
@@ -569,13 +572,13 @@ watch([currentFilter, pageSize, searchQuery], () => {
 const getEmptyStateMessage = () => {
   switch (currentFilter.value) {
     case 'overdue':
-      return 'No overdue tasks'
+      return t('todo.emptyStates.noOverdueTasks')
     case 'today':
-      return 'No tasks due today'
+      return t('todo.emptyStates.noTasksToday')
     case 'next3days':
-      return 'No tasks due in the next 3 days'
+      return t('todo.emptyStates.noTasksNext3Days')
     default:
-      return 'Get started by creating your first task'
+      return t('todo.emptyStates.getStarted')
   }
 }
 
@@ -599,14 +602,14 @@ const toggleTodoStatus = async (id: number) => {
 
     if (updateError) {
       console.error('Error updating todo:', updateError)
-      error.value = 'Failed to update task'
+      error.value = t('todo.errors.failedToUpdate')
       return
     }
 
     todos.value[todoIndex].completed = newCompleted
   } catch (err) {
     console.error('Error toggling todo:', err)
-    error.value = 'Failed to update task'
+    error.value = t('todo.errors.failedToUpdate')
   }
 }
 
@@ -636,14 +639,14 @@ const handleDeleteTodo = async () => {
 
     if (deleteError) {
       console.error('Error deleting todo:', deleteError)
-      error.value = 'Failed to delete task'
+      error.value = t('todo.errors.failedToDelete')
       return
     }
 
     await fetchTodos()
   } catch (err) {
     console.error('Error deleting todo:', err)
-    error.value = 'Failed to delete task'
+    error.value = t('todo.errors.failedToDelete')
   } finally {
     showDeleteModal.value = false
     todoToDelete.value = null
@@ -671,14 +674,14 @@ const fetchTodos = async () => {
 
     if (supabaseError) {
       console.error('Supabase error:', supabaseError)
-      error.value = 'Failed to fetch tasks: ' + supabaseError.message
+      error.value = t('todo.errors.failedToFetch') + ': ' + supabaseError.message
       return
     }
 
     todos.value = data || []
   } catch (err) {
     console.error('Error:', err)
-    error.value = 'Failed to fetch tasks'
+    error.value = t('todo.errors.failedToFetch')
   } finally {
     loading.value = false
   }
