@@ -1,23 +1,51 @@
 <template>
   <UIBox v-if="todo" shadow="none" class="hover:shadow-md transition-shadow">
-    <div class="flex items-center gap-3 w-full px-6 py-2">
+    <div class="flex items-start gap-4 w-full px-6 py-4">
+      <!-- Checkbox -->
       <input
-          type="checkbox"
-          :checked="todo?.completed || false"
-          @change="$emit('toggle', todo?.id)"
+        type="checkbox"
+        :checked="todo?.completed || false"
+        @change="$emit('toggle', todo?.id)"
+        class="mt-1 flex-shrink-0"
       />
-      <div class="grow">
-        <UIH3 :class="{ 'line-through opacity-60': todo?.completed }">
+
+      <!-- Content Section -->
+      <div class="grow space-y-2">
+        <!-- Row 1: Priority Badge -->
+        <div>
+          <UIBadge :variant="getPriorityVariant(todo.priority)" size="sm">
+            {{ formatPriority(todo.priority) }}
+          </UIBadge>
+        </div>
+
+        <!-- Row 2: Title -->
+        <h3
+          class="text-base font-semibold text-gray-900 dark:text-white outfit"
+          :class="{ 'line-through opacity-60': todo?.completed }"
+        >
           {{ todo?.title || 'No title' }}
-        </UIH3>
-        <p v-if="todo?.description" class="outfit text-sm font-normal" :class="{ 'line-through opacity-60': todo?.completed }">
+        </h3>
+
+        <!-- Row 3: Description -->
+        <p
+          v-if="todo?.description"
+          class="text-sm text-gray-600 dark:text-gray-400 outfit"
+          :class="{ 'line-through opacity-60': todo?.completed }"
+        >
           {{ todo.description }}
         </p>
+
+        <!-- Row 4: Due Date -->
+        <div v-if="todo?.due_date" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <Icon name="i-lucide-calendar" class="w-4 h-4" />
+          <span>{{ formatDueDate(todo.due_date) }}</span>
+        </div>
       </div>
 
-      <!-- Assigned colleague avatar -->
-      <div v-if="assignedColleague" class="flex items-center gap-3">
-        <div class="relative group">
+      <!-- Right Side: Avatar & Actions -->
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <!-- Assigned colleague avatar -->
+        <div v-if="assignedColleague" class="relative group">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-sm font-bold text-white shadow-md overflow-hidden transition-transform group-hover:scale-105">
             <img
               v-if="assignedColleague.avatar_url"
@@ -40,30 +68,32 @@
             :title="`${getColleagueName(assignedColleague)} was last seen ${formatLastActivity(assignedColleague.last_activity)}`"
           ></div>
         </div>
-        <div class="flex flex-col">
-          <span class="text-sm text-gray-800 font-semibold leading-tight">
-            {{ getColleagueName(assignedColleague) }}
-          </span>
-          <span class="text-xs text-gray-500 leading-tight">
-            {{ isColleagueOnline(assignedColleague) ? 'Online now' : `Last seen ${formatLastActivity(assignedColleague.last_activity)}` }}
-          </span>
-        </div>
-      </div>
 
-      <div class="flex gap-2">
-        <UIButton @click="$emit('edit', todo)" >
-          <Icon name="uil:edit" />
-        </UIButton>
-        <button @click="$emit('delete', todo)" class="text-xs text-red-600 hover:text-red-800">Delete</button>
+        <!-- Action Buttons -->
+        <div class="flex gap-2">
+          <UIButton @click="$emit('edit', todo)">
+            <Icon name="uil:edit" />
+          </UIButton>
+          <UIButtonEnhanced
+            @click="$emit('delete', todo)"
+            variant="ghost"
+            size="xs"
+          >
+            <template #icon>
+              <Icon name="i-lucide-trash-2" class="w-4 h-4" />
+            </template>
+          </UIButtonEnhanced>
+        </div>
       </div>
     </div>
   </UIBox>
-
 </template>
 
 <script setup lang="ts">
 import type { Todo } from '~/composables/useTodos'
 import type { Colleague } from '~/composables/useColleagues'
+import UIBadge from '~/components/UI/Badge.vue'
+import UIButtonEnhanced from '~/components/UI/ButtonEnhanced.vue'
 
 interface Props {
   todo?: Todo | null
@@ -116,6 +146,47 @@ const formatLastActivity = (lastActivity?: string): string => {
   if (diffDays < 7) return `${diffDays}d ago`
 
   return lastActivityDate.toLocaleDateString()
+}
+
+// Priority badge variant mapping
+const getPriorityVariant = (priority?: string): 'danger' | 'warning' | 'info' | 'gray' => {
+  switch (priority) {
+    case 'urgent':
+      return 'danger'
+    case 'high':
+      return 'warning'
+    case 'medium':
+      return 'info'
+    case 'low':
+    default:
+      return 'gray'
+  }
+}
+
+// Format priority text
+const formatPriority = (priority?: string): string => {
+  if (!priority) return 'No Priority'
+  return priority.charAt(0).toUpperCase() + priority.slice(1)
+}
+
+// Format due date
+const formatDueDate = (dueDate?: string): string => {
+  if (!dueDate) return 'No due date'
+
+  const date = new Date(dueDate)
+  const now = new Date()
+
+  // Format: "Jan 15, 2025 at 2:30 PM"
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }
+
+  return date.toLocaleString('en-US', options)
 }
 
 // Initialize colleagues data when component mounts
