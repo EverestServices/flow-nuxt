@@ -5,6 +5,13 @@
       {{ questionLabel }}
     </div>
 
+    <!-- Warning Type (displays info/warning message) -->
+    <div v-else-if="question.type === 'warning'" class="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <span class="text-sm text-blue-800 dark:text-blue-200">
+        {{ questionLabel }}
+      </span>
+    </div>
+
     <!-- Text Input -->
     <div v-else-if="question.type === 'text' || question.type === 'number'">
       <div class="flex items-center gap-2 mb-2">
@@ -70,6 +77,25 @@
         :required="question.is_required"
         :disabled="isEffectivelyReadonly"
         size="md"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
+    </div>
+
+    <!-- Multiselect -->
+    <div v-else-if="question.type === 'multiselect'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <UIMultiselect
+        :model-value="modelValue || question.default_value"
+        :options="translatedOptions"
+        :placeholder="questionPlaceholder || 'Válasszon egy vagy több opciót'"
+        :disabled="isEffectivelyReadonly"
+        :required="question.is_required"
         @update:model-value="$emit('update:modelValue', $event)"
       />
     </div>
@@ -252,10 +278,131 @@ const store = useSurveyInvestmentsStore()
 const { translateField } = useSurveyTranslations()
 const { translate, translateOptions } = useTranslatableField()
 
+// Process template variables in text
+const processTemplateVariables = (text: string): string => {
+  if (!text || !props.question.template_variables) {
+    return text
+  }
+
+  let processedText = text
+
+  // Find all template variables: {variableName}
+  const templateVarRegex = /\{([^}]+)\}/g
+  const matches = text.match(templateVarRegex)
+
+  if (!matches) {
+    return text
+  }
+
+  // Process each template variable
+  for (const match of matches) {
+    const varName = match.slice(1, -1) // Remove { and }
+    const varDef = props.question.template_variables[varName]
+
+    if (!varDef) {
+      continue // Variable not defined, skip
+    }
+
+    let replacement = ''
+
+    switch (varDef.type) {
+      case 'matched_conditional_values': {
+        // Get values that match the display_conditions
+        if (!props.question.display_conditions) {
+          break
+        }
+
+        const fieldValue = store.getResponse(varDef.field)
+        if (!fieldValue) {
+          break
+        }
+
+        // Parse field value to array
+        let fieldArray: string[] = []
+        if (Array.isArray(fieldValue)) {
+          fieldArray = fieldValue
+        } else if (typeof fieldValue === 'string') {
+          try {
+            const parsed = JSON.parse(fieldValue)
+            fieldArray = Array.isArray(parsed) ? parsed : [fieldValue]
+          } catch {
+            fieldArray = fieldValue.split(',').map(v => v.trim())
+          }
+        }
+
+        // Get conditional values
+        const conditionalValues = Array.isArray(props.question.display_conditions.value)
+          ? props.question.display_conditions.value
+          : [props.question.display_conditions.value]
+
+        // Find matched values (values that are both selected AND in conditions)
+        const matchedValues = fieldArray.filter(fv =>
+          conditionalValues.some(cv => fv === cv)
+        )
+
+        replacement = matchedValues.join(', ')
+        break
+      }
+
+      case 'field_value': {
+        // Get direct field value
+        const fieldValue = store.getResponse(varDef.field)
+        replacement = fieldValue ? String(fieldValue) : ''
+        break
+      }
+
+      case 'conditional_count': {
+        // Count how many conditional values are selected
+        if (!props.question.display_conditions) {
+          replacement = '0'
+          break
+        }
+
+        const fieldValue = store.getResponse(varDef.field)
+        if (!fieldValue) {
+          replacement = '0'
+          break
+        }
+
+        let fieldArray: string[] = []
+        if (Array.isArray(fieldValue)) {
+          fieldArray = fieldValue
+        } else if (typeof fieldValue === 'string') {
+          try {
+            const parsed = JSON.parse(fieldValue)
+            fieldArray = Array.isArray(parsed) ? parsed : [fieldValue]
+          } catch {
+            fieldArray = fieldValue.split(',').map(v => v.trim())
+          }
+        }
+
+        const conditionalValues = Array.isArray(props.question.display_conditions.value)
+          ? props.question.display_conditions.value
+          : [props.question.display_conditions.value]
+
+        const matchedCount = fieldArray.filter(fv =>
+          conditionalValues.some(cv => fv === cv)
+        ).length
+
+        replacement = String(matchedCount)
+        break
+      }
+    }
+
+    // Replace the template variable with the computed value
+    processedText = processedText.replace(match, replacement)
+  }
+
+  return processedText
+}
+
 // Get translated label for the question
 const questionLabel = computed(() => {
   // Priority: name_translations > translateField > name
-  return translate(props.question.name_translations, translateField(props.question.name))
+  const rawLabel = translate(props.question.name_translations, translateField(props.question.name))
+
+  // Process template variables if any
+  return processTemplateVariables(rawLabel)
 })
 
 // Get translated placeholder

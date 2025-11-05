@@ -2,7 +2,7 @@
 ALTER TABLE public.survey_questions
 ADD COLUMN IF NOT EXISTS display_conditions JSONB;
 
-COMMENT ON COLUMN public.survey_questions.display_conditions IS 'Conditional display rules for this question. Example: {"field": "current_heating_solution", "operator": "equals", "value": "Egyéb"}. Supported operators: equals, not_equals, greater_than, less_than, greater_or_equal, less_or_equal, contains';
+COMMENT ON COLUMN public.survey_questions.display_conditions IS 'Conditional display rules for this question. Example: {"field": "current_heating_solution", "operator": "equals", "value": "Egyéb"}. Supported operators: equals, not_equals, greater_than, less_than, greater_or_equal, less_or_equal, contains, contains_any (for multiselect fields)';
 
 -- Set conditional visibility for "Jelenlegi fűtési megoldás (egyéb)"
 -- Should only be visible when "current_heating_solution" has value "Egyéb"
