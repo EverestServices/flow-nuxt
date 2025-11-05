@@ -63,7 +63,8 @@
       "theme": "Téma",
       "save": "Beállítások mentése",
       "saveSuccess": "Beállítások sikeresen frissítve",
-      "saveError": "Nem sikerült frissíteni a beállításokat"
+      "saveError": "Nem sikerült frissíteni a beállításokat",
+      "languageChanged": "Nyelv sikeresen módosítva"
     },
     "avatar": {
       "title": "Profilkép",

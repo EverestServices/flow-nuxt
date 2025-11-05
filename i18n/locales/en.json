@@ -63,7 +63,8 @@
       "theme": "Theme",
       "save": "Save Preferences",
       "saveSuccess": "Preferences updated successfully",
-      "saveError": "Failed to update preferences"
+      "saveError": "Failed to update preferences",
+      "languageChanged": "Language changed successfully"
     },
     "avatar": {
       "title": "Profile Photo",
