@@ -426,7 +426,7 @@ const items: NavigationMenuItem[] = [
       },
       {
         label : 'Offer/Contract Wizard',
-        to : '/ascent/contractwizard'
+        to : '/offer-contract-wizard'
       },
       {
         label : 'Back in the Car',

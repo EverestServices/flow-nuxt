@@ -206,7 +206,6 @@
                 v-model="profileData.language"
                 :options="languageOptions"
                 class="w-full"
-                @update:model-value="handleLanguageChange"
               />
             </div>
 
@@ -446,10 +445,20 @@
 </template>
 
 <script setup lang="ts">
+// Import locale files statically
+import enMessages from '../../../i18n/locales/en.json'
+import huMessages from '../../../i18n/locales/hu.json'
+
+// Create a locale map for easy access
+const localeFiles: Record<string, any> = {
+  en: enMessages,
+  hu: huMessages
+}
+
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 const toast = useToast()
-const { locale, t } = useI18n()
+const { locale, t, getLocaleMessage, setLocaleMessage } = useI18n()
 
 // Page metadata
 useHead({
@@ -609,6 +618,24 @@ const savePersonalInfo = async () => {
 const savePreferences = async () => {
   savingPreferences.value = true
   try {
+    // Load the selected language file if not already loaded
+    const selectedLanguage = profileData.value.language
+
+    // Check if the locale messages are empty
+    const currentMessages = getLocaleMessage(selectedLanguage)
+
+    if (!currentMessages || Object.keys(currentMessages).length === 0) {
+      try {
+        // Load from statically imported locale files
+        const messages = localeFiles[selectedLanguage]
+        if (messages) {
+          setLocaleMessage(selectedLanguage, messages)
+        }
+      } catch (err) {
+        console.error(`Failed to load locale ${selectedLanguage}:`, err)
+      }
+    }
+
     const { error } = await client
       .from('user_profiles')
       .update({
@@ -622,12 +649,16 @@ const savePreferences = async () => {
 
     if (error) throw error
 
+    // Update the locale after saving
+    locale.value = selectedLanguage
+
     toast.add({
       title: t('common.success'),
       description: t('settings.preferences.saveSuccess'),
       color: 'green',
     })
   } catch (error) {
+    console.error('Error in savePreferences:', error)
     toast.add({
       title: t('common.error'),
       description: t('settings.preferences.saveError'),
@@ -884,22 +915,9 @@ const handleAvatarUpload = async (event: Event) => {
   }
 }
 
-// Handle language change
-const handleLanguageChange = async (newLanguage: string) => {
-  // Update i18n locale immediately
-  locale.value = newLanguage
-}
-
 // Fetch profile on mount
 onMounted(() => {
   fetchProfile()
-})
-
-// Watch for profileData.language changes and sync with i18n
-watch(() => profileData.value.language, (newLanguage) => {
-  if (newLanguage && locale.value !== newLanguage) {
-    locale.value = newLanguage
-  }
 })
 </script>
 
