@@ -181,23 +181,6 @@
       <div class="flex items-center gap-4">
         <!-- Property Assessment specific controls -->
         <template v-if="showModeToggle && !hideInvestmentControls">
-          <!-- View Mode Toggle -->
-          <div class="flex items-center p-1 border-r border-white/20 pr-3 h-9">
-            <button
-              v-for="mode in viewModes"
-              :key="mode.value"
-              :class="[
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                currentViewMode === mode.value
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              @click="handleViewModeChange(mode.value)"
-            >
-              {{ mode.label }}
-            </button>
-          </div>
-
           <!-- Hide/Show Visualization Button -->
           <UButton
             :icon="showVisualization ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
