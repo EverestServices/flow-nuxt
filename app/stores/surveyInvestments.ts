@@ -672,15 +672,12 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         if (checkError) throw checkError
 
         if (existing) {
-          // Update existing answer
           const { error: updateError } = await supabase
             .from('survey_answers')
             .update({ answer: String(value) })
             .eq('id', existing.id)
-
           if (updateError) throw updateError
         } else {
-          // Insert new answer
           const { error: insertError } = await supabase
             .from('survey_answers')
             .insert({
@@ -689,12 +686,14 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
               answer: String(value),
               item_group: null
             })
-
           if (insertError) throw insertError
         }
 
         // Update dependent questions in frontend state (questions that use this as default_value_source)
         await this.syncDependentQuestionsInState(questionId, String(value))
+
+        // Refresh values that were copied by conditional copy rules
+        await this.refreshCopiedValuesFromRules(questionId)
 
       } catch (error) {
         console.error('Error saving response:', error)
@@ -948,6 +947,121 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
       } catch (error) {
         console.error('Error syncing dependent questions:', error)
+      }
+    },
+
+    // Refresh values that were copied by conditional copy rules
+    async refreshCopiedValuesFromRules(changedQuestionId: string) {
+      if (!this.currentSurveyId) return
+
+      try {
+        const supabase = useSupabaseClient()
+
+        // Query copy rules involving this question (as condition or source)
+        const { data: rules, error: rulesError } = await supabase
+          .from('survey_value_copy_rules')
+          .select('*')
+          .or(`condition_question_id.eq.${changedQuestionId},source_question_id.eq.${changedQuestionId}`)
+
+        if (rulesError) throw rulesError
+        if (!rules || rules.length === 0) return
+
+        // Process each rule
+        for (const rule of rules) {
+          // Get the condition value to check if the rule should be applied
+          const { data: conditionAnswers, error: conditionError } = await supabase
+            .from('survey_answers')
+            .select('answer')
+            .eq('survey_id', this.currentSurveyId)
+            .eq('survey_question_id', rule.condition_question_id)
+            .is('item_group', null)
+            .maybeSingle()
+
+          if (conditionError) throw conditionError
+
+          // Check if condition is met
+          const conditionMet = conditionAnswers?.answer === rule.condition_value
+
+          if (!conditionMet) {
+            // Condition not met, skip this rule
+            continue
+          }
+
+          // Find the target question to determine its page and investment
+          let targetQuestionInfo: {
+            question: SurveyQuestion
+            page: SurveyPage
+            investmentId: string
+          } | null = null
+
+          for (const investmentId in this.surveyPages) {
+            const pages = this.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = this.surveyQuestions[page.id] || []
+              const targetQuestion = questions.find(q => q.id === rule.target_question_id)
+              if (targetQuestion) {
+                targetQuestionInfo = {
+                  question: targetQuestion,
+                  page,
+                  investmentId
+                }
+                break
+              }
+            }
+            if (targetQuestionInfo) break
+          }
+
+          if (!targetQuestionInfo) {
+            console.warn(`Target question not found: ${rule.target_question_id}`)
+            continue
+          }
+
+          const { question: targetQuestion, page: targetPage, investmentId } = targetQuestionInfo
+
+          // Only process if the target page allows multiple instances
+          if (!targetPage.allow_multiple) {
+            continue
+          }
+
+          // Reload all target instance values from database
+          const { data: answers, error: answersError } = await supabase
+            .from('survey_answers')
+            .select('item_group, answer')
+            .eq('survey_id', this.currentSurveyId)
+            .eq('survey_question_id', rule.target_question_id)
+            .not('item_group', 'is', null)
+
+          if (answersError) throw answersError
+
+          // Update frontend state with fresh values
+          if (answers && answers.length > 0) {
+            // Ensure the page instances structure exists
+            if (!this.pageInstances[investmentId]) {
+              this.pageInstances[investmentId] = {}
+            }
+            if (!this.pageInstances[investmentId][targetPage.id]) {
+              this.pageInstances[investmentId][targetPage.id] = { instances: [] }
+            }
+
+            const instances = this.pageInstances[investmentId][targetPage.id].instances
+
+            // Update each instance with the fresh value from database
+            for (const answer of answers) {
+              const itemGroup = answer.item_group
+
+              // Ensure we have enough instances
+              while (instances.length <= itemGroup) {
+                instances.push({})
+              }
+
+              // Update the value in the frontend state
+              instances[itemGroup][targetQuestion.name] = answer.answer
+            }
+          }
+        }
+
+      } catch (error) {
+        console.error('Error refreshing copied values from rules:', error)
       }
     },
 

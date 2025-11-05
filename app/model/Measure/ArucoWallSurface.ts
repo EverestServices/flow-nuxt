@@ -24,6 +24,7 @@ export type Wall = {
   images: WallImage[];
   polygons: PolygonSurface[];
   clientId?: string;
+  orientation?: Orientation;
 };
 export enum DimensionType {
   height = 'height',
@@ -74,6 +75,17 @@ export enum ExternalShadingType {
   SHUTTERS = 'zsalugater',
   VENETIAN_BLINDS = 'zsaluzia',
   TEXTILE_ROLLER = 'textilRolo',
+}
+
+export enum Orientation {
+  N = 'É',
+  NW = 'ÉNY',
+  W = 'NY',
+  SW = 'DNY',
+  S = 'D',
+  SE = 'DK',
+  E = 'K',
+  NE = 'ÉK',
 }
 export interface PolygonSurface {
   id: string;
