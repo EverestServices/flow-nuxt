@@ -6,16 +6,23 @@
 
     <UIModal
       v-model="isOpen"
-      :title="editingTodo ? 'Edit Task' : 'Create New Task'"
       size="md"
       :closeable="!submitting"
     >
+      <template #header>
+        <div class="flex items-center gap-3">
+          <Icon name="i-lucide-file-text" class="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <h3 class="outfit font-bold text-xl text-gray-900 dark:text-white">
+            {{ editingTodo ? $t('todo.createModal.titleEdit') : $t('todo.createModal.titleNew') }}
+          </h3>
+        </div>
+      </template>
       <form @submit.prevent="handleSubmit" class="space-y-6">
         <!-- Title -->
         <UIInput
           v-model="formState.title"
-          label="Title"
-          placeholder="Enter task title"
+          :label="$t('todo.createModal.fields.title')"
+          :placeholder="$t('todo.createModal.fields.titlePlaceholder')"
           required
           :disabled="submitting"
           :error="errors.title"
@@ -28,8 +35,8 @@
         <!-- Description -->
         <UITextarea
           v-model="formState.description"
-          label="Description"
-          placeholder="Add more details about this task (optional)"
+          :label="$t('todo.createModal.fields.description')"
+          :placeholder="$t('todo.createModal.fields.descriptionPlaceholder')"
           :rows="4"
           :max-length="500"
           :disabled="submitting"
@@ -40,7 +47,7 @@
           <!-- Priority -->
           <UISelect
             v-model="formState.priority"
-            label="Priority"
+            :label="$t('todo.createModal.fields.priority')"
             :options="priorityOptions"
             :disabled="submitting"
           />
@@ -48,8 +55,8 @@
           <!-- Category -->
           <UIInput
             v-model="formState.category"
-            label="Category"
-            placeholder="e.g., Work, Personal"
+            :label="$t('todo.createModal.fields.category')"
+            :placeholder="$t('todo.createModal.fields.categoryPlaceholder')"
             :disabled="submitting"
           >
             <template #prefix>
@@ -61,7 +68,7 @@
         <!-- Due Date -->
         <UIInput
           v-model="formState.due_date"
-          label="Due Date"
+          :label="$t('todo.createModal.fields.dueDate')"
           type="datetime-local"
           :disabled="submitting"
         >
@@ -74,9 +81,9 @@
         <div v-if="colleagues.length > 0">
           <UISelect
             v-model="formState.assigned_to"
-            label="Assign To"
+            :label="$t('todo.createModal.fields.assignTo')"
             :options="colleagueOptions"
-            placeholder="Select a colleague (optional)"
+            :placeholder="$t('todo.createModal.fields.assignToPlaceholder')"
             :disabled="submitting"
           />
         </div>
@@ -84,8 +91,8 @@
         <!-- Tags Input (optional enhancement) -->
         <div>
           <label class="outfit font-medium text-sm text-gray-700 dark:text-gray-300 mb-1.5 block">
-            Tags
-            <span class="text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+            {{ $t('todo.createModal.fields.tags') }}
+            <span class="text-gray-500 dark:text-gray-400 font-normal">{{ $t('todo.createModal.fields.tagsOptional') }}</span>
           </label>
           <div class="flex flex-wrap gap-2 mb-2">
             <UIBadge
@@ -103,7 +110,7 @@
           <div class="flex gap-2">
             <UIInput
               v-model="newTag"
-              placeholder="Add a tag"
+              :placeholder="$t('todo.createModal.fields.addTag')"
               :disabled="submitting"
               @keypress.enter.prevent="addTag"
             />
@@ -114,7 +121,7 @@
               @click="addTag"
               :disabled="!newTag.trim() || submitting"
             >
-              Add
+              {{ $t('todo.actions.add') }}
             </UIButtonEnhanced>
           </div>
         </div>
@@ -131,7 +138,7 @@
           @click="closeModal"
           :disabled="submitting"
         >
-          Cancel
+          {{ $t('todo.actions.cancel') }}
         </UIButtonEnhanced>
         <UIButtonEnhanced
           variant="primary"
@@ -142,7 +149,7 @@
           <template #icon>
             <Icon v-if="!submitting" name="i-lucide-check" class="w-5 h-5" />
           </template>
-          {{ editingTodo ? 'Update Task' : 'Create Task' }}
+          {{ editingTodo ? $t('todo.actions.updateTask') : $t('todo.actions.createTask') }}
         </UIButtonEnhanced>
       </template>
     </UIModal>
@@ -175,6 +182,7 @@ const emit = defineEmits<{
 }>()
 
 // Composables
+const { t } = useI18n()
 const { createTodo, updateTodo } = useTodos()
 const { colleagues, fetchColleagues } = useColleagues()
 
@@ -188,12 +196,12 @@ const errors = ref({
 })
 
 // Priority options
-const priorityOptions = [
-  { label: '🔴 Urgent', value: 'urgent' },
-  { label: '🟠 High', value: 'high' },
-  { label: '🟡 Medium', value: 'medium' },
-  { label: '🟢 Low', value: 'low' }
-]
+const priorityOptions = computed(() => [
+  { label: t('todo.priority.urgentEmoji'), value: 'urgent' },
+  { label: t('todo.priority.highEmoji'), value: 'high' },
+  { label: t('todo.priority.mediumEmoji'), value: 'medium' },
+  { label: t('todo.priority.lowEmoji'), value: 'low' }
+])
 
 // Colleague options for assignment
 const colleagueOptions = computed(() => {
