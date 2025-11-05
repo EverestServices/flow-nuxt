@@ -36,8 +36,13 @@ export interface SurveyQuestionOption {
 
 export interface DisplayCondition {
   field: string
-  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains'
-  value: string | number | boolean
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains' | 'contains_any'
+  value: string | number | boolean | string[]
+}
+
+export interface TemplateVariable {
+  type: 'matched_conditional_values' | 'field_value' | 'conditional_count'
+  field: string
 }
 
 export interface SurveyQuestion {
@@ -63,6 +68,7 @@ export interface SurveyQuestion {
   info_message?: string
   info_message_translations?: { en: string; hu: string }
   display_conditions?: DisplayCondition
+  template_variables?: Record<string, TemplateVariable>
   sequence?: number
 }
 
