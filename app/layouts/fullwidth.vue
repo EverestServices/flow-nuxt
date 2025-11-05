@@ -207,7 +207,7 @@ const items: NavigationMenuItem[] = [
     children: [
       { label: 'Leads to Clients', to: '/ascent/leadstoclients' },
       { label: 'Energy Consultation', to: '/survey' },
-      { label: 'Offer/Contract Wizard', to: '/ascent/contractwizard' },
+      { label: 'Offer/Contract Wizard', to: '/offer-contract-wizard' },
       { label: 'Back in the Car', to: '/summit/backinthecar' },
       { label: 'Contracts to Collect', to: '/ascent/contractstocollect' }
     ]
