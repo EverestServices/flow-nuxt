@@ -54,6 +54,7 @@
           @set-display-mode="handleSetDisplayMode"
           @open-photo-upload="handleOpenPhotoUpload"
           @open-camera="handleOpenCamera"
+          @toggle-view-mode="handleToggleViewMode"
         />
 
         <!-- Consultation Tab -->
@@ -696,6 +697,11 @@ const handleToggleViewMode = (mode: 'photos' | 'data' | 'all') => {
 const handleToggleInvestmentFilter = (investmentId: string) => {
   investmentFilter.value = investmentId
   console.log('Toggle investment filter:', investmentId)
+
+  // Also set the active investment in the store (for the left side form)
+  if (investmentId !== 'all') {
+    investmentsStore.setActiveInvestment(investmentId)
+  }
 }
 
 const handleToggleVisualization = (show: boolean) => {

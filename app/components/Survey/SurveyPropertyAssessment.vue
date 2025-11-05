@@ -467,6 +467,7 @@
         @page-click="handlePageClick"
         @category-click="handleCategoryClick"
         @toggle-list-view="emit('toggle-list-view')"
+        @change-view-mode="handleViewModeChange"
       />
     </div>
   </div>
@@ -507,6 +508,7 @@ const emit = defineEmits<{
   'set-display-mode': [mode: 'single' | 'investment' | 'all']
   'open-photo-upload': [categoryId: string, investmentId: string]
   'open-camera': [investmentId: string]
+  'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
 }>()
 
 // Translations
@@ -719,6 +721,10 @@ const handleCategoryClick = (categoryId: string, investmentId: string) => {
 const handleCameraClick = () => {
   if (!activeInvestmentId.value) return
   emit('open-camera', activeInvestmentId.value)
+}
+
+const handleViewModeChange = (mode: 'photos' | 'data' | 'all') => {
+  emit('toggle-view-mode', mode)
 }
 
 // ========================================================================
