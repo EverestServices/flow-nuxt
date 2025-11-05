@@ -2,6 +2,14 @@ import type { ExtraItem } from '@/model/ExtraItem';
 import type { Wall } from '@/model/Measure/ArucoWallSurface';
 import { api } from '@/service/ApiFactory'; // ApiService példány
 
+const ARUCO_ORIGIN = 'https://aruco.everest.hu';
+function toArucoAbsolute(u: string): string {
+  if (!u) return u;
+  if (/^(https?:)?\/\//i.test(u)) return u; // absolute or scheme-relative
+  if (/^(blob:|data:|file:)/i.test(u)) return u; // keep special schemes
+  return u.startsWith('/') ? ARUCO_ORIGIN + u : ARUCO_ORIGIN + '/' + u;
+}
+
 export interface AlignResponse {
   url: string;
   pixelSizeInMeter: number | null;
@@ -26,18 +34,15 @@ export async function alignFacadeImage(file: File): Promise<AlignResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  return api.post<AlignResponse, FormData>('/measure/aruco/api/facade/align', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const res = await api.post<AlignResponse, FormData>('/measure/aruco/api/facade/align', formData);
+  return { ...res, url: toArucoAbsolute(res.url) };
 }
 
 export async function getImageRealSize(file: File): Promise<PixeRealSizeResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  return api.post<PixeRealSizeResponse, FormData>('/measure/aruco/api/image/real-size', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  return api.post<PixeRealSizeResponse, FormData>('/measure/aruco/api/image/real-size', formData);
 }
 
 export async function processFacadeImage(
@@ -50,9 +55,8 @@ export async function processFacadeImage(
     formData.append('marker_size', markerSize.toString());
   }
 
-  return api.post<ProcessResponse, FormData>('/measure/aruco/api/facade/process', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const res = await api.post<ProcessResponse, FormData>('/measure/aruco/api/facade/process?marker_size=.12', formData);
+  return { ...res, image_url: toArucoAbsolute(res.image_url) };
 }
 
 export async function saveMeasurement(

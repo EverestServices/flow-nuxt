@@ -46,6 +46,11 @@ export default defineNuxtConfig({
     },
     //pageTransition: { name: 'page', mode: 'out-in' }
   },
+  nitro: {
+    routeRules: {
+      '/measure/aruco/api/facade/process': { proxy: 'https://aruco.everest.hu/process-image/' }
+    }
+  },
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.API_BASE_URL || 'http://inki.api.test/api',
@@ -94,6 +99,4 @@ export default defineNuxtConfig({
       redirectOn: 'root'
     }
   }
-
-
 })
