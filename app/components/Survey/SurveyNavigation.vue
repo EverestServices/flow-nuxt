@@ -38,8 +38,8 @@
           <span v-else>{{ tab.number }}</span>
         </span>
 
-        <!-- Tab Label -->
-        <span>{{ tab.label }}</span>
+        <!-- Tab Label - csak az aktív tab-nál -->
+        <span v-if="modelValue === tab.id">{{ tab.label }}</span>
       </button>
     </div>
   </div>
