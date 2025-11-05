@@ -68,8 +68,8 @@ export const useMeasure = () => {
         meter_per_pixel: payload.meterPerPixel ?? null,
         processed_image_width: payload.processedImageWidth ?? null,
         processed_image_height: payload.processedImageHeight ?? null,
-        reference_start: payload.referenceStart ? JSON.stringify(payload.referenceStart) : null,
-        reference_end: payload.referenceEnd ? JSON.stringify(payload.referenceEnd) : null,
+        reference_start: payload.referenceStart ?? null,
+        reference_end: payload.referenceEnd ?? null,
         reference_length_cm: payload.referenceLengthCm ?? null,
       })
       .select()
@@ -91,7 +91,7 @@ export const useMeasure = () => {
       name: p.name ?? null,
       visible: p.visible !== false,
       closed: p.closed === true,
-      points: JSON.stringify(p.points),
+      points: p.points,
     }))
     const { error: insErr } = await supabase.from('measure_polygons').insert(rows)
     if (insErr) throw insErr
