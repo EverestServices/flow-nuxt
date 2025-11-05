@@ -467,6 +467,7 @@
         @page-click="handlePageClick"
         @category-click="handleCategoryClick"
         @toggle-list-view="emit('toggle-list-view')"
+        @change-view-mode="handleViewModeChange"
       />
     </div>
   </div>
@@ -507,6 +508,7 @@ const emit = defineEmits<{
   'set-display-mode': [mode: 'single' | 'investment' | 'all']
   'open-photo-upload': [categoryId: string, investmentId: string]
   'open-camera': [investmentId: string]
+  'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
 }>()
 
 // Translations
@@ -719,6 +721,10 @@ const handleCategoryClick = (categoryId: string, investmentId: string) => {
 const handleCameraClick = () => {
   if (!activeInvestmentId.value) return
   emit('open-camera', activeInvestmentId.value)
+}
+
+const handleViewModeChange = (mode: 'photos' | 'data' | 'all') => {
+  emit('toggle-view-mode', mode)
 }
 
 // ========================================================================
@@ -980,6 +986,31 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
       return Number(fieldValue) <= Number(condition.value)
     case 'contains':
       return String(fieldValue || '').includes(String(condition.value))
+    case 'contains_any': {
+      // Check if field value (array or comma-separated string) contains any of the specified values
+      if (!fieldValue) return false
+
+      // Convert field value to array
+      let fieldArray: string[] = []
+      if (Array.isArray(fieldValue)) {
+        fieldArray = fieldValue
+      } else if (typeof fieldValue === 'string') {
+        // Try to parse as JSON array first
+        try {
+          const parsed = JSON.parse(fieldValue)
+          fieldArray = Array.isArray(parsed) ? parsed : [fieldValue]
+        } catch {
+          // If not JSON, treat as comma-separated
+          fieldArray = fieldValue.split(',').map(v => v.trim())
+        }
+      }
+
+      // Get the values to check against (should be an array in condition.value)
+      const valuesToCheck = Array.isArray(condition.value) ? condition.value : [condition.value]
+
+      // Check if any of the field values match any of the condition values
+      return fieldArray.some(fv => valuesToCheck.some(cv => fv === cv))
+    }
     default:
       return true
   }
