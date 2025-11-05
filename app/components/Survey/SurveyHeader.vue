@@ -80,42 +80,6 @@
           </div>
         </template>
 
-        <!-- Investment Filter Toggle -->
-        <div v-if="!hideInvestmentControls" class="flex items-center rounded-full gap-1">
-          <!-- Individual Investment Buttons -->
-          <button
-              v-for="investment in selectedInvestments"
-              :key="investment.id"
-              :class="[
-                'px-2 py-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer',
-                activeInvestmentFilter === investment.id
-                  ? 'bg-white dark:bg-gray-600 shadow-sm'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-              ]"
-              @click="handleInvestmentFilterChange(investment.id)"
-          >
-            <UIcon
-                :name="investment.icon"
-                class="w-4 h-4"
-                :class="activeInvestmentFilter === investment.id
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-gray-400'"
-            />
-          </button>
-          <!-- All Button -->
-          <button
-              :class="[
-                'px-3 py-1 rounded-md text-sm font-medium transition-colors',
-                activeInvestmentFilter === 'all'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              ]"
-              @click="handleInvestmentFilterChange('all')"
-          >
-            {{ t('survey.header.all') }}
-          </button>
-        </div>
-
         <!-- Consultation specific buttons -->
         <template v-if="activeTab === 'consultation'">
           <!-- Scenario buttons - Scrollable container -->
@@ -171,7 +135,7 @@
           </div>
 
           <!-- Contract Selector Buttons - Only on offer-contract tab -->
-          <div v-if="activeTab === 'offer-contract' && contracts && contracts.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide">
+          <div v-if="activeTab === 'offer-contract' && contracts && contracts.length > 0" class="flex gap-2 overflow-x-auto flex-1 scrollbar-hide ml-3">
             <button
               v-for="contract in sortedContracts"
               :key="contract.id"
@@ -181,16 +145,33 @@
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
               @click="emit('select-contract', contract.id)"
             >
-              <!-- Investment icons -->
-              <div class="flex gap-0.5">
-                <UIcon
-                  v-for="(icon, index) in getContractInvestmentIcons(contract.id)"
-                  :key="index"
-                  :name="icon"
-                  class="w-4 h-4"
-                />
-              </div>
               <span>{{ contract.name }}</span>
+            </button>
+          </div>
+        </template>
+
+        <!-- Summary View Mode Toggle -->
+        <template v-if="activeTab === 'summary'">
+          <div class="flex items-center gap-2">
+            <button
+              class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+              :class="summaryViewMode === 'list'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              @click="emit('change-summary-view-mode', 'list')"
+            >
+              <UIcon name="i-lucide-list" class="w-4 h-4" />
+              <span>{{ t('survey.summary.list') }}</span>
+            </button>
+            <button
+              class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+              :class="summaryViewMode === 'card'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              @click="emit('change-summary-view-mode', 'card')"
+            >
+              <UIcon name="i-lucide-layout-grid" class="w-4 h-4" />
+              <span>{{ t('survey.summary.card') }}</span>
             </button>
           </div>
         </template>
@@ -275,6 +256,7 @@ interface Props {
   contracts?: Contract[]
   activeContractId?: string | null
   contractInvestments?: Record<string, string[]>
+  summaryViewMode?: 'list' | 'card'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -285,7 +267,8 @@ const props = withDefaults(defineProps<Props>(), {
   scenarioInvestments: () => ({}),
   contractMode: null,
   contracts: () => [],
-  contractInvestments: () => ({})
+  contractInvestments: () => ({}),
+  summaryViewMode: 'list'
 })
 
 const emit = defineEmits<{
@@ -298,6 +281,7 @@ const emit = defineEmits<{
   'select-scenario': [scenarioId: string]
   'change-contract-mode': [mode: 'offer' | 'contract' | null]
   'select-contract': [contractId: string]
+  'change-summary-view-mode': [mode: 'list' | 'card']
 }>()
 
 const viewModes = computed(() => [

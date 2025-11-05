@@ -47,17 +47,19 @@
           <div class="space-y-3">
             <UAccordion
               v-for="category in paginatedCategories"
-              :key="category.id"
+              :key="`${category.id}-${accordionKey}`"
+              v-model="openAccordions"
               :items="[{
                 label: category.name,
                 slot: 'category-' + category.id,
-                defaultOpen: paginatedCategories.length === 1
+                value: category.id
               }]"
               :ui="{
                 item: {
                   base: 'flex-1'
                 }
               }"
+              multiple
             >
               <template #default="{ item, open }">
                 <UButton
@@ -205,17 +207,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { DocumentCategory } from '~/stores/surveyInvestments'
 
 const { t } = useI18n()
 const { translate } = useTranslatableField()
+const { addDocument, fetchDocumentsBySurveyAndCategory, deleteDocument } = useDocuments()
 
 interface PhotoData {
   url: string
   file: File
+  documentId?: string // Track Supabase document ID
 }
 
 interface CategoryPhotos {
@@ -265,6 +269,12 @@ const categoryPhotos = ref<CategoryPhotos>({})
 // Pagination
 const currentPage = ref(0)
 const itemsPerPage = 1
+
+// Force accordion to re-render when modal opens
+const accordionKey = ref(0)
+
+// Keep track of which accordions are open (all should be open by default)
+const openAccordions = ref<string[]>([])
 
 // Get categories based on mode
 const categories = computed(() => {
@@ -374,7 +384,10 @@ const paginatedCategories = computed(() => {
 
 // Category methods
 const getCategoryUploadedCount = (categoryId: string) => {
-  return categoryPhotos.value[categoryId]?.length || 0
+  // Get from local state OR from store (persistent)
+  const localCount = categoryPhotos.value[categoryId]?.length || 0
+  const storeCount = store.getCategoryPhotoCount(categoryId)
+  return Math.max(localCount, storeCount)
 }
 
 const getCategoryPercentage = (categoryId: string) => {
@@ -404,17 +417,46 @@ const handleFileSelect = async (event: Event, categoryId: string) => {
 
   if (!files) return
 
-  const photos: PhotoData[] = []
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    const url = URL.createObjectURL(file)
-    photos.push({ url, file })
-  }
-
+  // Initialize category photos array if needed
   if (!categoryPhotos.value[categoryId]) {
     categoryPhotos.value[categoryId] = []
   }
-  categoryPhotos.value[categoryId].push(...photos)
+
+  // Upload each file to Supabase
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const url = URL.createObjectURL(file)
+
+    // Add to local state immediately for UX
+    const photoData: PhotoData = { url, file }
+    categoryPhotos.value[categoryId].push(photoData)
+
+    // Upload to Supabase in background
+    try {
+      console.log('📤 Uploading photo to Supabase:', { surveyId: props.surveyId, categoryId, fileName: file.name })
+      const document = await addDocument(props.surveyId, categoryId, file, file.name)
+      console.log('✅ Photo uploaded successfully:', document)
+
+      if (document) {
+        // Update photo data with document ID
+        photoData.documentId = document.id
+        photoData.url = document.location // Use Supabase URL
+      } else {
+        console.error('❌ Upload returned null/undefined')
+      }
+    } catch (error) {
+      console.error('❌ Error uploading photo:', error)
+      // Remove from local state if upload failed
+      const index = categoryPhotos.value[categoryId].indexOf(photoData)
+      if (index > -1) {
+        categoryPhotos.value[categoryId].splice(index, 1)
+      }
+      alert(`Failed to upload photo: ${error}`)
+    }
+  }
+
+  // Update persistent store
+  store.updateCategoryPhotoCount(categoryId, categoryPhotos.value[categoryId].length)
 
   // Reset input
   target.value = ''
@@ -439,18 +481,100 @@ const takePhoto = async (categoryId: string) => {
   }
 }
 
-const deletePhoto = (categoryId: string, index: number) => {
+const deletePhoto = async (categoryId: string, index: number) => {
   if (categoryPhotos.value[categoryId]) {
     const photo = categoryPhotos.value[categoryId][index]
-    URL.revokeObjectURL(photo.url)
+
+    // Delete from Supabase if it has a document ID
+    if (photo.documentId) {
+      try {
+        await deleteDocument(photo.documentId)
+      } catch (error) {
+        console.error('Error deleting photo from Supabase:', error)
+      }
+    }
+
+    // Clean up object URL
+    if (photo.url.startsWith('blob:')) {
+      URL.revokeObjectURL(photo.url)
+    }
+
+    // Remove from local state
     categoryPhotos.value[categoryId].splice(index, 1)
+
+    // Update persistent store
+    store.updateCategoryPhotoCount(categoryId, categoryPhotos.value[categoryId].length)
   }
 }
 
-// Lapozás visszaállítása a felugró ablak megnyitásakor
-watch(() => props.modelValue, (newValue) => {
-  if (newValue) {
-    currentPage.value = 0
+// Load existing photos from Supabase for a category
+const loadCategoryPhotos = async (categoryId: string) => {
+  try {
+    console.log('📥 Loading photos from Supabase for category:', categoryId)
+    const documents = await fetchDocumentsBySurveyAndCategory(props.surveyId, categoryId)
+    console.log('📥 Loaded documents:', documents)
+
+    if (documents && documents.length > 0) {
+      categoryPhotos.value[categoryId] = documents.map(doc => ({
+        url: doc.location, // Public URL from bucket
+        file: new File([], doc.name),
+        documentId: doc.id
+      }))
+
+      // Update store count
+      store.updateCategoryPhotoCount(categoryId, documents.length)
+      console.log(`✅ Loaded ${documents.length} photos for category ${categoryId}`)
+    } else {
+      console.log(`ℹ️ No photos found for category ${categoryId}`)
+    }
+  } catch (error) {
+    console.error('❌ Error loading category photos:', error)
+  }
+}
+
+// Lapozás visszaállítása és photo counts inicializálása a felugró ablak megnyitásakor
+watch(() => props.modelValue, async (newValue, oldValue) => {
+  if (newValue && !oldValue) {
+    console.log('🔄 Photo upload modal opened')
+
+    // Force accordion to re-render with defaultOpen: true
+    accordionKey.value++
+
+    // If categoryId is provided in single mode, find its index and set currentPage
+    if (props.mode === 'single' && props.categoryId) {
+      const categoryIndex = categories.value.findIndex(cat => cat.id === props.categoryId)
+      if (categoryIndex !== -1) {
+        currentPage.value = categoryIndex
+        console.log(`📍 Opening modal to category at index ${categoryIndex}:`, props.categoryId)
+      } else {
+        currentPage.value = 0
+        console.warn(`⚠️ Category ${props.categoryId} not found, defaulting to first category`)
+      }
+    } else {
+      currentPage.value = 0
+    }
+
+    // Clear old local-only photos (blob URLs) and reload from Supabase
+    Object.keys(categoryPhotos.value).forEach(catId => {
+      const photos = categoryPhotos.value[catId] || []
+      photos.forEach(photo => {
+        if (photo.url.startsWith('blob:')) {
+          URL.revokeObjectURL(photo.url)
+        }
+      })
+    })
+    categoryPhotos.value = {} // Clear all local state
+
+    // Load existing photos from Supabase for all categories
+    console.log('📂 Loading photos for', categories.value.length, 'categories')
+    for (const category of categories.value) {
+      await loadCategoryPhotos(category.id)
+    }
+
+    // Open all accordions by default after categories are loaded
+    await nextTick()
+    openAccordions.value = categories.value.map(cat => cat.id)
+    console.log('🔓 Opening all accordions:', openAccordions.value)
   }
 })
 </script>

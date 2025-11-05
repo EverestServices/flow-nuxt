@@ -1,21 +1,24 @@
 <template>
-  <div class="px-2 py-1 border border-white dark:border-black/20 rounded-full backdrop-blur-xs bg-white/20 dark:bg-black/20 flex fixed right-24 top-3 h-12">
+  <div class="px-2 py-1 border border-white dark:border-black/20 rounded-full backdrop-blur-xs bg-white/20 dark:bg-black/20 flex fixed right-24 top-3 h-12 z-[100] pointer-events-auto">
     <div class="flex items-center gap-1 overflow-x-auto">
       <button
         v-for="tab in tabs"
         :key="tab.id"
-        :disabled="tab.disabled"
+        type="button"
         :class="[
-          'flex items-center gap-2 px-2 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
+          'flex items-center gap-2 px-2 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors relative',
           tab.disabled
-            ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500'
-            : modelValue === tab.id
-              ? 'bg-primary-500 text-white'
-              : tab.status === 'warning'
-                ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-500 pointer-events-none'
+            : 'cursor-pointer pointer-events-auto',
+          !tab.disabled && modelValue === tab.id
+            ? 'bg-primary-500 text-white'
+            : !tab.disabled && tab.status === 'warning'
+              ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+              : !tab.disabled
+                ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                : ''
         ]"
-        @click="!tab.disabled && $emit('update:modelValue', tab.id)"
+        @click.stop="handleTabClick(tab)"
       >
         <!-- Tab Number/Icon -->
         <span
@@ -56,9 +59,16 @@ interface Props {
   tabs: Tab[]
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
+
+const handleTabClick = (tab: Tab) => {
+  // Ha a tab nincs letiltva, akkor váltunk rá
+  if (!tab.disabled) {
+    emit('update:modelValue', tab.id)
+  }
+}
 </script>

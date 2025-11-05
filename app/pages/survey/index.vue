@@ -1,81 +1,58 @@
 <template>
-  <div>
-    <!-- Header -->
-    <div class="flex h-24 items-center justify-between mr-16">
-      <div class="text-2xl font-light"><span class="font-black">{{ $t('survey.list.title') }}</span></div>
-      <UIButtonEnhanced
-        icon="i-lucide-zap"
-        variant="primary"
-        size="md"
-        to="/survey/client-data"
-      >
-        {{ $t('survey.list.newConsultation') }}
-      </UIButtonEnhanced>
+  <div class="space-y-6 lg:space-y-8">
+    <!-- Header Section -->
+    <div class="flex justify-between pt-6">
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white outfit">{{ $t('survey.list.title') }}</h1>
+      </div>
+
+      <div class="mr-16 flex items-center justify-end">
+        <UIButtonEnhanced
+          icon="i-lucide-zap"
+          variant="primary"
+          size="md"
+          to="/survey/client-data"
+        >
+          {{ $t('survey.list.newConsultation') }}
+        </UIButtonEnhanced>
+      </div>
     </div>
 
-    <div class="flex flex-col space-y-8">
-      <!-- Welcome Section -->
-      <!--
-      <div class="grid grid-cols-1 lg:grid-cols-2 min-h-48">
+    <div class="flex flex-col space-y-6">
+      <!-- Enhanced Filters Section -->
 
-        <div class="flex flex-col basis-0 items-start justify-center">
-          <div class="grid grid-cols-3 gap-4 w-full">
-            <UIBox class="p-4 text-center">
-              <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {{ surveys.length }}
-              </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.totalSurveys') }}</div>
-            </UIBox>
-            <UIBox class="p-4 text-center">
-              <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                {{ todayCount }}
-              </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.today') }}</div>
-            </UIBox>
-            <UIBox class="p-4 text-center">
-              <div class="text-3xl font-bold text-green-600 dark:text-green-400">
-                {{ thisWeekCount }}
-              </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ $t('survey.list.thisWeek') }}</div>
-            </UIBox>
-          </div>
-        </div>
-      </div>
-        -->
-
-
-      <!-- Filters Section -->
-      <div class="flex items-start gap-3">
-        <!-- Filter Buttons -->
-        <!--<UIBox class="flex-1">-->
-          <div class=" grow">
-            <div class="flex flex-wrap gap-2">
+      <UIBox class="sticky top-2 z-10">
+        <div class="flex p-4">
+          <!-- Filter Buttons -->
+          <div class="flex-1 overflow-x-auto">
+            <div class="flex flex-nowrap lg:flex-wrap gap-2 pb-2 lg:pb-0 min-w-max lg:min-w-0">
               <button
                 v-for="option in dateFilterOptions"
                 :key="option.value"
                 @click="selectedDateFilter = option.value"
                 :class="[
-                  'px-4 py-3 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer',
+                  'px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer whitespace-nowrap',
+                  'border-2 backdrop-blur-sm',
                   selectedDateFilter === option.value
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-black hover:text-white dark:hover:bg-gray-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/40 border-blue-500'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-600 hover:bg-gray-900 hover:text-white dark:hover:bg-gray-700 hover:border-gray-900 dark:hover:border-gray-700'
                 ]"
               >
                 {{ option.label }}
               </button>
             </div>
           </div>
-        <!--</UIBox>-->
 
-        <!-- Search Input -->
-        <div class="w-64">
-          <UIInput
-            v-model="searchQuery"
-            :placeholder="$t('survey.list.searchPlaceholder')"
-            icon="i-lucide-search"
-          />
+          <!-- Search Input -->
+          <div class="w-full lg:w-72 flex-shrink-0">
+            <UIInput
+              v-model="searchQuery"
+              :placeholder="$t('survey.list.searchPlaceholder')"
+              icon="i-lucide-search"
+            />
+          </div>
         </div>
-      </div>
+      </UIBox>
 
       <!-- Loading State -->
       <UIBox v-if="loading" class="p-12">
@@ -100,12 +77,15 @@
       </UIBox>
 
       <!-- Survey List -->
-      <div v-else class="grid grid-cols-1 gap-2">
-        <SurveyListItem
-          v-for="survey in filteredSurveys"
-          :key="survey.id"
-          :survey="survey"
-        />
+      <div v-else class="space-y-4">
+        <!-- Survey Cards Grid -->
+        <div class="grid grid-cols-1 gap-4">
+          <SurveyListItem
+            v-for="survey in filteredSurveys"
+            :key="survey.id"
+            :survey="survey"
+          />
+        </div>
       </div>
     </div>
   </div>

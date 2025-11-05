@@ -505,7 +505,7 @@ const emit = defineEmits<{
   'update:showInvestmentModal': [value: boolean]
   'toggle-list-view': []
   'set-display-mode': [mode: 'single' | 'investment' | 'all']
-  'open-photo-upload': [categoryId: string]
+  'open-photo-upload': [categoryId: string, investmentId: string]
   'open-camera': [investmentId: string]
 }>()
 
@@ -712,8 +712,8 @@ const handlePageClick = (pageId: string) => {
   emit('set-display-mode', 'single')
 }
 
-const handleCategoryClick = (categoryId: string) => {
-  emit('open-photo-upload', categoryId)
+const handleCategoryClick = (categoryId: string, investmentId: string) => {
+  emit('open-photo-upload', categoryId, investmentId)
 }
 
 const handleCameraClick = () => {

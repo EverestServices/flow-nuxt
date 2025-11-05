@@ -1,32 +1,7 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-    <!-- View Toggle -->
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('survey.summary.view') }}</span>
-        <UButton
-          :icon="viewMode === 'list' ? 'i-lucide-list' : 'i-lucide-layout-grid'"
-          :color="viewMode === 'list' ? 'primary' : 'gray'"
-          variant="outline"
-          size="sm"
-          @click="viewMode = 'list'"
-        >
-          {{ $t('survey.summary.list') }}
-        </UButton>
-        <UButton
-          :icon="viewMode === 'card' ? 'i-lucide-layout-grid' : 'i-lucide-layout-grid'"
-          :color="viewMode === 'card' ? 'primary' : 'gray'"
-          variant="outline"
-          size="sm"
-          @click="viewMode = 'card'"
-        >
-          {{ $t('survey.summary.card') }}
-        </UButton>
-      </div>
-    </div>
-
+  <div class="min-h-screen relative overflow-hidden py-20 px-3">
     <!-- Content Area -->
-    <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex-1 overflow-y-auto">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center h-full">
         <div class="text-center">
@@ -37,9 +12,9 @@
 
       <!-- No Contracts State -->
       <div v-else-if="!contracts || contracts.length === 0" class="flex items-center justify-center h-full">
-        <div class="text-center">
-          <UIcon name="i-lucide-file-text" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p class="text-gray-600 dark:text-gray-400">{{ $t('survey.summary.noContracts') }}</p>
+        <div class="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 p-12 text-center">
+          <UIcon name="i-lucide-inbox" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p class="text-gray-600 dark:text-gray-400 font-medium">{{ $t('survey.summary.noContracts') }}</p>
         </div>
       </div>
 
@@ -48,26 +23,27 @@
         v-else
         :class="[
           'gap-6',
-          viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+          props.viewMode === 'list' ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
         ]"
       >
         <div
           v-for="contract in contracts"
           :key="contract.id"
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+          class="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20"
         >
           <!-- Card Header -->
-          <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="m-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-full">
+            <h3 class="text-base font-semibold text-center">
               {{ contract.name }}
             </h3>
           </div>
 
           <!-- Card Body -->
-          <div class="p-6 space-y-6">
+          <div class="px-6 pb-4 space-y-6">
             <!-- Client Information -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <div class="backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
+              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <UIcon name="i-lucide-user" class="w-4 h-4" />
                 {{ $t('survey.summary.clientInformation') }}
               </h4>
               <div class="space-y-2 text-sm">
@@ -94,8 +70,9 @@
             </div>
 
             <!-- Contract Details -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <div class="backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
+              <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <UIcon name="i-lucide-file-text" class="w-4 h-4" />
                 {{ $t('survey.summary.contractDetails') }}
               </h4>
 
@@ -134,36 +111,34 @@
           </div>
 
           <!-- Card Footer -->
-          <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600">
-            <div class="flex items-center justify-end gap-2">
+          <div class="px-6 pb-6">
+            <div class="flex items-center justify-end gap-2 flex-wrap">
               <!-- Save without send -->
-              <UButton
-                :icon="'i-lucide-save'"
-                :label="viewMode === 'list' ? $t('survey.summary.saveWithoutSend') : undefined"
-                color="gray"
-                variant="outline"
-                size="sm"
+              <button
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 bg-white/70 dark:bg-gray-700/70 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 hover:scale-105 border-2 border-gray-200 dark:border-gray-600"
                 @click="handleSaveWithoutSend(contract.id)"
-              />
+              >
+                <UIcon name="i-lucide-save" class="w-4 h-4" />
+                <span v-if="props.viewMode === 'list'">{{ $t('survey.summary.saveWithoutSend') }}</span>
+              </button>
 
               <!-- Save and Send -->
-              <UButton
-                :icon="'i-lucide-send'"
-                :label="viewMode === 'list' ? $t('survey.summary.saveAndSend') : undefined"
-                color="primary"
-                variant="outline"
-                size="sm"
+              <button
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 bg-white/70 dark:bg-gray-700/70 text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-gray-600 hover:scale-105 border-2 border-blue-500 dark:border-blue-600"
                 @click="handleSaveAndSend(contract.id)"
-              />
+              >
+                <UIcon name="i-lucide-send" class="w-4 h-4" />
+                <span v-if="props.viewMode === 'list'">{{ $t('survey.summary.saveAndSend') }}</span>
+              </button>
 
               <!-- Sign Now -->
-              <UButton
-                :icon="'i-lucide-pen-tool'"
-                :label="viewMode === 'list' ? $t('survey.summary.signNow') : undefined"
-                color="primary"
-                size="sm"
+              <button
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-105"
                 @click="handleSignNow(contract.id)"
-              />
+              >
+                <UIcon name="i-lucide-pen-tool" class="w-4 h-4" />
+                <span v-if="props.viewMode === 'list'">{{ $t('survey.summary.signNow') }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -183,14 +158,16 @@ const { t } = useI18n()
 interface Props {
   surveyId: string
   clientData?: any
+  viewMode?: 'list' | 'card'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  viewMode: 'list'
+})
 
 const contractsStore = useContractsStore()
 const investmentsStore = useSurveyInvestmentsStore()
 
-const viewMode = ref<'list' | 'card'>('list')
 const loading = ref(false)
 
 // Computed

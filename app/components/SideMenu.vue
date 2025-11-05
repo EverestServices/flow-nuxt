@@ -205,7 +205,7 @@
     <div
         v-if="activeSubmenu && currentSubmenuItems.length > 0"
         key="submenu"
-        class="bottom-2 left-100 top-2 fixed dark:bg-slate-800/20 backdrop-blur-xl w-96 p-4 border border-white/60 dark:border-slate-700/30 rounded-2xl flex flex-col gap-4 divide-y divide-white/10 dark:divide-slate-700/30 shadow-2xl z-50"
+        class="bottom-2 left-[25.5rem] top-2 fixed dark:bg-slate-800/20 backdrop-blur-xl w-96 p-4 border border-white/60 dark:border-slate-700/30 rounded-2xl flex flex-col gap-4 divide-y divide-white/10 dark:divide-slate-700/30 shadow-2xl z-50"
         @mouseenter="cancelHideSubmenu"
         @mouseleave="scheduleHideSubmenu"
     >
@@ -298,7 +298,7 @@ const showSubmenu = (menuLabel: string) => {
 const scheduleHideSubmenu = () => {
   hideTimeout.value = setTimeout(() => {
     activeSubmenu.value = null;
-  }, 200);
+  }, 400);
 };
 
 const cancelHideSubmenu = () => {
