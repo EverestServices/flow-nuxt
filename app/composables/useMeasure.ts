@@ -38,6 +38,56 @@ export const useMeasure = () => {
     return { path, publicUrl: pub.publicUrl as string }
   }
 
+  // --- DB blob helpers
+  const fileToBase64 = (file: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const res = reader.result as string
+        const base64 = res.startsWith('data:') ? (res.split(',')[1] || '') : (res || '')
+        resolve(base64)
+      }
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(file)
+    })
+
+  const blobToBase64 = (blob: Blob): Promise<string> => fileToBase64(blob)
+
+  const setOriginalImageBlob = async (imageId: string, file: File) => {
+    const base64 = await fileToBase64(file)
+    const { error } = await supabase.rpc('measure_set_original_image', {
+      p_image_id: imageId,
+      p_base64: base64,
+      p_mime: file.type || 'application/octet-stream',
+      p_name: file.name || 'original'
+    })
+    if (error) throw error
+    return true
+  }
+
+  const setProcessedImageBlob = async (imageId: string, blob: Blob, name: string) => {
+    const base64 = await blobToBase64(blob)
+    const { error } = await supabase.rpc('measure_set_processed_image', {
+      p_image_id: imageId,
+      p_base64: base64,
+      p_mime: (blob as any).type || 'image/png',
+      p_name: name || 'processed'
+    })
+    if (error) throw error
+    return true
+  }
+
+  const getImageDataUrl = async (imageId: string, kind: 'original' | 'processed'): Promise<string | null> => {
+    const { data, error } = await supabase.rpc('measure_get_image', {
+      p_image_id: imageId,
+      p_kind: kind
+    })
+    if (error) throw error
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row || !row.content_base64 || !row.mime) return null
+    return `data:${row.mime};base64,${row.content_base64}`
+  }
+
   // --- DB helpers
   const createWall = async (surveyId: string, name: string) => {
     const { data, error: err } = await supabase
@@ -76,6 +126,92 @@ export const useMeasure = () => {
       .single()
     if (err) throw err
     return data as { id: string }
+  }
+
+  const updateWallImage = async (imageId: string, payload: {
+    processedUrl?: string | null,
+    meterPerPixel?: number | null,
+    processedImageWidth?: number | null,
+    processedImageHeight?: number | null,
+    referenceStart?: Point | null,
+    referenceEnd?: Point | null,
+    referenceLengthCm?: number | null,
+  }) => {
+    const { error } = await supabase
+      .from('measure_wall_images')
+      .update({
+        processed_url: payload.processedUrl ?? null,
+        meter_per_pixel: payload.meterPerPixel ?? null,
+        processed_image_width: payload.processedImageWidth ?? null,
+        processed_image_height: payload.processedImageHeight ?? null,
+        reference_start: payload.referenceStart ?? null,
+        reference_end: payload.referenceEnd ?? null,
+        reference_length_cm: payload.referenceLengthCm ?? null,
+      })
+      .eq('id', imageId)
+    if (error) throw error
+    return true
+  }
+
+  const pathFromPublicUrl = (url?: string | null): string | null => {
+    if (!url) return null
+    try {
+      const marker = '/storage/v1/object/public/' + bucket + '/'
+      const idx = url.indexOf(marker)
+      if (idx >= 0) return url.substring(idx + marker.length)
+      const marker2 = '/object/public/' + bucket + '/'
+      const idx2 = url.indexOf(marker2)
+      if (idx2 >= 0) return url.substring(idx2 + marker2.length)
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  const deleteWallImage = async (imageId: string) => {
+    const { data, error: selErr } = await supabase
+      .from('measure_wall_images')
+      .select('original_url, processed_url')
+      .eq('id', imageId)
+      .single()
+    if (selErr) throw selErr
+    const paths: string[] = []
+    const o = pathFromPublicUrl((data as any)?.original_url)
+    const p = pathFromPublicUrl((data as any)?.processed_url)
+    if (o) paths.push(o)
+    if (p) paths.push(p)
+    if (paths.length) {
+      await supabase.storage.from(bucket).remove(paths)
+    }
+    const { error: delErr } = await supabase.from('measure_wall_images').delete().eq('id', imageId)
+    if (delErr) throw delErr
+    return true
+  }
+
+  const listWallImagesByWallId = async (wallId: string) => {
+    const { data, error } = await supabase
+      .from('measure_wall_images')
+      .select('id, original_url, processed_url')
+      .eq('wall_id', wallId)
+    if (error) throw error
+    return (data ?? []) as Array<{ id: string, original_url: string | null, processed_url: string | null }>
+  }
+
+  const deleteWallDeep = async (wallId: string) => {
+    const images = await listWallImagesByWallId(wallId)
+    const paths: string[] = []
+    for (const img of images) {
+      const o = pathFromPublicUrl(img.original_url)
+      const p = pathFromPublicUrl(img.processed_url)
+      if (o) paths.push(o)
+      if (p) paths.push(p)
+    }
+    if (paths.length) {
+      await supabase.storage.from(bucket).remove(paths)
+    }
+    const { error } = await supabase.from('measure_walls').delete().eq('id', wallId)
+    if (error) throw error
+    return true
   }
 
   const replaceWallPolygons = async (wallId: string, polygons: PolygonSurface[]) => {
@@ -197,6 +333,13 @@ export const useMeasure = () => {
     // walls/images/polygons
     createWall,
     insertWallImage,
+    updateWallImage,
+    deleteWallImage,
+    setOriginalImageBlob,
+    setProcessedImageBlob,
+    getImageDataUrl,
+    listWallImagesByWallId,
+    deleteWallDeep,
     replaceWallPolygons,
     fetchWallsBySurvey,
     deleteWall,

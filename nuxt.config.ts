@@ -48,7 +48,8 @@ export default defineNuxtConfig({
   },
   nitro: {
     routeRules: {
-      '/measure/aruco/api/facade/process': { proxy: 'https://aruco.everest.hu/process-image/' }
+      '/measure/aruco/api/facade/process': { proxy: 'https://aruco.everest.hu/process-image/' },
+      '/measure/aruco/download/**': { proxy: 'https://aruco.everest.hu/download/**' }
     }
   },
   runtimeConfig: {

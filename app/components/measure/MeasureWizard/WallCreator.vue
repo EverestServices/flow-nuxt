@@ -56,7 +56,7 @@ const walls = computed(() => Object.values(store.walls));
 const route = useRoute();
 const supabase = useSupabaseClient();
 const user = useSupabaseUser();
-const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage } = useMeasure();
+const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage, updateWallImage, deleteWallImage, deleteWallDeep, setOriginalImageBlob, setProcessedImageBlob, getImageDataUrl } = useMeasure();
 
 const generateId = (): string =>
   Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
@@ -69,6 +69,42 @@ const createEmptyImage = (): WallImage => ({
   message: null,
   previewUrl: '',
 });
+
+async function compressToJpeg(blob: Blob, maxDim = 1600, quality = 0.85): Promise<Blob> {
+  const img = document.createElement('img')
+  const url = URL.createObjectURL(blob)
+  img.src = url
+  await new Promise<void>((resolve) => {
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+  })
+  const w = img.naturalWidth || img.width
+  const h = img.naturalHeight || img.height
+  if (!w || !h) {
+    URL.revokeObjectURL(url)
+    return blob
+  }
+  let tw = w, th = h
+  if (Math.max(w, h) > maxDim) {
+    if (w >= h) {
+      tw = maxDim
+      th = Math.round((h / w) * maxDim)
+    } else {
+      th = maxDim
+      tw = Math.round((w / h) * maxDim)
+    }
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = tw
+  canvas.height = th
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, tw, th)
+  const out: Blob = await new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b || blob), 'image/jpeg', quality)
+  })
+  URL.revokeObjectURL(url)
+  return out
+}
 
 // Load walls from Supabase on mount
 onMounted(async () => {
@@ -88,6 +124,9 @@ onMounted(async () => {
 
     if (!dbWalls || dbWalls.length === 0) {
       console.log('No walls found in DB for this survey');
+      const dbWall = await createWall(surveyId, '');
+      const newWall: Wall = { id: dbWall.id, name: '', images: [createEmptyImage()], polygons: [] };
+      store.setWall(newWall.id, newWall);
       return;
     }
 
@@ -101,16 +140,16 @@ onMounted(async () => {
         return {
           imageId: img.id,
           file: null,
-          fileName: img.original_url?.split('/').pop() || null,
+          fileName: (img.original_url || img.processed_url)?.split('/').pop() || null,
           uploadStatus: 'success' as const,
           message: null,
-          previewUrl: img.original_url || '',
+          previewUrl: img.original_url || img.processed_url || '',
           processedImageUrl: img.processed_url || '',
           meterPerPixel: img.meter_per_pixel,
           processedImageWidth: img.processed_image_width,
           processedImageHeight: img.processed_image_height,
-          referenceStart: img.reference_start ? JSON.parse(img.reference_start) : null,
-          referenceEnd: img.reference_end ? JSON.parse(img.reference_end) : null,
+          referenceStart: img.reference_start ?? null,
+          referenceEnd: img.reference_end ?? null,
           referenceLengthCm: img.reference_length_cm,
         };
       });
@@ -125,7 +164,7 @@ onMounted(async () => {
         name: p.name,
         visible: p.visible,
         closed: p.closed,
-        points: JSON.parse(p.points),
+        points: p.points,
       }));
 
       const wall: Wall = {
@@ -135,6 +174,20 @@ onMounted(async () => {
         polygons: wallPolygons,
       };
 
+      // Hydrate image URLs from DB blobs (data: URLs) BEFORE first render
+      for (const img of wall.images) {
+        try {
+          const dataUrlProcessed = await getImageDataUrl(img.imageId, 'processed');
+          if (dataUrlProcessed) {
+            img.processedImageUrl = dataUrlProcessed;
+          } else {
+            const dataUrlOriginal = await getImageDataUrl(img.imageId, 'original');
+            if (dataUrlOriginal) img.previewUrl = dataUrlOriginal;
+          }
+        } catch (e) {
+          console.warn('Hydrate DB image failed for', img.imageId, e);
+        }
+      }
       console.log('✅ Setting wall in store:', wall);
       store.setWall(wall.id, wall);
     }
@@ -250,7 +303,12 @@ function exportExcel() {
   URL.revokeObjectURL(url);
 }
 
-const removeWall = (wallId: string) => {
+const removeWall = async (wallId: string) => {
+  try {
+    await deleteWallDeep(wallId);
+  } catch (e) {
+    console.warn('deleteWallDeep failed, removing locally only:', e);
+  }
   store.removeWall(wallId);
 };
 
@@ -259,7 +317,12 @@ const addImage = (wall: Wall) => {
   store.setWall(wall.id, wall);
 };
 
-const removeImage = (wall: Wall, imageId: string) => {
+const removeImage = async (wall: Wall, imageId: string) => {
+  try {
+    await deleteWallImage(imageId);
+  } catch (e) {
+    console.warn('deleteWallImage failed or not found, proceeding to remove locally:', e);
+  }
   wall.images = wall.images.filter((img) => img.imageId !== imageId);
   store.setWall(wall.id, wall);
 };
@@ -277,11 +340,11 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
   store.setWall(wall.id, wall);
 
   try {
-    // 1. Feldolgozzuk az API-val (ArUco marker detection)
-    const res = await processFacadeImage(file);
-
-    // 2. Feltöltjük Supabase Storage-ba és mentjük a DB-be
+    let res: any | null = null;
+    // 1. Feltöltjük Supabase Storage-ba és mentjük a DB-be
     let uploadedUrl: string | null = null;
+    let insertedImageId: string | null = null;
+    let companyId: string | null = null;
 
     try {
       // Szerezzük meg a company_id-t
@@ -296,7 +359,7 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
         throw profileErr;
       }
 
-      const companyId = profile?.company_id;
+      companyId = profile?.company_id;
       console.log('Company ID:', companyId, 'Wall ID:', wall.id, 'Survey ID:', route.params.surveyId);
 
       if (companyId) {
@@ -306,22 +369,56 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
         const originalUpload = await uploadImage(file, companyId, surveyId, wall.id, 'original');
         console.log('Upload successful! URL:', originalUpload.publicUrl);
         uploadedUrl = originalUpload.publicUrl;
-
-        // Mentjük a kép metaadatait a DB-be
         console.log('Inserting wall image metadata...');
-        await insertWallImage(wall.id, {
+        const inserted = await insertWallImage(wall.id, {
           originalUrl: originalUpload.publicUrl,
-          processedUrl: res.image_url,
-          meterPerPixel: res.real_pixel_size,
+          processedUrl: null,
+          meterPerPixel: null,
           processedImageWidth: null,
           processedImageHeight: null,
           referenceStart: null,
           referenceEnd: null,
           referenceLengthCm: null,
         });
+        insertedImageId = inserted.id;
+        image.imageId = inserted.id;
         console.log('Wall image metadata saved successfully!');
+
+        // Save original as DB blob (compressed) and hydrate preview
+        try {
+          const compressed = await compressToJpeg(file)
+          const dbFile = new File([compressed], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
+          await setOriginalImageBlob(inserted.id, dbFile);
+          const dbDataUrl = await getImageDataUrl(inserted.id, 'original');
+          if (dbDataUrl) image.previewUrl = dbDataUrl;
+        } catch (e) {
+          console.warn('Saving original image blob failed:', e);
+        }
       } else {
-        console.warn('No company ID found, skipping upload');
+        console.warn('No company ID found, skipping upload to Storage, but creating DB image record');
+        const inserted = await insertWallImage(wall.id, {
+          originalUrl: null,
+          processedUrl: null,
+          meterPerPixel: null,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        insertedImageId = inserted.id;
+        image.imageId = inserted.id;
+
+        // Save original as DB blob (compressed) even if no storage
+        try {
+          const compressed = await compressToJpeg(file)
+          const dbFile = new File([compressed], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
+          await setOriginalImageBlob(inserted.id, dbFile);
+          const dbDataUrl = await getImageDataUrl(inserted.id, 'original');
+          if (dbDataUrl) image.previewUrl = dbDataUrl;
+        } catch (e) {
+          console.warn('Saving original image blob failed (no storage path):', e);
+        }
       }
     } catch (uploadErr: any) {
       console.error('Supabase Storage upload failed:', uploadErr);
@@ -329,13 +426,137 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
       // Nem dobunk hibát, folytatjuk blob URL-lel
     }
 
-    // Használjuk a Supabase URL-t ha van, különben blob URL
-    image.uploadStatus = 'success';
-    image.message = uploadedUrl ? 'A fájl sikeresen feltöltve és feldolgozva.' : 'A fájl sikeresen feldolgozva.';
-    image.processedImageUrl = res.image_url; // API által feldolgozott kép URL
-    image.previewUrl = uploadedUrl || URL.createObjectURL(file); // Supabase URL vagy blob fallback
-    image.meterPerPixel = res.real_pixel_size;
-    store.setWall(wall.id, wall);
+    // 2. Feldolgozzuk az API-val, majd frissítjük a DB-t
+    try {
+      const r = await processFacadeImage(file);
+      res = r;
+      // Build proxied same-origin URL for the processed image to avoid CORS when fetching blob
+      let processedPath = '';
+      try {
+        const u = new URL(r.image_url);
+        processedPath = u.pathname; // e.g. /download/...
+      } catch {
+        processedPath = r.image_url.startsWith('http') ? '' : r.image_url;
+      }
+      const proxiedUrl = processedPath ? `/measure/aruco${processedPath}` : r.image_url;
+
+      // Load processed image to get dimensions and blob
+      let processedW: number | null = null;
+      let processedH: number | null = null;
+      try {
+        const imgEl = new Image();
+        imgEl.src = proxiedUrl;
+        await new Promise<void>((resolve) => {
+          imgEl.onload = () => resolve();
+          imgEl.onerror = () => resolve();
+        });
+        processedW = (imgEl as any).naturalWidth || null;
+        processedH = (imgEl as any).naturalHeight || null;
+      } catch {}
+
+      // Fetch blob of processed image and upload to Supabase as 'processed'
+      if (companyId) {
+        try {
+          const resp = await fetch(proxiedUrl);
+          const blobRaw = await resp.blob();
+          const blob = await compressToJpeg(blobRaw)
+          const processedName = (processedPath?.split('/').pop() || file.name.replace(/\.[^.]+$/, '')) + '';
+          const processedFile = new File([blob], processedName, { type: blob.type || 'image/png' });
+          const surveyId = String(route.params.surveyId);
+          const processedUpload = await uploadImage(processedFile as File, companyId, surveyId, wall.id, 'processed');
+          if (insertedImageId) {
+            await updateWallImage(insertedImageId, {
+              processedUrl: processedUpload.publicUrl,
+              meterPerPixel: r.real_pixel_size,
+              processedImageWidth: processedW,
+              processedImageHeight: processedH,
+              referenceStart: null,
+              referenceEnd: null,
+              referenceLengthCm: null,
+            });
+            // reflect in UI
+            try {
+              await setProcessedImageBlob(insertedImageId, blob, processedName);
+              const dbProcessedUrl = await getImageDataUrl(insertedImageId, 'processed');
+              if (dbProcessedUrl) image.processedImageUrl = dbProcessedUrl;
+            } catch (e) {
+              console.warn('Saving processed image blob failed:', e);
+              image.processedImageUrl = processedUpload.publicUrl;
+            }
+            image.processedImageWidth = processedW ?? undefined;
+            image.processedImageHeight = processedH ?? undefined;
+          }
+        } catch (upErr) {
+          console.warn('Processed image upload failed, falling back to external URL in DB:', upErr);
+          if (insertedImageId) {
+            await updateWallImage(insertedImageId, {
+              processedUrl: r.image_url,
+              meterPerPixel: r.real_pixel_size,
+              processedImageWidth: processedW,
+              processedImageHeight: processedH,
+              referenceStart: null,
+              referenceEnd: null,
+              referenceLengthCm: null,
+            });
+            try {
+              const resp2 = await fetch(proxiedUrl);
+              const raw = await resp2.blob();
+              const blob2 = await compressToJpeg(raw)
+              await setProcessedImageBlob(insertedImageId, blob2, processedPath?.split('/').pop() || 'processed');
+              const dbProcessedUrl = await getImageDataUrl(insertedImageId, 'processed');
+              if (dbProcessedUrl) image.processedImageUrl = dbProcessedUrl; else image.processedImageUrl = r.image_url;
+            } catch {
+              image.processedImageUrl = r.image_url;
+            }
+            image.processedImageWidth = processedW ?? undefined;
+            image.processedImageHeight = processedH ?? undefined;
+          }
+        }
+      } else if (insertedImageId) {
+        // No companyId: cannot upload to Storage; still update DB with external URL
+        await updateWallImage(insertedImageId, {
+          processedUrl: r.image_url,
+          meterPerPixel: r.real_pixel_size,
+          processedImageWidth: processedW,
+          processedImageHeight: processedH,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        try {
+          const resp = await fetch(proxiedUrl);
+          const raw = await resp.blob();
+          const blob = await compressToJpeg(raw)
+          await setProcessedImageBlob(insertedImageId, blob, processedPath?.split('/').pop() || 'processed');
+          const dbProcessedUrl = await getImageDataUrl(insertedImageId, 'processed');
+          if (dbProcessedUrl) image.processedImageUrl = dbProcessedUrl; else image.processedImageUrl = r.image_url;
+        } catch {
+          image.processedImageUrl = r.image_url;
+        }
+        image.processedImageWidth = processedW ?? undefined;
+        image.processedImageHeight = processedH ?? undefined;
+      }
+    } catch (procErr) {
+      console.error('Feldolgozás hiba:', procErr);
+    }
+
+    if (uploadedUrl || res) {
+      image.uploadStatus = 'success';
+      image.message = uploadedUrl && res ? 'A fájl sikeresen feltöltve és feldolgozva.' : (uploadedUrl ? 'A fájl sikeresen feltöltve.' : 'A fájl sikeresen feldolgozva.');
+      if (res) {
+        // only set external URL if we didn't already set a storage URL above
+        if (!image.processedImageUrl) {
+          image.processedImageUrl = res.image_url;
+        }
+        image.meterPerPixel = res.real_pixel_size;
+      }
+      if (uploadedUrl) {
+        image.previewUrl = uploadedUrl;
+      }
+      store.setWall(wall.id, wall);
+    } else {
+      throw new Error('Neither upload nor processing succeeded');
+    }
   } catch (err: any) {
     console.error('Feldolgozás hiba:', err);
     image.uploadStatus = 'failed';
