@@ -1,9 +1,13 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen relative overflow-hidden py-20 px-3">
     <!-- Contract Selector Section -->
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
-      <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+    <div class="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 p-6 mb-6 z-20">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+        <UIcon name="i-lucide-file-text" class="w-5 h-5" />
         {{ $t('survey.contractData.selectContracts') }}
+        <span class="text-xs font-normal text-gray-500 dark:text-gray-400 ml-auto">
+          {{ selectedContractIds.length }}/3
+        </span>
       </h3>
 
       <!-- Contract Buttons -->
@@ -11,10 +15,10 @@
         <button
           v-for="contract in contracts"
           :key="contract.id"
-          class="flex flex-col gap-1.5 px-4 py-2.5 rounded-lg text-sm transition-all border-2 min-w-[200px]"
+          class="flex flex-col gap-2 px-5 py-3 rounded-2xl text-sm transition-all duration-200 border-2 min-w-[220px]"
           :class="isContractSelected(contract.id)
-            ? 'bg-primary-600 text-white border-primary-600'
-            : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600'"
+            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white border-blue-500 scale-105'
+            : 'bg-white/70 dark:bg-gray-700/70 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600 hover:scale-105'"
           :disabled="!isContractSelected(contract.id) && selectedContractIds.length >= 3"
           @click="toggleContractSelection(contract.id)"
         >
@@ -45,13 +49,16 @@
       </div>
 
       <!-- No contracts message -->
-      <p v-if="contracts.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-        {{ $t('survey.contractData.noContracts') }}
-      </p>
+      <div v-if="contracts.length === 0" class="text-center py-8">
+        <UIcon name="i-lucide-inbox" class="w-12 h-12 text-gray-400 mx-auto mb-3" />
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          {{ $t('survey.contractData.noContracts') }}
+        </p>
+      </div>
     </div>
 
     <!-- Contract Cards Section -->
-    <div v-if="selectedContracts.length > 0" class="flex-1 overflow-auto p-6">
+    <div v-if="selectedContracts.length > 0" class="flex-1 overflow-auto">
       <div class="grid gap-6" :class="{
         'grid-cols-1': selectedContracts.length === 1,
         'grid-cols-2': selectedContracts.length === 2,
@@ -61,241 +68,189 @@
         <div
           v-for="contract in selectedContracts"
           :key="contract.id"
-          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+          class="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20"
         >
           <!-- Card Header -->
-          <div class="bg-primary-600 text-white px-4 py-3">
-            <h4 class="font-medium">{{ contract.name }}</h4>
+          <div class="m-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-full">
+            <h4 class="font-semibold text-base text-center">{{ contract.name }}</h4>
           </div>
 
           <!-- Card Content -->
-          <div class="p-4 space-y-6">
+          <div class="px-6 pb-6 space-y-6">
             <!-- Client Data Section -->
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.clientData') }}</h5>
+            <div class="backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
+              <div class="flex items-center justify-between mb-4">
+                <h5 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <UIcon name="i-lucide-user" class="w-4 h-4" />
+                  {{ $t('survey.contractData.clientData') }}
+                </h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
                   <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
-                    <UButton
+                    <button
                       v-for="otherContract in getOtherContracts(contract.id)"
                       :key="otherContract.id"
-                      :label="getContractShortName(otherContract.name)"
-                      size="xs"
-                      color="gray"
-                      variant="outline"
+                      class="px-2 py-1 text-xs font-medium rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all hover:scale-105"
                       @click="copyClientData(contract.id, otherContract.id)"
-                    />
+                    >
+                      {{ getContractShortName(otherContract.name) }}
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.name') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].client_name"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.clientName')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].client_name"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.name')"
+                  :placeholder="$t('survey.contractData.clientName')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.address') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].client_address"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.clientAddress')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].client_address"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.address')"
+                  :placeholder="$t('survey.contractData.clientAddress')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.phone') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].client_phone"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.phoneNumber')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].client_phone"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.phone')"
+                  :placeholder="$t('survey.contractData.phoneNumber')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.email') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].client_email"
-                    type="email"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.emailAddress')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].client_email"
+                  type="email"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.email')"
+                  :placeholder="$t('survey.contractData.emailAddress')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
               </div>
             </div>
 
             <!-- Personal Details Section -->
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-medium text-gray-900 dark:text-white">{{ $t('survey.contractData.personalDetails') }}</h5>
+            <div class="backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
+              <div class="flex items-center justify-between mb-4">
+                <h5 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <UIcon name="i-lucide-id-card" class="w-4 h-4" />
+                  {{ $t('survey.contractData.personalDetails') }}
+                </h5>
                 <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
                   <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
                   <div class="flex gap-1">
-                    <UButton
+                    <button
                       v-for="otherContract in getOtherContracts(contract.id)"
                       :key="otherContract.id"
-                      :label="getContractShortName(otherContract.name)"
-                      size="xs"
-                      color="gray"
-                      variant="outline"
+                      class="px-2 py-1 text-xs font-medium rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all hover:scale-105"
                       @click="copyPersonalDetails(contract.id, otherContract.id)"
-                    />
+                    >
+                      {{ getContractShortName(otherContract.name) }}
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.birthPlace') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].birth_place"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.birthPlace')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].birth_place"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.birthPlace')"
+                  :placeholder="$t('survey.contractData.birthPlace')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.dateOfBirth') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].date_of_birth"
-                    type="date"
-                    size="sm"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].date_of_birth"
+                  type="date"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.dateOfBirth')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.idCardNumber') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].id_card_number"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.idCardNumber')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].id_card_number"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.idCardNumber')"
+                  :placeholder="$t('survey.contractData.idCardNumber')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.taxId') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].tax_id"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.taxId')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].tax_id"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.taxId')"
+                  :placeholder="$t('survey.contractData.taxId')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.motherBirthName') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].mother_birth_name"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.motherBirthName')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].mother_birth_name"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.motherBirthName')"
+                  :placeholder="$t('survey.contractData.motherBirthName')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.bankAccountNumber') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].bank_account_number"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.bankAccountNumber')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].bank_account_number"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.bankAccountNumber')"
+                  :placeholder="$t('survey.contractData.bankAccountNumber')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.citizenship') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].citizenship"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.citizenship')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].citizenship"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.citizenship')"
+                  :placeholder="$t('survey.contractData.citizenship')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.maritalStatus') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].marital_status"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.maritalStatus')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].marital_status"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.maritalStatus')"
+                  :placeholder="$t('survey.contractData.maritalStatus')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.residenceCardNumber') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].residence_card_number"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.residenceCardNumber')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].residence_card_number"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.residenceCardNumber')"
+                  :placeholder="$t('survey.contractData.residenceCardNumber')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
 
-                <div>
-                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {{ $t('survey.contractData.mailingAddress') }}
-                  </label>
-                  <UInput
-                    v-model="contractsData[contract.id].mailing_address"
-                    size="sm"
-                    :placeholder="$t('survey.contractData.mailingAddress')"
-                    class="w-full"
-                    @update:model-value="handleFieldUpdate(contract.id)"
-                  />
-                </div>
+                <UIInput
+                  v-model="contractsData[contract.id].mailing_address"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.mailingAddress')"
+                  :placeholder="$t('survey.contractData.mailingAddress')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
               </div>
             </div>
           </div>

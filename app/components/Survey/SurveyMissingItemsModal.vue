@@ -138,8 +138,8 @@ const missingPhotoCategories = computed<MissingPhotoCategory[]>(() => {
   store.selectedInvestments.forEach(investment => {
     const categories = store.documentCategories[investment.id] || []
     categories.forEach(category => {
-      // TODO: Get actual uploaded photo count from store/database
-      const uploadedCount = 0 // Placeholder
+      // Get actual uploaded photo count from store
+      const uploadedCount = store.getCategoryPhotoCount(category.id)
 
       if (uploadedCount < category.min_photos) {
         missing.push({

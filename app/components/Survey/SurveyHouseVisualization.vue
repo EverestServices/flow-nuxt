@@ -68,10 +68,10 @@
     <button
       v-for="(categories, persistName, index) in groupedCategories"
       :key="`category-${persistName}`"
-      class="absolute rounded-full bg-white dark:bg-gray-800 border-2 border-blue-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center group"
+      class="absolute rounded-full bg-white/50 dark:bg-gray-800 border-2 border-blue-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center group backdrop-blur-xs"
       :class="getCategoryButtonSizeByCount(categories.length)"
       :style="getCategoryButtonPosition(categories[0], index)"
-      @click="$emit('category-click', categories[0].id)"
+      @click="handleCategoryClick(categories)"
     >
       <!-- Camera Icons (multiple if multiple investments need this category) -->
       <div class="flex items-center justify-center space-x-0.5">
@@ -124,9 +124,9 @@ const props = withDefaults(defineProps<Props>(), {
   investmentFilter: 'all'
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'page-click': [pageId: string]
-  'category-click': [categoryId: string]
+  'category-click': [categoryId: string, investmentId: string]
   'toggle-list-view': []
 }>()
 
@@ -239,5 +239,21 @@ const getCategoryButtonPosition = (category: DocumentCategoryWithInvestment, ind
     top: `${baseTop + offset}px`,
     right: `${baseRight}px`
   }
+}
+
+// Handle category click - select the correct category based on investment filter
+const handleCategoryClick = (categories: DocumentCategoryWithInvestment[]) => {
+  // If investment filter is set and not 'all', find the category for that investment
+  if (props.investmentFilter && props.investmentFilter !== 'all') {
+    const category = categories.find(cat => cat.investmentId === props.investmentFilter)
+    if (category) {
+      emit('category-click', category.id, category.investmentId)
+      return
+    }
+  }
+
+  // Otherwise, use the first category (default behavior)
+  const category = categories[0]
+  emit('category-click', category.id, category.investmentId)
 }
 </script>

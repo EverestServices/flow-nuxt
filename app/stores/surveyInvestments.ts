@@ -115,6 +115,10 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     // Document categories for each investment
     documentCategories: {} as Record<string, DocumentCategory[]>,
 
+    // Uploaded photos count for each category
+    // Structure: { [categoryId]: count }
+    categoryPhotoCounts: {} as Record<string, number>,
+
     // Current active investment and page
     activeInvestmentId: null as string | null,
     activePageId: null as string | null,
@@ -252,6 +256,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
           // Load existing answers from database
           await this.loadExistingAnswers(surveyId)
+
+          // Load photo counts from database
+          await this.loadCategoryPhotoCounts(surveyId)
 
           // Set first investment and page as active
           if (!this.activeInvestmentId) {
@@ -1350,6 +1357,47 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
       } catch (error) {
         console.error('Error loading default values for subpage instance:', error)
+      }
+    },
+
+    // Update photo count for a category
+    updateCategoryPhotoCount(categoryId: string, count: number) {
+      this.categoryPhotoCounts[categoryId] = count
+    },
+
+    // Get photo count for a category
+    getCategoryPhotoCount(categoryId: string): number {
+      return this.categoryPhotoCounts[categoryId] || 0
+    },
+
+    // Load all photo counts from database
+    async loadCategoryPhotoCounts(surveyId: string) {
+      try {
+        console.log('📊 Loading photo counts for survey:', surveyId)
+        const supabase = useSupabaseClient()
+
+        // Get all documents for this survey grouped by category
+        const { data, error } = await supabase
+          .from('documents')
+          .select('document_category_id')
+          .eq('survey_id', surveyId)
+
+        if (error) throw error
+
+        console.log('📊 Documents from database:', data)
+
+        // Count documents per category
+        const counts: Record<string, number> = {}
+        data?.forEach(doc => {
+          const categoryId = doc.document_category_id
+          counts[categoryId] = (counts[categoryId] || 0) + 1
+        })
+
+        // Update store
+        this.categoryPhotoCounts = counts
+        console.log('✅ Photo counts loaded:', counts)
+      } catch (error) {
+        console.error('❌ Error loading category photo counts:', error)
       }
     },
   }

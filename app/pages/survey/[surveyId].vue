@@ -13,6 +13,7 @@
       :contracts="contracts"
       :active-contract-id="activeContract?.id"
       :contract-investments="contractInvestments"
+      :summary-view-mode="summaryViewMode"
       :hide-investment-controls="isMeasureRoute"
       @back="handleBack"
       @toggle-investment="handleToggleInvestment"
@@ -23,6 +24,7 @@
       @select-scenario="handleSelectScenario"
       @change-contract-mode="handleContractModeChange"
       @select-contract="handleSelectContract"
+      @change-summary-view-mode="handleChangeSummaryViewMode"
     />
 
     <!-- Navigation Tabs (hidden when in marker mode/measure route) -->
@@ -84,6 +86,7 @@
           v-else-if="activeTab === 'summary'"
           :survey-id="surveyId"
           :client-data="clientData"
+          :view-mode="summaryViewMode"
           @save-without-send="handleSaveWithoutSend"
           @save-and-send="handleSaveAndSendSingle"
           @sign-now="handleSignNowSingle"
@@ -431,6 +434,9 @@ const activeTab = ref<'property-assessment' | 'consultation' | 'offer-contract' 
 // Contract mode state (null = not set, 'offer' = Offer mode, 'contract' = Contract mode)
 const contractMode = ref<'offer' | 'contract' | null>(null)
 
+// Summary view mode state
+const summaryViewMode = ref<'list' | 'card'>('list')
+
 // Check if there are any saved contracts
 const hasContracts = computed(() => contracts.value.length > 0)
 
@@ -492,8 +498,8 @@ const missingItemsCount = computed(() => {
   investmentsStore.selectedInvestments.forEach(investment => {
     const categories = investmentsStore.documentCategories[investment.id] || []
     categories.forEach(category => {
-      // TODO: Get actual uploaded photo count from store/database
-      const uploadedCount = 0 // Placeholder
+      // Get actual uploaded photo count from store
+      const uploadedCount = investmentsStore.getCategoryPhotoCount(category.id)
       if (uploadedCount < category.min_photos) {
         count++
       }
@@ -702,6 +708,10 @@ const handleContractModeChange = (mode: 'offer' | 'contract' | null) => {
   console.log('Contract mode changed:', mode)
 }
 
+const handleChangeSummaryViewMode = (mode: 'list' | 'card') => {
+  summaryViewMode.value = mode
+}
+
 // Footer handlers
 const handleSaveExit = () => {
   console.log('Save and exit')
@@ -775,10 +785,10 @@ const handleOpenSurveyPageFromMissing = (pageId: string) => {
   investmentsStore.setActivePage(pageId)
 }
 
-const handleOpenPhotoUpload = (categoryId: string) => {
+const handleOpenPhotoUpload = (categoryId: string, investmentId: string) => {
   photoUploadMode.value = 'single'
   photoUploadCategoryId.value = categoryId
-  photoUploadInvestmentId.value = undefined
+  photoUploadInvestmentId.value = investmentId
   showPhotoUploadModal.value = true
 }
 

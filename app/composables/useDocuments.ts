@@ -158,7 +158,7 @@ export const useDocuments = () => {
 
       uploadProgress.value = 100
 
-      // Get public URL
+      // Get public URL (bucket is public)
       const { data: urlData } = supabase.storage
         .from('survey-documents')
         .getPublicUrl(fileName)
