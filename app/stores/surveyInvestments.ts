@@ -32,6 +32,7 @@ export interface SurveyPage {
 export interface SurveyQuestionOption {
   value: string
   label: { en: string; hu: string }
+  icon?: string  // Optional icon for icon_selector type questions
 }
 
 export interface DisplayCondition {
@@ -43,6 +44,10 @@ export interface DisplayCondition {
 export interface TemplateVariable {
   type: 'matched_conditional_values' | 'field_value' | 'conditional_count'
   field: string
+}
+
+export interface DisplaySettings {
+  width?: 'full' | '1/2' | '1/3' | '1/4'
 }
 
 export interface SurveyQuestion {
@@ -68,8 +73,13 @@ export interface SurveyQuestion {
   info_message?: string
   info_message_translations?: { en: string; hu: string }
   display_conditions?: DisplayCondition
+  display_settings?: DisplaySettings | null
   template_variables?: Record<string, TemplateVariable>
+  apply_template_to_placeholder?: boolean
   sequence?: number
+  // Shared question support
+  shared_question_id?: string | null
+  is_shared_instance?: boolean
 }
 
 export interface DocumentCategory {
@@ -642,6 +652,44 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       this.clientType = clientType
     },
 
+    // ========================================================================
+    // Shared Question Support
+    // ========================================================================
+
+    // Resolve question to master question ID if it's a shared instance
+    // Returns: { questionId, actualQuestionId, question }
+    // - questionId: The ID of the question we're working with (instance or master)
+    // - actualQuestionId: The ID to use for database operations (always the master)
+    // - question: The question object
+    findQuestionAndResolveShared(questionName: string): {
+      questionId: string
+      actualQuestionId: string
+      question: SurveyQuestion
+    } | null {
+      if (!this.activeInvestmentId) return null
+
+      const pages = this.surveyPages[this.activeInvestmentId] || []
+
+      for (const page of pages) {
+        const questions = this.surveyQuestions[page.id] || []
+        const question = questions.find(q => q.name === questionName)
+        if (question) {
+          // If this is a shared instance, resolve to master question ID
+          const actualQuestionId = question.is_shared_instance && question.shared_question_id
+            ? question.shared_question_id
+            : question.id
+
+          return {
+            questionId: question.id,
+            actualQuestionId,
+            question
+          }
+        }
+      }
+
+      return null
+    },
+
     // Save response for a question
     async saveResponse(questionName: string, value: any) {
       if (!this.activeInvestmentId || !this.currentSurveyId) return
@@ -649,36 +697,57 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       try {
         const supabase = useSupabaseClient()
 
-        // Update local state
-        if (!this.investmentResponses[this.activeInvestmentId]) {
-          this.investmentResponses[this.activeInvestmentId] = {}
-        }
-        this.investmentResponses[this.activeInvestmentId][questionName] = value
+        // Find the question and resolve if it's a shared instance
+        const questionInfo = this.findQuestionAndResolveShared(questionName)
 
-        // Find the question ID by name (search in all pages of active investment)
-        let questionId: string | null = null
-        const pages = this.surveyPages[this.activeInvestmentId] || []
-
-        for (const page of pages) {
-          const questions = this.surveyQuestions[page.id] || []
-          const question = questions.find(q => q.name === questionName)
-          if (question) {
-            questionId = question.id
-            break
-          }
-        }
-
-        if (!questionId) {
+        if (!questionInfo) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database
+        const { actualQuestionId, question } = questionInfo
+
+        // Update local state - if shared instance, update the master investment's state
+        if (question.is_shared_instance && question.shared_question_id) {
+          // Find the master question and its investment
+          let masterInvestmentId: string | null = null
+          let masterQuestionName: string | null = null
+
+          for (const investmentId in this.surveyPages) {
+            const pages = this.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = this.surveyQuestions[page.id] || []
+              const masterQuestion = questions.find(q => q.id === actualQuestionId && !q.is_shared_instance)
+              if (masterQuestion) {
+                masterInvestmentId = investmentId
+                masterQuestionName = masterQuestion.name
+                break
+              }
+            }
+            if (masterInvestmentId) break
+          }
+
+          if (masterInvestmentId && masterQuestionName) {
+            // Update the master investment's state
+            if (!this.investmentResponses[masterInvestmentId]) {
+              this.investmentResponses[masterInvestmentId] = {}
+            }
+            this.investmentResponses[masterInvestmentId][masterQuestionName] = value
+          }
+        } else {
+          // Not a shared instance, update current investment's state normally
+          if (!this.investmentResponses[this.activeInvestmentId]) {
+            this.investmentResponses[this.activeInvestmentId] = {}
+          }
+          this.investmentResponses[this.activeInvestmentId][questionName] = value
+        }
+
+        // Save to database using the actual question ID (master if shared, otherwise same as questionId)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .is('item_group', null)
           .maybeSingle()
 
@@ -695,7 +764,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: null
             })
@@ -703,10 +772,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         }
 
         // Update dependent questions in frontend state (questions that use this as default_value_source)
-        await this.syncDependentQuestionsInState(questionId, String(value))
+        // Use the actual question ID for dependency sync
+        await this.syncDependentQuestionsInState(actualQuestionId, String(value))
 
         // Refresh values that were copied by conditional copy rules
-        await this.refreshCopiedValuesFromRules(questionId)
+        await this.refreshCopiedValuesFromRules(actualQuestionId)
 
       } catch (error) {
         console.error('Error saving response:', error)
@@ -716,6 +786,34 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     // Get response for a question
     getResponse(questionName: string): any {
       if (!this.activeInvestmentId) return null
+
+      // Find the question and resolve if it's a shared instance
+      const questionInfo = this.findQuestionAndResolveShared(questionName)
+
+      if (!questionInfo) {
+        // Question not found, try direct lookup as fallback
+        return this.investmentResponses[this.activeInvestmentId]?.[questionName]
+      }
+
+      const { question, actualQuestionId } = questionInfo
+
+      // If this is a shared instance, we need to find the master question's investment
+      if (question.is_shared_instance && question.shared_question_id) {
+        // Find which investment contains the master question
+        for (const investmentId in this.surveyPages) {
+          const pages = this.surveyPages[investmentId]
+          for (const page of pages) {
+            const questions = this.surveyQuestions[page.id] || []
+            const masterQuestion = questions.find(q => q.id === actualQuestionId && !q.is_shared_instance)
+            if (masterQuestion) {
+              // Found the master question - get the response from that investment
+              return this.investmentResponses[investmentId]?.[masterQuestion.name]
+            }
+          }
+        }
+      }
+
+      // Not a shared instance, or couldn't find master - use normal lookup
       return this.investmentResponses[this.activeInvestmentId]?.[questionName]
     },
 
@@ -837,26 +935,26 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // Save the value locally
         instances[instanceIndex][questionName] = value
 
-        // Find the question ID by name (search in this page's questions)
-        let questionId: string | null = null
+        // Find the question and resolve if it's a shared instance
         const questions = this.surveyQuestions[pageId] || []
         const question = questions.find(q => q.name === questionName)
 
-        if (question) {
-          questionId = question.id
-        }
-
-        if (!questionId) {
+        if (!question) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database with item_group
+        // Resolve to master question ID if this is a shared instance
+        const actualQuestionId = question.is_shared_instance && question.shared_question_id
+          ? question.shared_question_id
+          : question.id
+
+        // Save to database with item_group using the actual question ID (master if shared)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .eq('item_group', instanceIndex)
           .maybeSingle()
 
@@ -876,7 +974,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: instanceIndex
             })
@@ -1244,26 +1342,26 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // Save the value locally
         instances[instanceIndex][questionName] = value
 
-        // Find the question ID by name
-        let questionId: string | null = null
+        // Find the question and resolve if it's a shared instance
         const questions = this.surveyQuestions[subpageId] || []
         const question = questions.find(q => q.name === questionName)
 
-        if (question) {
-          questionId = question.id
-        }
-
-        if (!questionId) {
+        if (!question) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database with both item_group and parent_item_group
+        // Resolve to master question ID if this is a shared instance
+        const actualQuestionId = question.is_shared_instance && question.shared_question_id
+          ? question.shared_question_id
+          : question.id
+
+        // Save to database with both item_group and parent_item_group using the actual question ID (master if shared)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .eq('item_group', instanceIndex)
           .eq('parent_item_group', parentItemGroup)
           .maybeSingle()
@@ -1284,7 +1382,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: instanceIndex,
               parent_item_group: parentItemGroup
