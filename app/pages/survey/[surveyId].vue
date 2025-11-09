@@ -389,6 +389,11 @@
       :client-data="clientData"
       @sign="handleSignAllContractsComplete"
     />
+
+    <!-- Survey Report Modal -->
+    <SurveyReportModal
+      v-model="showReportModal"
+    />
   </div>
 </template>
 
@@ -588,6 +593,9 @@ const showSignAllContractsModal = ref(false)
 const selectedContractForSend = ref<any>(null)
 const selectedContractForSign = ref<any>(null)
 
+// Survey Report modal
+const showReportModal = ref(false)
+
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
 const photoUploadMode = ref<'single' | 'investment' | 'all'>('single')
@@ -780,7 +788,7 @@ const handleSetDisplayMode = (mode: 'single' | 'investment' | 'all') => {
 }
 
 const handleGenerateAssessment = () => {
-  console.log('Generate assessment sheet')
+  showReportModal.value = true
 }
 
 const handleToggleMarkerMode = (enabled: boolean) => {
