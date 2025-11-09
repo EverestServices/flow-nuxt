@@ -44,7 +44,7 @@
 
           <!-- Fill All Data -->
           <UIButtonEnhanced
-            variant="outline"
+            :variant="fillAllDataActive ? 'primary' : 'outline'"
             size="sm"
             @click="$emit('fill-all-data')"
             class="whitespace-nowrap"
@@ -210,6 +210,7 @@ interface Props {
   canSaveContract?: boolean
   contractCount?: number
   showScenarioFooter?: boolean
+  fillAllDataActive?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -218,7 +219,8 @@ withDefaults(defineProps<Props>(), {
   canProceed: true,
   canSaveContract: false,
   contractCount: 0,
-  showScenarioFooter: false
+  showScenarioFooter: false,
+  fillAllDataActive: false
 })
 
 defineEmits<{

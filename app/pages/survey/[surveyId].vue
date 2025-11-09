@@ -106,6 +106,7 @@
       :can-save-contract="canSaveContract"
       :contract-count="contracts.length"
       :show-scenario-footer="scenarioFooterVisible"
+      :fill-all-data-active="fillAllDataActive"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -388,6 +389,11 @@
       :client-data="clientData"
       @sign="handleSignAllContractsComplete"
     />
+
+    <!-- Survey Report Modal -->
+    <SurveyReportModal
+      v-model="showReportModal"
+    />
   </div>
 </template>
 
@@ -567,6 +573,10 @@ watch(isMeasureRoute, (isMeasure) => {
 // Page display mode - 'single' | 'investment' | 'all'
 const pageDisplayMode = ref<'single' | 'investment' | 'all'>('single')
 
+// Store previous display mode when toggling "Fill All Data"
+const previousDisplayMode = ref<'single' | 'investment' | 'all'>('single')
+const fillAllDataActive = ref(false)
+
 // Felugró ablakok állapota
 const showInvestmentModal = ref(false)
 const showMissingItemsModal = ref(false)
@@ -582,6 +592,9 @@ const showSendAllContractsModal = ref(false)
 const showSignAllContractsModal = ref(false)
 const selectedContractForSend = ref<any>(null)
 const selectedContractForSign = ref<any>(null)
+
+// Survey Report modal
+const showReportModal = ref(false)
 
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
@@ -701,6 +714,14 @@ const handleToggleInvestmentFilter = (investmentId: string) => {
   // Also set the active investment in the store (for the left side form)
   if (investmentId !== 'all') {
     investmentsStore.setActiveInvestment(investmentId)
+
+    // Switch to 'investment' mode to show all pages of this investment
+    // (or keep current mode if already in 'single' or 'investment')
+    if (pageDisplayMode.value === 'all') {
+      pageDisplayMode.value = 'investment'
+      // Disable "Fill All Data" toggle when manually changing mode
+      fillAllDataActive.value = false
+    }
   }
 }
 
@@ -732,8 +753,18 @@ const handleUploadPhotos = () => {
 }
 
 const handleFillAllData = () => {
-  pageDisplayMode.value = 'all'
-  console.log('Fill all data - switched to all mode')
+  if (fillAllDataActive.value) {
+    // Currently active - toggle OFF, restore previous mode
+    pageDisplayMode.value = previousDisplayMode.value
+    fillAllDataActive.value = false
+    console.log('Fill all data - toggled OFF, restored to:', previousDisplayMode.value)
+  } else {
+    // Currently inactive - toggle ON, switch to 'all' mode
+    previousDisplayMode.value = pageDisplayMode.value
+    pageDisplayMode.value = 'all'
+    fillAllDataActive.value = true
+    console.log('Fill all data - toggled ON, saved previous mode:', previousDisplayMode.value)
+  }
 }
 
 const handleToggleListView = () => {
@@ -742,16 +773,22 @@ const handleToggleListView = () => {
   } else {
     pageDisplayMode.value = 'investment'
   }
+  // Disable "Fill All Data" toggle when manually changing mode
+  fillAllDataActive.value = false
   console.log('Toggle list view:', pageDisplayMode.value)
 }
 
 const handleSetDisplayMode = (mode: 'single' | 'investment' | 'all') => {
   pageDisplayMode.value = mode
+  // Disable "Fill All Data" toggle when manually changing mode (unless it's being set to 'all')
+  if (mode !== 'all') {
+    fillAllDataActive.value = false
+  }
   console.log('Set display mode:', mode)
 }
 
 const handleGenerateAssessment = () => {
-  console.log('Generate assessment sheet')
+  showReportModal.value = true
 }
 
 const handleToggleMarkerMode = (enabled: boolean) => {
