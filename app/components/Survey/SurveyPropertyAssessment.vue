@@ -112,8 +112,8 @@
               </button>
             </div>
 
-            <!-- Page címe (ha nincs single mód) -->
-            <div v-else class="p-3 bg-gray-50 dark:bg-gray-900">
+            <!-- Page címe (csak akkor jelenik meg, ha az investment-hez több page tartozik) -->
+            <div v-else-if="shouldShowPageTitle(investment.id)" class="p-3 bg-gray-50 dark:bg-gray-900">
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
                 {{ translatePage(page.name) }}
               </h4>
@@ -155,18 +155,20 @@
                   </template>
 
                   <template #[`instance-${page.id}-${index}`]>
-                    <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                      <!-- Normal Questions -->
-                      <div
-                        v-for="question in getNormalQuestions(page.id, index)"
-                        :key="question.id"
-                        class="space-y-2"
-                      >
-                        <SurveyQuestionRenderer
-                          :question="question"
-                          :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                          @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                        />
+                    <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                      <!-- Normal Questions - Grid Layout -->
+                      <div class="grid grid-cols-12 gap-6">
+                        <div
+                          v-for="question in getNormalQuestions(page.id, index)"
+                          :key="question.id"
+                          :class="getWidthClass(question)"
+                        >
+                          <SurveyQuestionRenderer
+                            :question="question"
+                            :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                            @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                          />
+                        </div>
                       </div>
 
                       <!-- Special Questions Accordion -->
@@ -179,17 +181,20 @@
                           }]"
                         >
                           <template #[`special-${page.id}-${index}`]>
-                            <div class="p-4 space-y-6 bg-white dark:bg-gray-900 rounded-b-lg">
-                              <div
-                                v-for="question in getSpecialQuestions(page.id, index)"
-                                :key="question.id"
-                                class="space-y-2"
-                              >
-                                <SurveyQuestionRenderer
-                                  :question="question"
-                                  :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                                  @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                                />
+                            <div class="p-4 bg-white dark:bg-gray-900 rounded-b-lg">
+                              <!-- Special Questions - Grid Layout -->
+                              <div class="grid grid-cols-12 gap-6">
+                                <div
+                                  v-for="question in getSpecialQuestions(page.id, index)"
+                                  :key="question.id"
+                                  :class="getWidthClass(question)"
+                                >
+                                  <SurveyQuestionRenderer
+                                    :question="question"
+                                    :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                                    @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                                  />
+                                </div>
                               </div>
                               <!-- Close Button -->
                               <div class="flex justify-end pt-2">
@@ -246,18 +251,20 @@
                               </template>
 
                               <template #[`subinstance-${subpage.id}-${index}-${subIndex}`]>
-                                <div class="p-3 space-y-4 bg-white dark:bg-gray-900 rounded-b-lg">
-                                  <!-- Subpage Questions -->
-                                  <div
-                                    v-for="question in getNormalQuestions(subpage.id, subIndex)"
-                                    :key="question.id"
-                                    class="space-y-2"
-                                  >
-                                    <SurveyQuestionRenderer
-                                      :question="question"
-                                      :model-value="getSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name)"
-                                      @update:model-value="updateSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name, $event)"
-                                    />
+                                <div class="p-3 bg-white dark:bg-gray-900 rounded-b-lg">
+                                  <!-- Subpage Questions - Grid Layout -->
+                                  <div class="grid grid-cols-12 gap-4">
+                                    <div
+                                      v-for="question in getNormalQuestions(subpage.id, subIndex)"
+                                      :key="question.id"
+                                      :class="getWidthClass(question)"
+                                    >
+                                      <SurveyQuestionRenderer
+                                        :question="question"
+                                        :model-value="getSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name)"
+                                        @update:model-value="updateSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name, $event)"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               </template>
@@ -384,18 +391,20 @@
 
               <!-- No Allow Multiple: Regular question rendering -->
               <div v-else>
-                <div v-if="store.surveyQuestions[page.id]?.length > 0" class="space-y-6">
-                  <!-- Normal Questions -->
-                  <div
-                    v-for="question in getNormalQuestions(page.id)"
-                    :key="question.id"
-                    class="space-y-2"
-                  >
-                    <SurveyQuestionRenderer
-                      :question="question"
-                      :model-value="getQuestionValue(question.name)"
-                      @update:model-value="updateQuestionValue(question.name, $event)"
-                    />
+                <div v-if="store.surveyQuestions[page.id]?.length > 0">
+                  <!-- Normal Questions - Grid Layout -->
+                  <div class="grid grid-cols-12 gap-6">
+                    <div
+                      v-for="question in getNormalQuestions(page.id)"
+                      :key="question.id"
+                      :class="getWidthClass(question)"
+                    >
+                      <SurveyQuestionRenderer
+                        :question="question"
+                        :model-value="getQuestionValue(question.name)"
+                        @update:model-value="updateQuestionValue(question.name, $event)"
+                      />
+                    </div>
                   </div>
 
                   <!-- Special Questions Accordion -->
@@ -408,17 +417,20 @@
                       }]"
                     >
                       <template #[`special-${page.id}`]>
-                        <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                          <div
-                            v-for="question in getSpecialQuestions(page.id)"
-                            :key="question.id"
-                            class="space-y-2"
-                          >
-                            <SurveyQuestionRenderer
-                              :question="question"
-                              :model-value="getQuestionValue(question.name)"
-                              @update:model-value="updateQuestionValue(question.name, $event)"
-                            />
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                          <!-- Special Questions - Grid Layout -->
+                          <div class="grid grid-cols-12 gap-6">
+                            <div
+                              v-for="question in getSpecialQuestions(page.id)"
+                              :key="question.id"
+                              :class="getWidthClass(question)"
+                            >
+                              <SurveyQuestionRenderer
+                                :question="question"
+                                :model-value="getQuestionValue(question.name)"
+                                @update:model-value="updateQuestionValue(question.name, $event)"
+                              />
+                            </div>
                           </div>
                           <!-- Close Button -->
                           <div class="flex justify-end pt-2">
@@ -625,6 +637,13 @@ const showInvestmentNavigation = computed(() => {
 const showPageNavigation = computed(() => {
   return props.pageDisplayMode === 'single' && activeSurveyPages.value.length > 1
 })
+
+// Check if investment has only one root page (to hide redundant page title)
+const shouldShowPageTitle = (investmentId: string): boolean => {
+  const pages = store.surveyPages[investmentId] || []
+  const rootPages = pages.filter(p => !p.parent_page_id)
+  return rootPages.length > 1
+}
 
 // Investment navigation
 const currentInvestmentIndex = computed(() => {
@@ -1013,6 +1032,25 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
     }
     default:
       return true
+  }
+}
+
+// ========================================================================
+// Display Width Handling
+// ========================================================================
+
+const getWidthClass = (question: any): string => {
+  const width = question.display_settings?.width
+  switch (width) {
+    case '1/2':
+      return 'col-span-12 md:col-span-6'
+    case '1/3':
+      return 'col-span-12 md:col-span-4'
+    case '1/4':
+      return 'col-span-12 md:col-span-3'
+    case 'full':
+    default:
+      return 'col-span-12'
   }
 }
 

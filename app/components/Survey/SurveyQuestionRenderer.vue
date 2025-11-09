@@ -229,6 +229,39 @@
       </div>
     </div>
 
+    <!-- Icon Selector (buttons with custom icons) -->
+    <div v-else-if="question.type === 'icon_selector'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="option in translatedOptionsWithIcons"
+          :key="option.value"
+          :disabled="isEffectivelyReadonly"
+          class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+          :class="[
+            (modelValue || question.default_value) === option.value
+              ? 'bg-primary-500 text-white shadow-md'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600',
+            isEffectivelyReadonly ? 'opacity-60 cursor-not-allowed hover:scale-100' : ''
+          ]"
+          @click="$emit('update:modelValue', option.value)"
+        >
+          <UIcon
+            v-if="option.icon"
+            :name="option.icon"
+            class="w-8 h-8 mb-1"
+          />
+          <span class="text-sm font-medium">{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Calculated Field (read-only card showing computed value) -->
     <div v-else-if="question.type === 'calculated'">
       <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -312,7 +345,24 @@ const processTemplateVariables = (text: string): string => {
           break
         }
 
-        const fieldValue = store.getResponse(varDef.field)
+        let fieldValue = store.getResponse(varDef.field)
+
+        // If no value found, try to get default value from the question
+        if (!fieldValue) {
+          for (const investmentId in store.surveyPages) {
+            const pages = store.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = store.surveyQuestions[page.id] || []
+              const question = questions.find(q => q.name === varDef.field)
+              if (question && question.default_value) {
+                fieldValue = question.default_value
+                break
+              }
+            }
+            if (fieldValue) break
+          }
+        }
+
         if (!fieldValue) {
           break
         }
@@ -346,7 +396,25 @@ const processTemplateVariables = (text: string): string => {
 
       case 'field_value': {
         // Get direct field value
-        const fieldValue = store.getResponse(varDef.field)
+        let fieldValue = store.getResponse(varDef.field)
+
+        // If no value found, try to get default value from the question
+        if (!fieldValue) {
+          // Find the question by name across all investments and pages
+          for (const investmentId in store.surveyPages) {
+            const pages = store.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = store.surveyQuestions[page.id] || []
+              const question = questions.find(q => q.name === varDef.field)
+              if (question && question.default_value) {
+                fieldValue = question.default_value
+                break
+              }
+            }
+            if (fieldValue) break
+          }
+        }
+
         replacement = fieldValue ? String(fieldValue) : ''
         break
       }
@@ -358,7 +426,24 @@ const processTemplateVariables = (text: string): string => {
           break
         }
 
-        const fieldValue = store.getResponse(varDef.field)
+        let fieldValue = store.getResponse(varDef.field)
+
+        // If no value found, try to get default value from the question
+        if (!fieldValue) {
+          for (const investmentId in store.surveyPages) {
+            const pages = store.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = store.surveyQuestions[page.id] || []
+              const question = questions.find(q => q.name === varDef.field)
+              if (question && question.default_value) {
+                fieldValue = question.default_value
+                break
+              }
+            }
+            if (fieldValue) break
+          }
+        }
+
         if (!fieldValue) {
           replacement = '0'
           break
@@ -407,7 +492,14 @@ const questionLabel = computed(() => {
 
 // Get translated placeholder
 const questionPlaceholder = computed(() => {
-  return translate(props.question.placeholder_translations, props.question.placeholder_value)
+  const rawPlaceholder = translate(props.question.placeholder_translations, props.question.placeholder_value)
+
+  // Process template variables in placeholder if enabled
+  if (props.question.apply_template_to_placeholder && rawPlaceholder) {
+    return processTemplateVariables(rawPlaceholder)
+  }
+
+  return rawPlaceholder
 })
 
 // Get translated unit (post-text)
@@ -436,6 +528,20 @@ const translatedOptions = computed(() => {
   }
 
   return []
+})
+
+// Get translated options with icons (for icon_selector type)
+const translatedOptionsWithIcons = computed(() => {
+  if (!props.question.options_translations || props.question.options_translations.length === 0) {
+    return []
+  }
+
+  // Return options with icon field preserved
+  return props.question.options_translations.map(opt => ({
+    value: opt.value,
+    label: translate(opt.label, opt.value),
+    icon: opt.icon
+  }))
 })
 
 // Get options with empty option for non-required dropdowns
