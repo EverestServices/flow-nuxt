@@ -110,7 +110,15 @@
           </label>
           <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
         </div>
-        <USwitch v-model="toggleValue" :disabled="isEffectivelyReadonly" />
+        <div class="flex items-center gap-2">
+          <!-- Conditional info message icon (immediately left of switch) -->
+          <SurveyQuestionConditionalInfo
+            v-if="activeConditionalMessage"
+            :type="activeConditionalMessage.type"
+            :message="activeConditionalMessage.message"
+          />
+          <USwitch v-model="toggleValue" :disabled="isEffectivelyReadonly" />
+        </div>
       </div>
     </div>
 
@@ -125,17 +133,17 @@
       </div>
       <div class="flex items-center space-x-4">
         <input
-          :value="modelValue || question.default_value || question.min || 0"
+          :value="modelValue || question.default_value || dynamicMin || 0"
           type="range"
-          :min="question.min || 0"
-          :max="question.max || 100"
+          :min="dynamicMin"
+          :max="dynamicMax"
           :step="question.step || 1"
           :disabled="isEffectivelyReadonly"
           class="flex-1"
           @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         />
         <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[60px] text-right">
-          {{ modelValue || question.default_value || question.min || 0 }}{{ questionUnit || '' }}
+          {{ modelValue || question.default_value || dynamicMin || 0 }}{{ questionUnit || '' }}
         </span>
       </div>
     </div>
@@ -649,14 +657,62 @@ const isEffectivelyReadonly = computed(() => {
   return true
 })
 
-// Calculate value for calculated fields
+// Calculate dynamic min value for slider based on dynamic_range_rules
+const dynamicMin = computed(() => {
+  // If no dynamic rules, use static min
+  if (!props.question.dynamic_range_rules) {
+    return props.question.min || 0
+  }
+
+  const rules = props.question.dynamic_range_rules
+  const basedOnFieldValue = store.getResponse(rules.based_on_field)
+
+  // If the controlling field has no value, use default
+  if (!basedOnFieldValue) {
+    return rules.default.min
+  }
+
+  // Find matching rule
+  const matchingRule = rules.rules.find(rule => rule.when === basedOnFieldValue)
+
+  // Return matching rule's min, or default if no match
+  return matchingRule ? matchingRule.min : rules.default.min
+})
+
+// Calculate dynamic max value for slider based on dynamic_range_rules
+const dynamicMax = computed(() => {
+  // If no dynamic rules, use static max
+  if (!props.question.dynamic_range_rules) {
+    return props.question.max || 100
+  }
+
+  const rules = props.question.dynamic_range_rules
+  const basedOnFieldValue = store.getResponse(rules.based_on_field)
+
+  // If the controlling field has no value, use default
+  if (!basedOnFieldValue) {
+    return rules.default.max
+  }
+
+  // Find matching rule
+  const matchingRule = rules.rules.find(rule => rule.when === basedOnFieldValue)
+
+  // Return matching rule's max, or default if no match
+  return matchingRule ? matchingRule.max : rules.default.max
+})
+
 const calculatedValue = computed(() => {
   if (props.question.type !== 'calculated' || !props.question.options) {
     return '—'
   }
 
   try {
-    const formula = props.question.options as { operation: string; fields: string[]; decimals?: number }
+    const formula = props.question.options as {
+      operation: string;
+      fields: string[];
+      decimals?: number;
+      field_unit_conversions?: Record<string, number>
+    }
 
     if (!formula.operation || !formula.fields || formula.fields.length === 0) {
       return '—'
@@ -666,10 +722,15 @@ const calculatedValue = computed(() => {
     const values: number[] = []
     for (const fieldName of formula.fields) {
       const value = store.getResponse(fieldName)
-      const numValue = parseFloat(value)
+      let numValue = parseFloat(value)
 
       if (isNaN(numValue) || value === null || value === undefined || value === '') {
         return '—'
+      }
+
+      // Apply unit conversion if specified
+      if (formula.field_unit_conversions && formula.field_unit_conversions[fieldName]) {
+        numValue = numValue * formula.field_unit_conversions[fieldName]
       }
 
       values.push(numValue)
@@ -705,5 +766,66 @@ const calculatedValue = computed(() => {
     console.error('Error calculating value:', error)
     return '—'
   }
+})
+
+const activeConditionalMessage = computed<{ type: 'info' | 'warning' | 'danger'; message: string } | null>(() => {
+  if (!props.question.conditional_info_messages || props.question.conditional_info_messages.length === 0) {
+    return null
+  }
+
+  // Check each conditional message
+  for (const condMsg of props.question.conditional_info_messages) {
+    const condition = condMsg.condition
+
+    // Get the field value
+    let fieldValue: any
+    if (condition.field === 'self') {
+      // Check the question's own value
+      fieldValue = props.modelValue ?? props.question.default_value
+    } else {
+      // Check another field's value
+      fieldValue = store.getResponse(condition.field)
+    }
+
+    // Evaluate the condition
+    let conditionMet = false
+
+    switch (condition.operator) {
+      case 'equals':
+        if (typeof fieldValue === 'boolean' && typeof condition.value === 'string') {
+          // Handle boolean comparison with string representation
+          conditionMet = String(fieldValue) === condition.value
+        } else {
+          conditionMet = fieldValue == condition.value // Use == for type coercion
+        }
+        break
+      case 'not_equals':
+        conditionMet = fieldValue != condition.value
+        break
+      case 'greater_than':
+        conditionMet = parseFloat(fieldValue) > parseFloat(String(condition.value))
+        break
+      case 'less_than':
+        conditionMet = parseFloat(fieldValue) < parseFloat(String(condition.value))
+        break
+      case 'contains':
+        if (typeof fieldValue === 'string' && typeof condition.value === 'string') {
+          conditionMet = fieldValue.includes(condition.value)
+        }
+        break
+    }
+
+    // If condition is met, return this message
+    if (conditionMet) {
+      const translatedMessage = translate(condMsg.message_translations, null) || ''
+
+      return {
+        type: condMsg.type,
+        message: translatedMessage
+      }
+    }
+  }
+
+  return null
 })
 </script>
