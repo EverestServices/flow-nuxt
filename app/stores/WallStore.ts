@@ -23,21 +23,22 @@ const ssrSafeStorage = process.client
 export const useWallStore = defineStore(
   'wallStore',
   () => {
-    const walls = ref<Record<string, Wall>>(reactive({}));
-    const STORAGE_KEY = 'wallStore.v1.walls';
+    // Structure: { [surveyId]: { [wallId]: Wall } }
+    const wallsBySurvey = ref<Record<string, Record<string, Wall>>>(reactive({}));
+    const STORAGE_KEY = 'wallStore.v2.wallsBySurvey';
 
     if (process.client) {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-          const parsed = JSON.parse(saved) as Record<string, Wall>;
-          walls.value = parsed as Record<string, Wall>;
+          const parsed = JSON.parse(saved) as Record<string, Record<string, Wall>>;
+          wallsBySurvey.value = parsed;
         }
       } catch (e) {
         // ignore hydrate errors in mock/dev
       }
       watch(
-        walls,
+        wallsBySurvey,
         (val) => {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(toRaw(val)));
@@ -49,21 +50,45 @@ export const useWallStore = defineStore(
       );
     }
 
-    function setWall(id: string, wall: Wall) {
-      walls.value[id] = wall;
+    // Get walls for a specific survey
+    const getWallsForSurvey = (surveyId: string): Record<string, Wall> => {
+      if (!wallsBySurvey.value[surveyId]) {
+        wallsBySurvey.value[surveyId] = reactive({});
+      }
+      return wallsBySurvey.value[surveyId];
+    };
+
+    function setWall(surveyId: string, wallId: string, wall: Wall) {
+      if (!wallsBySurvey.value[surveyId]) {
+        wallsBySurvey.value[surveyId] = reactive({});
+      }
+      wallsBySurvey.value[surveyId][wallId] = wall;
     }
 
-    function removeWall(id: string) {
-      delete walls.value[id];
+    function removeWall(surveyId: string, wallId: string) {
+      if (wallsBySurvey.value[surveyId]) {
+        delete wallsBySurvey.value[surveyId][wallId];
+      }
     }
 
-    function hasPolygons(wallId: string): boolean {
-      const wall = walls.value[wallId];
+    // Legacy compatibility - returns all walls (deprecated)
+    const walls = computed(() => {
+      const allWalls: Record<string, Wall> = {};
+      Object.values(wallsBySurvey.value).forEach(surveyWalls => {
+        Object.assign(allWalls, surveyWalls);
+      });
+      return allWalls;
+    });
+
+    function hasPolygons(surveyId: string, wallId: string): boolean {
+      const surveyWalls = getWallsForSurvey(surveyId);
+      const wall = surveyWalls[wallId];
       if (!wall) return false;
       return wall.polygons.some((p) => p.closed);
     }
-    function getWallSurfaceAreas(wallId: string) {
-      const wall = walls.value[wallId];
+    function getWallSurfaceAreas(surveyId: string, wallId: string) {
+      const surveyWalls = getWallsForSurvey(surveyId);
+      const wall = surveyWalls[wallId];
       if (!wall) return null;
 
       const imgWidth = wall.images[0]?.processedImageWidth ?? 1;
@@ -122,10 +147,11 @@ export const useWallStore = defineStore(
       };
     }
 
-    function getTotalAreaByType(type: SurfaceType): number {
+    function getTotalAreaByType(surveyId: string, type: SurfaceType): number {
       let total = 0;
+      const surveyWalls = getWallsForSurvey(surveyId);
 
-      Object.values(walls.value).forEach((wall) => {
+      Object.values(surveyWalls).forEach((wall) => {
         const polygonsOfType = wall.polygons.filter((p) => p.type === type && p.closed);
 
         const polygonsClone = clonePolygonData(polygonsOfType);
@@ -142,19 +168,13 @@ export const useWallStore = defineStore(
       return total;
     }
 
-    // konkrét API-k
-    const totalFacadeArea = computed(() => getTotalAreaByType(SurfaceType.FACADE));
-    const totalWindowDoorArea = computed(() => getTotalAreaByType(SurfaceType.WINDOW_DOOR));
-    const totalWallPlinthArea = computed(() => getTotalAreaByType(SurfaceType.WALL_PLINTH));
-
     return {
-      walls,
+      walls, // deprecated - use getWallsForSurvey instead
+      wallsBySurvey,
+      getWallsForSurvey,
       setWall,
       removeWall,
       getTotalAreaByType,
-      totalFacadeArea,
-      totalWindowDoorArea,
-      totalWallPlinthArea,
       getWallSurfaceAreas,
       hasPolygons,
     };

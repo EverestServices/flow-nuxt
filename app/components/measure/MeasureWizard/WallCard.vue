@@ -123,7 +123,7 @@
       </div>
 
       <!-- ÖSSZEGZÉS -->
-      <div v-if="store.hasPolygons(wall.id)">
+      <div v-if="store.hasPolygons(String(route.params.surveyId), wall.id)">
         <WallSurfaceSummary :wallId="wall.id" />
       </div>
       <div v-if="!isMeasured">
@@ -199,5 +199,5 @@ const wallStatusText = computed(() => {
   return 'Új';
 });
 
-const isMeasured = computed(() => store.hasPolygons(props.wall.id));
+const isMeasured = computed(() => store.hasPolygons(String(route.params.surveyId), props.wall.id));
 </script>

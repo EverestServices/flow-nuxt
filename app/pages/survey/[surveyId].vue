@@ -6,6 +6,7 @@
       :client-name="clientName"
       :show-mode-toggle="activeTab === 'property-assessment'"
       :selected-investments="selectedInvestments"
+      :investment-filter="investmentFilter"
       :scenarios="scenarios"
       :active-scenario-id="activeScenario?.id"
       :scenario-investments="scenarioInvestments"
@@ -55,6 +56,7 @@
           @open-photo-upload="handleOpenPhotoUpload"
           @open-camera="handleOpenCamera"
           @toggle-view-mode="handleToggleViewMode"
+          @update-investment-filter="handleToggleInvestmentFilter"
         />
 
         <!-- Consultation Tab -->
@@ -394,12 +396,21 @@
     <SurveyReportModal
       v-model="showReportModal"
     />
+
+    <!-- Unsaved Changes Modal -->
+    <SurveyUnsavedChangesModal
+      v-if="showUnsavedChangesModal"
+      v-model="showUnsavedChangesModal"
+      @save-and-exit="handleSaveAndExitUnsaved"
+      @discard-and-exit="handleDiscardAndExit"
+      @cancel="handleCancelExit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useScenariosStore } from '~/stores/scenarios'
@@ -596,6 +607,11 @@ const selectedContractForSign = ref<any>(null)
 // Survey Report modal
 const showReportModal = ref(false)
 
+// Unsaved changes tracking
+const showUnsavedChangesModal = ref(false)
+const hasUnsavedChanges = ref(false)
+const pendingNavigation = ref<any>(null)
+
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
 const photoUploadMode = ref<'single' | 'investment' | 'all'>('single')
@@ -691,7 +707,23 @@ const loadSurveyData = async () => {
 
 // Header handlers
 const handleBack = () => {
-  router.push('/survey')
+  // If in measure mode, go back to the survey page
+  if (isMeasureRoute.value) {
+    router.push(`/survey/${surveyId.value}`)
+    return
+  }
+
+  // Find current tab index
+  const currentIndex = tabs.value.findIndex(tab => tab.id === activeTab.value)
+
+  // If we're not on the first tab, go to previous tab
+  if (currentIndex > 0) {
+    const previousTab = tabs.value[currentIndex - 1]
+    activeTab.value = previousTab.id as any
+  } else {
+    // Only on first tab, go back to survey list
+    router.push('/survey')
+  }
 }
 
 const handleToggleInvestment = () => {
@@ -1259,6 +1291,75 @@ const handleSignAllContractsComplete = (data: any) => {
   console.log('Sign all contracts:', data)
   // TODO: Implement - Save all signatures and update contract statuses
 }
+
+// Unsaved changes handlers
+const handleSaveAndExitUnsaved = async () => {
+  // Save all changes
+  await saveAllChanges()
+  // Clear the flags
+  hasUnsavedChanges.value = false
+  showUnsavedChangesModal.value = false
+  // Proceed with navigation
+  if (pendingNavigation.value) {
+    await router.push(pendingNavigation.value)
+    pendingNavigation.value = null
+  }
+}
+
+const handleDiscardAndExit = () => {
+  // Clear the flags without saving
+  hasUnsavedChanges.value = false
+  showUnsavedChangesModal.value = false
+  // Proceed with navigation
+  if (pendingNavigation.value) {
+    router.push(pendingNavigation.value)
+    pendingNavigation.value = null
+  }
+}
+
+const handleCancelExit = () => {
+  // Just cancel - close modal and do nothing
+  showUnsavedChangesModal.value = false
+  pendingNavigation.value = null
+}
+
+const saveAllChanges = async () => {
+  // Save survey responses
+  await investmentsStore.saveAllResponses(surveyId.value)
+  console.log('All changes saved')
+  // TODO: Add toast notification
+}
+
+// Mark changes when user interacts with the survey
+// Use flush: 'post' and a flag to skip initial load
+const isInitialLoad = ref(true)
+onMounted(() => {
+  // After initial mount, allow tracking changes
+  setTimeout(() => {
+    isInitialLoad.value = false
+  }, 1000) // Give 1 second for initial data to load
+})
+
+watch(() => investmentsStore.responses, () => {
+  if (!isInitialLoad.value) {
+    hasUnsavedChanges.value = true
+  }
+}, { deep: true, flush: 'post' })
+
+// Navigation guard - prevent leaving if there are unsaved changes
+onBeforeRouteLeave((to, from, next) => {
+  if (hasUnsavedChanges.value) {
+    // Store the pending navigation
+    pendingNavigation.value = to.fullPath
+    // Show the modal
+    showUnsavedChangesModal.value = true
+    // Cancel the navigation for now
+    next(false)
+  } else {
+    // No unsaved changes, allow navigation
+    next()
+  }
+})
 
 definePageMeta({
   layout: 'fullwidth'

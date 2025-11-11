@@ -160,6 +160,7 @@
             ]"
             @mouseenter="menu.children ? showSubmenu(menu.label) : null"
             @mouseleave="menu.children ? scheduleHideSubmenu() : null"
+            @click="menu.label === 'Logout' ? handleMenuItemClick(menu) : null"
           >
             <button
                 :class="[
@@ -168,7 +169,7 @@
                     ? 'border-red-300 dark:border-red-900/50 bg-red-100/40 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                     : 'border-white dark:border-black/50 bg-white/40 dark:bg-black/30 text-black dark:text-white'
                 ]"
-                @click="handleMenuItemClick(menu)"
+                @click.stop="menu.label !== 'Logout' ? handleMenuItemClick(menu) : null"
             >
               <IconDashboard class="w-6 h-6" v-if="menu.label === 'Dashboard'" />
               <IconSummit class="w-6 h-6" v-else-if="menu.label === 'Summit'" />
@@ -342,17 +343,38 @@ const currentSubmenuItems = computed(() => {
 // Logout function
 const handleLogout = async () => {
   try {
+    console.log('Logging out...');
+
     const supabaseClient = useSupabaseClient();
-    await supabaseClient.auth.signOut();
+
+    // Sign out from Supabase
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+      console.error('Supabase signOut error:', error);
+    }
 
     // Also clear the old auth store if it exists
     await authStore.logout();
 
+    // Clear all local storage (optional - be careful with this)
+    if (process.client) {
+      // Clear specific auth-related items if you don't want to clear everything
+      localStorage.removeItem('token');
+      localStorage.removeItem('supabase.auth.token');
+      // Optionally clear wall store
+      // localStorage.removeItem('wallStore.v2.wallsBySurvey');
+    }
+
     // Close menu and navigate to login
     closeMenu();
-    await navigateTo('/login');
+    await navigateTo('/login', { replace: true });
+
+    console.log('Logged out successfully');
   } catch (error) {
     console.error('Logout error:', error);
+    // Even if there's an error, try to navigate to login
+    closeMenu();
+    await navigateTo('/login', { replace: true });
   }
 };
 
@@ -380,16 +402,16 @@ const handleLocationClick = async () => {
 };
 
 // Handle menu item click in slide panel
-const handleMenuItemClick = (menu: any) => {
+const handleMenuItemClick = async (menu: any) => {
   // Handle logout specifically
   if (menu.label === 'Logout') {
-    handleLogout();
+    await handleLogout();
     return;
   }
 
   if (!menu.children || menu.children.length === 0) {
     // If no children, navigate directly and close menu
-    navigateTo(menu.to);
+    await navigateTo(menu.to);
     closeMenu();
   }
   // If menu has children, do nothing on click (hover handles submenu)

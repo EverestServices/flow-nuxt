@@ -7,7 +7,7 @@
         @click.self="handleBackdropClick"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-white/50 backdrop-blur-xs" />
+        <div class="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-xs" />
 
         <!-- Modal Container -->
         <div :class="computedModalClasses" role="dialog" aria-modal="true">

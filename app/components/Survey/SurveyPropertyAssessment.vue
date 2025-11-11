@@ -56,9 +56,10 @@
                 <UIcon name="i-lucide-chevron-left" class="w-5 h-5" />
               </button>
               <div class="flex items-center gap-2 min-w-[200px] justify-center">
-                <UIcon
+                <InvestmentIcon
                   :name="investment.icon"
-                  class="w-5 h-5 text-gray-600 dark:text-gray-400"
+                  :size="20"
+                  class="text-gray-600 dark:text-gray-400"
                 />
                 <span class="text-sm font-semibold text-gray-900 dark:text-white">
                   {{ translate(investment.name_translations, investment.name) }}
@@ -521,6 +522,7 @@ const emit = defineEmits<{
   'open-photo-upload': [categoryId: string, investmentId: string]
   'open-camera': [investmentId: string]
   'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
+  'update-investment-filter': [investmentId: string]
 }>()
 
 // Translations
@@ -657,6 +659,7 @@ const goToPreviousInvestment = () => {
   if (hasPreviousInvestment.value) {
     const prevInvestment = selectedInvestments.value[currentInvestmentIndex.value - 1]
     store.setActiveInvestment(prevInvestment.id)
+    emit('update-investment-filter', prevInvestment.id)
   }
 }
 
@@ -664,6 +667,7 @@ const goToNextInvestment = () => {
   if (hasNextInvestment.value) {
     const nextInvestment = selectedInvestments.value[currentInvestmentIndex.value + 1]
     store.setActiveInvestment(nextInvestment.id)
+    emit('update-investment-filter', nextInvestment.id)
   }
 }
 

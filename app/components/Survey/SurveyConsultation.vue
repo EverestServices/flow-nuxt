@@ -4,8 +4,14 @@
     <Transition name="slide-left">
       <div
         v-if="systemDesignOpen"
-        class="fixed left-3 top-20 bottom-20 w-96 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
+        :style="{ width: systemDesignWidth + 'px' }"
+        class="fixed left-3 top-20 bottom-20 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
       >
+        <!-- Resize Handle -->
+        <div
+          class="absolute right-0 top-0 bottom-0 w-1 hover:w-2 bg-transparent hover:bg-primary-500/50 cursor-col-resize z-30 transition-all"
+          @mousedown="startResizeSystemDesign"
+        ></div>
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-ruler" class="w-5 h-5" />
@@ -195,8 +201,14 @@
     <Transition name="slide-right">
       <div
         v-if="consultationOpen"
-        class="fixed right-3 top-20 bottom-20 w-96 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
+        :style="{ width: consultationWidth + 'px' }"
+        class="fixed right-3 top-20 bottom-20 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20"
       >
+        <!-- Resize Handle -->
+        <div
+          class="absolute left-0 top-0 bottom-0 w-1 hover:w-2 bg-transparent hover:bg-primary-500/50 cursor-col-resize z-30 transition-all"
+          @mousedown="startResizeConsultation"
+        ></div>
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-message-circle" class="w-5 h-5" />
@@ -397,6 +409,97 @@ const subsidyOpen = ref(false)
 const householdDataOpen = ref(false)
 const consultationDataOpen = ref(false)
 const contractDetailsOpen = ref(false)
+
+// Panel widths - with localStorage persistence
+const STORAGE_KEY_SYSTEM_DESIGN = 'surveyConsultation.systemDesignWidth'
+const STORAGE_KEY_CONSULTATION = 'surveyConsultation.consultationWidth'
+const DEFAULT_WIDTH = 384 // w-96 = 24rem = 384px
+const MIN_WIDTH = 300
+const MAX_WIDTH = 800
+
+const systemDesignWidth = ref(DEFAULT_WIDTH)
+const consultationWidth = ref(DEFAULT_WIDTH)
+
+// Load widths from localStorage on mount
+if (process.client) {
+  const savedSystemDesignWidth = localStorage.getItem(STORAGE_KEY_SYSTEM_DESIGN)
+  const savedConsultationWidth = localStorage.getItem(STORAGE_KEY_CONSULTATION)
+
+  if (savedSystemDesignWidth) {
+    systemDesignWidth.value = parseInt(savedSystemDesignWidth)
+  }
+  if (savedConsultationWidth) {
+    consultationWidth.value = parseInt(savedConsultationWidth)
+  }
+}
+
+// Resize functionality for System Design panel
+const startResizeSystemDesign = (e: MouseEvent) => {
+  e.preventDefault()
+  const startX = e.clientX
+  const startWidth = systemDesignWidth.value
+
+  // Set cursor for entire document during resize
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+
+  const onMouseMove = (e: MouseEvent) => {
+    const delta = e.clientX - startX
+    const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta))
+    systemDesignWidth.value = newWidth
+  }
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+
+    // Restore cursor
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+
+    // Save to localStorage
+    if (process.client) {
+      localStorage.setItem(STORAGE_KEY_SYSTEM_DESIGN, systemDesignWidth.value.toString())
+    }
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
+
+// Resize functionality for Consultation panel
+const startResizeConsultation = (e: MouseEvent) => {
+  e.preventDefault()
+  const startX = e.clientX
+  const startWidth = consultationWidth.value
+
+  // Set cursor for entire document during resize
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+
+  const onMouseMove = (e: MouseEvent) => {
+    const delta = startX - e.clientX // Reversed for right-side panel
+    const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta))
+    consultationWidth.value = newWidth
+  }
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+
+    // Restore cursor
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+
+    // Save to localStorage
+    if (process.client) {
+      localStorage.setItem(STORAGE_KEY_CONSULTATION, consultationWidth.value.toString())
+    }
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
 const contractDetailsFirstClick = ref(true)
 
 // Key to force remount household data when investments change
