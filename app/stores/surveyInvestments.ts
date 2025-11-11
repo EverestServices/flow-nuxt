@@ -50,6 +50,36 @@ export interface DisplaySettings {
   width?: 'full' | '1/2' | '1/3' | '1/4'
 }
 
+export interface DynamicRangeRule {
+  when: string
+  min: number
+  max: number
+}
+
+export interface DynamicRangeRules {
+  based_on_field: string
+  rules: DynamicRangeRule[]
+  default: {
+    min: number
+    max: number
+  }
+}
+
+/**
+ * Conditional info message that appears next to a question when a condition is met.
+ * Used to display info/warning/danger icons with tooltips based on field values.
+ * Example: Show a danger message when a defect switch is enabled.
+ */
+export interface ConditionalInfoMessage {
+  condition: {
+    field: string  // 'self' means the question itself
+    operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains'
+    value: string | number | boolean
+  }
+  type: 'info' | 'warning' | 'danger'  // Determines icon color and tooltip border
+  message_translations: { en: string; hu: string }
+}
+
 export interface SurveyQuestion {
   id: string
   survey_page_id: string
@@ -76,6 +106,8 @@ export interface SurveyQuestion {
   display_settings?: DisplaySettings | null
   template_variables?: Record<string, TemplateVariable>
   apply_template_to_placeholder?: boolean
+  dynamic_range_rules?: DynamicRangeRules
+  conditional_info_messages?: ConditionalInfoMessage[]  // Array of messages shown when conditions are met
   sequence?: number
   // Shared question support
   shared_question_id?: string | null
