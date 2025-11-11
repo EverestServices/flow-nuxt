@@ -11,7 +11,7 @@
       <div :class="showMap ? 'w-1/2' : 'w-full max-w-2xl mx-auto'" class="pointer-events-auto relative">
 
         <!-- Progress Section - Fixed Top Center -->
-        <div class="absolute left-1/2 transform -translate-x-1/2 z-20 w-full max-w-96 text-center px-6 pointer-events-auto">
+        <div class="absolute -top-24 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-96 text-center px-6 pointer-events-auto">
           <UIBox>
             <div class="p-4">
               <div class="flex items-center gap-3">
@@ -414,7 +414,7 @@ const handleSaveAndStart = async () => {
         .insert({
           client_id: newClient.id,
           company_id: profile.company_id,
-          status: 'draft'
+          user_id: user.id
         })
         .select()
         .single()

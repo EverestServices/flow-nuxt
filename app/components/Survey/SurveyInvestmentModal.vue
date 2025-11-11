@@ -42,14 +42,14 @@
         >
           <!-- Icon -->
           <div
-            class="w-16 h-16 rounded-lg flex items-center justify-center mb-3"
+            class="w-16 h-16 rounded-full flex items-center justify-center mb-3"
             :class="isSelected(investment.id)
               ? 'bg-primary-100 dark:bg-primary-800'
               : 'bg-gray-100 dark:bg-gray-800'"
           >
-            <UIcon
+            <InvestmentIcon
               :name="investment.icon"
-              class="w-8 h-8"
+              :size="32"
               :class="isSelected(investment.id)
                 ? 'text-primary-600 dark:text-primary-400'
                 : 'text-gray-600 dark:text-gray-400'"
