@@ -217,6 +217,13 @@
       "markerMode": "Jelölő mód",
       "selectScenario": "Forgatókönyv kiválasztása"
     },
+    "unsavedChanges": {
+      "title": "Nem mentett változtatások",
+      "message": "Vannak el nem mentett változtatások. Mit szeretne tenni?",
+      "saveAndExit": "Mentés és kilépés",
+      "discardAndExit": "Elvetés és kilépés",
+      "cancel": "Mégse"
+    },
     "footer": {
       "saveAndExit": "Mentés és kilépés",
       "uploadPhotos": "Összes fotó feltöltése",

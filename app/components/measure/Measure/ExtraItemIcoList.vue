@@ -5,53 +5,72 @@
       <div
         v-for="extraItem in extraItemsValue"
         :key="extraItem.id"
-        class="relative mb-3 px-3 py-2 rounded-lg border border-base-300 bg-secondary/10"
+        class="mb-3 px-4 py-3 rounded-lg border border-base-300 bg-secondary/10 flex items-center gap-3"
       >
-        <!-- Törlés gomb jobb felső sarokban, belül maradva -->
-        <button
-          class="absolute -top-2 -right-2 btn btn-sm btn-error btn-circle"
-          @click="removeItem(extraItem)"
-        >
-          <Icon name="i-lucide-x" class="w-3.5 h-3.5" />
-        </button>
-
-        <!-- Cím külön sorban -->
-        <div class="mb-1">
-          <div class="font-semibold text-base text-secondary">
+        <!-- Cím és input flex layout -->
+        <div class="flex-1">
+          <div class="font-semibold text-base text-secondary mb-2">
             {{ getExtraItemContractVariable(extraItem).name }}
+          </div>
+
+          <!-- Input + egység -->
+          <div class="form-control max-w-[10rem] w-full">
+            <label class="input input-sm input-bordered flex items-center justify-between gap-2">
+              <input
+                type="number"
+                v-model="extraItem.quantity"
+                min="0"
+                placeholder="0"
+                required
+                class="w-full"
+              />
+              <span
+                class="text-sm border-l-1 pl-1.5 font-bold text-base-content/60 border-base-content/20"
+              >
+                {{ getExtraItemContractVariable(extraItem).quantityUnit }}
+              </span>
+            </label>
           </div>
         </div>
 
-        <!-- Input + egység -->
-        <div class="form-control max-w-[7rem] w-full">
-          <label class="input input-sm input-bordered flex items-center justify-between gap-2">
-            <input
-              type="number"
-              v-model="extraItem.quantity"
-              min="0"
-              placeholder="0"
-              required
-              class="w-full"
-            />
-            <span
-              class="text-sm border-l-1 pl-1.5 font-bold text-base-content/60 border-base-content/20"
-            >
-              {{ getExtraItemContractVariable(extraItem).quantityUnit }}
-            </span>
-          </label>
-        </div>
+        <!-- Törlés gomb jobb oldalon - glass effect -->
+        <button
+          class="w-10 h-10 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-black/10 hover:bg-red-500/30 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center group shrink-0"
+          @click="removeItem(extraItem)"
+          title="Tétel törlése"
+        >
+          <Icon name="i-lucide-trash-2" class="w-5 h-5 text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
+        </button>
       </div>
     </div>
 
-    <div class="flex gap-2 flex-wrap mt-4">
-      <button
-        @click="selectContractVariable(contractVariable)"
-        class="btn btn-secondary btn-sm"
-        v-for="contractVariable in enabledContractVariables"
-        :key="contractVariable.id"
+    <div class="flex gap-2 items-end mt-4">
+      <div class="flex-1">
+        <label class="block text-xs text-gray-500 mb-1">Extra tétel hozzáadása</label>
+        <select
+          v-model="selectedDropdownItem"
+          class="w-full h-9 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+        >
+          <option :value="null" disabled>Válassz extra tételt...</option>
+          <option
+            v-for="contractVariable in enabledContractVariables"
+            :key="contractVariable.id"
+            :value="contractVariable"
+          >
+            {{ contractVariable.name }}
+          </option>
+        </select>
+      </div>
+      <UButton
+        @click="addSelectedItem"
+        :disabled="!selectedDropdownItem"
+        color="primary"
+        size="sm"
+        class="flex items-center gap-1"
       >
-        {{ contractVariable.name }}
-      </button>
+        <Icon name="i-lucide-plus" class="w-4 h-4" />
+        Hozzáadás
+      </UButton>
     </div>
   </div>
 </template>
@@ -65,6 +84,7 @@ const contractVariableSource =
 const contractVariables = ref<ContactVariable[]>(JSON.parse(contractVariableSource));
 const selectedContractVariables = ref<ContactVariable[]>([]);
 const extraItemsValue = ref<ExtraItem[]>([]);
+const selectedDropdownItem = ref<ContactVariable | null>(null);
 const enabledContractVariables = computed(() => {
   return contractVariables.value.filter((cv) => !selectedContractVariables.value.includes(cv));
 });
@@ -78,6 +98,13 @@ const selectContractVariable = (cv: ContactVariable) => {
       quantity: null,
     };
     extraItemsValue.value.push(newItem);
+  }
+};
+
+const addSelectedItem = () => {
+  if (selectedDropdownItem.value) {
+    selectContractVariable(selectedDropdownItem.value);
+    selectedDropdownItem.value = null; // Reset dropdown after adding
   }
 };
 const removeItem = (extraItem: ExtraItem) => {

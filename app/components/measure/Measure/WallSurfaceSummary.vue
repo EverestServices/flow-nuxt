@@ -63,13 +63,15 @@
 import { computed } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
 import AreaCard from './AreaCard.vue';
+import { useRoute } from 'vue-router';
 
 const props = defineProps<{
   wallId: string;
 }>();
 
 const store = useWallStore();
-const areas = computed(() => store.getWallSurfaceAreas(props.wallId));
+const route = useRoute();
+const areas = computed(() => store.getWallSurfaceAreas(String(route.params.surveyId), props.wallId));
 
 const hasAnyArea = computed(
   () =>

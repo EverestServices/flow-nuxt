@@ -413,16 +413,16 @@ import { useRoute, useRouter } from 'vue-router';
 const store = useWallStore();
 const route = useRoute();
 const router = useRouter();
+const surveyId = computed(() => String(route.params.surveyId));
 const wallId = computed(() => String(route.params.wallId));
 const wall = computed<Wall>(() => {
-  const mapRaw = unref(store.walls) as Record<string, Wall> | undefined;
-  const map: Record<string, Wall> = mapRaw ?? {};
-  const w = map[wallId.value] as Wall | undefined;
+  const surveyWalls = store.getWallsForSurvey(surveyId.value);
+  const w = surveyWalls[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
 
 // Wall navigation
-const allWalls = computed(() => Object.values(store.walls));
+const allWalls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const currentWallIndex = computed(() =>
   allWalls.value.findIndex((w) => w.id === wallId.value)
 );
@@ -450,7 +450,7 @@ const wallName = computed<string>({
   get: () => wall.value?.name ?? '',
   set: (val: string) => {
     if (wall.value) {
-      store.setWall(wall.value.id, { ...wall.value, name: val });
+      store.setWall(surveyId.value, wall.value.id, { ...wall.value, name: val });
     }
   },
 });
@@ -462,7 +462,7 @@ const wallOrientation = computed<Orientation | null>({
   get: () => (wall.value?.orientation ?? null) as Orientation | null,
   set: (val: Orientation | null) => {
     if (wall.value) {
-      store.setWall(wall.value.id, { ...wall.value, orientation: val ?? undefined });
+      store.setWall(surveyId.value, wall.value.id, { ...wall.value, orientation: val ?? undefined });
     }
   },
 });
@@ -507,7 +507,7 @@ const polygons = computed({
   get: () => wall.value?.polygons ?? [],
   set: (newPolygons) => {
     if (wall.value) {
-      store.setWall(wall.value.id, {
+      store.setWall(surveyId.value, wall.value.id, {
         ...wall.value,
         polygons: [...newPolygons],
       });
@@ -1131,7 +1131,7 @@ const applyCalibration = () => {
     firstImage.value.referenceLengthCm = calibrationLength.value ?? null;
     // Do not overwrite stored mpp; allow restore button to work against original server value
     // Persist mutated image meta into store
-    store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, images: [...wall.value.images] });
   }
   allowRefOverride.value = false;
   // Exit calibration and clear draft/overlay
@@ -1673,7 +1673,7 @@ const onImageLoad = () => {
     if (imgMeta) {
       imgMeta.processedImageWidth = imageWidth.value;
       imgMeta.processedImageHeight = imageHeight.value;
-      store.setWall(wall.value.id, {
+      store.setWall(surveyId.value, wall.value.id, {
         ...wall.value,
         images: [...wall.value.images],
       });

@@ -52,14 +52,14 @@ import { processFacadeImage } from '@/service/ArucoMeasurments/AlignFacadeServic
 import { useMeasure } from '@/composables/useMeasure';
 
 const store = useWallStore();
-const walls = computed(() => Object.values(store.walls));
 const route = useRoute();
+const surveyId = computed(() => String(route.params.surveyId));
+const walls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const supabase = useSupabaseClient();
 const user = useSupabaseUser();
-const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage } = useMeasure();
+const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage, deleteWall } = useMeasure();
 
-const generateId = (): string =>
-  Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+const generateId = (): string => crypto.randomUUID();
 
 const createEmptyImage = (): WallImage => ({
   imageId: generateId(),
@@ -85,9 +85,10 @@ onMounted(async () => {
     console.log('Fetching walls from Supabase...');
     const dbWalls = await fetchWallsBySurvey(surveyId);
     console.log('📦 Fetched walls from DB:', dbWalls);
+    console.log('📦 Number of walls:', dbWalls?.length);
 
     if (!dbWalls || dbWalls.length === 0) {
-      console.log('No walls found in DB for this survey');
+      console.log('⚠️ No walls found in DB for this survey');
       return;
     }
 
@@ -97,7 +98,9 @@ onMounted(async () => {
       console.log('Wall images:', dbWall.images);
 
       const wallImages: WallImage[] = (dbWall.images || []).map((img: any) => {
-        console.log('Processing image:', img);
+        console.log('📷 Processing image:', img);
+        console.log('   - Original URL:', img.original_url);
+        console.log('   - Processed URL:', img.processed_url);
         return {
           imageId: img.id,
           file: null,
@@ -115,7 +118,8 @@ onMounted(async () => {
         };
       });
 
-      console.log('Converted wall images:', wallImages);
+      console.log('✅ Converted wall images count:', wallImages.length);
+      console.log('✅ Wall images:', wallImages);
 
       const wallPolygons: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => ({
         id: p.id,
@@ -136,10 +140,10 @@ onMounted(async () => {
       };
 
       console.log('✅ Setting wall in store:', wall);
-      store.setWall(wall.id, wall);
+      store.setWall(surveyId.value, wall.id, wall);
     }
 
-    console.log('✅ All walls loaded successfully! Current store:', store.walls);
+    console.log('✅ All walls loaded successfully! Current store:', store.getWallsForSurvey(surveyId.value));
   } catch (err) {
     console.error('❌ Failed to load walls from Supabase:', err);
     // Ha nem sikerül betölteni, használjuk a localStorage-ból amit már van
@@ -147,11 +151,9 @@ onMounted(async () => {
 });
 
 const addWall = async () => {
-  const surveyId = String(route.params.surveyId);
-
   try {
     // Create wall in Supabase DB
-    const dbWall = await createWall(surveyId, '');
+    const dbWall = await createWall(surveyId.value, '');
 
     // Create wall in store with Supabase ID
     const newWall: Wall = {
@@ -160,7 +162,7 @@ const addWall = async () => {
       images: [createEmptyImage()],
       polygons: [],
     };
-    store.setWall(newWall.id, newWall);
+    store.setWall(surveyId.value, newWall.id, newWall);
   } catch (err) {
     console.error('Failed to create wall in Supabase:', err);
     // Fallback to local-only wall
@@ -170,7 +172,7 @@ const addWall = async () => {
       images: [createEmptyImage()],
       polygons: [],
     };
-    store.setWall(newWall.id, newWall);
+    store.setWall(surveyId.value, newWall.id, newWall);
   }
 };
 
@@ -250,18 +252,27 @@ function exportExcel() {
   URL.revokeObjectURL(url);
 }
 
-const removeWall = (wallId: string) => {
-  store.removeWall(wallId);
+const removeWall = async (wallId: string) => {
+  try {
+    // Delete from Supabase database
+    await deleteWall(wallId);
+    // Remove from local store
+    store.removeWall(surveyId.value, wallId);
+  } catch (err) {
+    console.error('Failed to delete wall:', err);
+    // Still remove from store even if DB deletion fails
+    store.removeWall(surveyId.value, wallId);
+  }
 };
 
 const addImage = (wall: Wall) => {
   wall.images.push(createEmptyImage());
-  store.setWall(wall.id, wall);
+  store.setWall(surveyId.value, wall.id, wall);
 };
 
 const removeImage = (wall: Wall, imageId: string) => {
   wall.images = wall.images.filter((img) => img.imageId !== imageId);
-  store.setWall(wall.id, wall);
+  store.setWall(surveyId.value, wall.id, wall);
 };
 
 const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => {
@@ -274,14 +285,21 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
   image.uploadStatus = 'pending';
   image.message = 'Feldolgozás és feltöltés folyamatban...';
   image.previewUrl = URL.createObjectURL(file);
-  store.setWall(wall.id, wall);
+  store.setWall(surveyId.value, wall.id, wall);
 
   try {
     // 1. Feldolgozzuk az API-val (ArUco marker detection)
     const res = await processFacadeImage(file);
 
+    // Update status - don't show image yet, ArUco URL will be deleted after download
+    image.uploadStatus = 'pending';
+    image.message = 'Feldolgozva. Kép letöltése és feltöltése...';
+    image.meterPerPixel = res.real_pixel_size;
+    store.setWall(surveyId.value, wall.id, wall);
+
     // 2. Feltöltjük Supabase Storage-ba és mentjük a DB-be
     let uploadedUrl: string | null = null;
+    let processedImageUrl: string | null = null;
 
     try {
       // Szerezzük meg a company_id-t
@@ -301,17 +319,32 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
 
       if (companyId) {
         // Feltöltjük az eredeti képet Storage-ba
-        const surveyId = String(route.params.surveyId);
         console.log('Attempting upload to Supabase Storage...');
-        const originalUpload = await uploadImage(file, companyId, surveyId, wall.id, 'original');
+        const originalUpload = await uploadImage(file, companyId, surveyId.value, wall.id, 'original');
         console.log('Upload successful! URL:', originalUpload.publicUrl);
         uploadedUrl = originalUpload.publicUrl;
 
+        // Letöltjük a feldolgozott képet az ArUco API-ról a proxy endpoint-on keresztül
+        console.log('Downloading processed image from ArUco API via proxy:', res.image_url);
+        const proxyResponse = await $fetch('/api/proxy-image', {
+          method: 'POST',
+          body: { imageUrl: res.image_url },
+          responseType: 'blob',
+        });
+        const processedImageBlob = proxyResponse as Blob;
+        const processedImageFile = new File([processedImageBlob], `processed_${file.name}`, { type: 'image/png' });
+
+        // Feltöltjük a feldolgozott képet Storage-ba
+        console.log('Uploading processed image to Supabase Storage...');
+        const processedUpload = await uploadImage(processedImageFile, companyId, surveyId.value, wall.id, 'processed');
+        console.log('Processed image upload successful! URL:', processedUpload.publicUrl);
+        processedImageUrl = processedUpload.publicUrl; // Use permanent Supabase URL
+
         // Mentjük a kép metaadatait a DB-be
         console.log('Inserting wall image metadata...');
-        await insertWallImage(wall.id, {
+        const insertedImage = await insertWallImage(wall.id, {
           originalUrl: originalUpload.publicUrl,
-          processedUrl: res.image_url,
+          processedUrl: processedUpload.publicUrl,
           meterPerPixel: res.real_pixel_size,
           processedImageWidth: null,
           processedImageHeight: null,
@@ -319,28 +352,47 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
           referenceEnd: null,
           referenceLengthCm: null,
         });
-        console.log('Wall image metadata saved successfully!');
+        console.log('Wall image metadata saved successfully!', insertedImage);
+
+        // Update the image ID in the store to match the database
+        image.imageId = insertedImage.id;
       } else {
         console.warn('No company ID found, skipping upload');
+        processedImageUrl = null;
+        uploadedUrl = null;
       }
     } catch (uploadErr: any) {
-      console.error('Supabase Storage upload failed:', uploadErr);
+      console.error('❌ Supabase Storage upload/save failed:', uploadErr);
       console.error('Error details:', JSON.stringify(uploadErr, null, 2));
-      // Nem dobunk hibát, folytatjuk blob URL-lel
+      // Don't set image URLs - upload failed
+      processedImageUrl = null;
+      uploadedUrl = null;
     }
 
-    // Használjuk a Supabase URL-t ha van, különben blob URL
-    image.uploadStatus = 'success';
-    image.message = uploadedUrl ? 'A fájl sikeresen feltöltve és feldolgozva.' : 'A fájl sikeresen feldolgozva.';
-    image.processedImageUrl = res.image_url; // API által feldolgozott kép URL
-    image.previewUrl = uploadedUrl || URL.createObjectURL(file); // Supabase URL vagy blob fallback
-    image.meterPerPixel = res.real_pixel_size;
-    store.setWall(wall.id, wall);
+    // Update with permanent Supabase URLs if upload was successful
+    if (uploadedUrl && processedImageUrl) {
+      image.uploadStatus = 'success';
+      image.message = 'Sikeresen feltöltve és feldolgozva!';
+      image.processedImageUrl = processedImageUrl; // Permanent Supabase URL
+      image.previewUrl = uploadedUrl; // Original image Supabase URL
+      store.setWall(surveyId.value, wall.id, wall);
+      console.log('✅ Image successfully uploaded and saved!');
+    } else {
+      // Upload failed - show error
+      image.uploadStatus = 'failed';
+      image.message = 'A feltöltés nem sikerült. Ellenőrizd a kapcsolatot és próbáld újra.';
+      image.processedImageUrl = '';
+      image.previewUrl = '';
+      store.setWall(surveyId.value, wall.id, wall);
+      console.error('❌ Image upload failed - URLs not set');
+    }
   } catch (err: any) {
-    console.error('Feldolgozás hiba:', err);
+    console.error('❌ Feldolgozás hiba:', err);
     image.uploadStatus = 'failed';
     image.message = err?.message || 'Hiba történt a feldolgozás során. Próbáld újra.';
-    store.setWall(wall.id, wall);
+    image.processedImageUrl = '';
+    image.previewUrl = '';
+    store.setWall(surveyId.value, wall.id, wall);
   }
 };
 </script>

@@ -81,7 +81,8 @@ import { useRoute } from 'vue-router';
 const store = useWallStore();
 const route = useRoute();
 
-const walls = computed(() => Object.values(store.walls));
+const surveyId = computed(() => String(route.params.surveyId));
+const walls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const isOpen = ref(false);
 
 // Close dropdown on click outside
@@ -110,7 +111,7 @@ const wallIsActive = (wall: Wall): boolean => wall.id === activeWallId.value;
 
 const getButtonClass = (wall: Wall): string => {
   const isActive = wallIsActive(wall);
-  const hasPolygons = store.hasPolygons(wall.id);
+  const hasPolygons = store.hasPolygons(surveyId.value, wall.id);
   const hasImages = wall.images.some((img) => img.uploadStatus === 'success');
 
   if (isActive) {
@@ -135,7 +136,7 @@ const getButtonClass = (wall: Wall): string => {
 };
 
 const getBadgeClass = (wall: Wall): string => {
-  const hasPolygons = store.hasPolygons(wall.id);
+  const hasPolygons = store.hasPolygons(surveyId.value, wall.id);
   const hasImages = wall.images.some((img) => img.uploadStatus === 'success');
 
   if (hasPolygons) {
@@ -148,7 +149,7 @@ const getBadgeClass = (wall: Wall): string => {
 };
 
 const getStatusLabel = (wall: Wall): string => {
-  if (store.hasPolygons(wall.id)) return 'Kész';
+  if (store.hasPolygons(surveyId.value, wall.id)) return 'Kész';
   if (wall.images.some((img) => img.uploadStatus === 'success')) return 'Kép kész';
   return 'Nincs kép';
 };
