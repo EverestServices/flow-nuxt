@@ -149,11 +149,20 @@ const thisWeekCount = computed(() => {
 // Fetch surveys on mount
 onMounted(async () => {
   try {
+    const user = useSupabaseUser()
+    const userId = user.value?.id
+
+    if (!userId) {
+      console.error('User not authenticated')
+      loading.value = false
+      return
+    }
+
     const { data, error } = await supabase
       .from('surveys')
       .select(`
         *,
-        client:clients (
+        client:clients!inner (
           id,
           name,
           email,
@@ -169,6 +178,7 @@ onMounted(async () => {
           first_signed_at
         )
       `)
+      .eq('client.user_id', userId)
       .order('at', { ascending: false })
 
     if (error) throw error
