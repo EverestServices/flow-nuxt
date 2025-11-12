@@ -384,6 +384,7 @@ const handleSaveAndStart = async () => {
       console.log('Creating new client with company_id:', profile.company_id)
       const clientData = {
         company_id: profile.company_id,
+        user_id: user.id,
         name: form.value.name.trim(),
         email: form.value.email.trim() || null,
         phone: form.value.phone.trim() || null,
@@ -409,12 +410,14 @@ const handleSaveAndStart = async () => {
       console.log('New client created successfully:', newClient)
 
       // Create a new survey for this client
+      const now = new Date().toISOString() // Format: YYYY-MM-DDTHH:mm:ss.sssZ
       const { data: newSurvey, error: surveyError } = await supabase
         .from('surveys')
         .insert({
           client_id: newClient.id,
           company_id: profile.company_id,
-          user_id: user.id
+          user_id: user.id,
+          at: now
         })
         .select()
         .single()
