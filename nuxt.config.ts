@@ -54,7 +54,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.API_BASE_URL || 'http://inki.api.test/api',
-      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      googleMapsApiKey: process.env.NUXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+      // External integration URLs
+      ofpBaseUrl: process.env.NUXT_PUBLIC_OFP_BASE_URL || 'localhost:8080',
+      ekrBaseUrl: process.env.NUXT_PUBLIC_EKR_BASE_URL || 'localhost:3001',
+      flowBaseUrl: process.env.NUXT_PUBLIC_FLOW_BASE_URL || 'localhost:3000'
     }
   },
   supabase: {

@@ -28,6 +28,20 @@
       @change-summary-view-mode="handleChangeSummaryViewMode"
     />
 
+    <!-- External Sync Retry Button -->
+    <div v-if="isExternalSurvey && !isMeasureRoute" class="fixed top-20 right-4 z-40">
+      <UIButtonEnhanced
+        size="sm"
+        variant="outline"
+        @click="handleRetrySync"
+        :loading="syncingToExternal"
+        class="shadow-lg"
+      >
+        <Icon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
+        Retry Sync
+      </UIButtonEnhanced>
+    </div>
+
     <!-- Navigation Tabs (hidden when in marker mode/measure route) -->
     <SurveyNavigation
       v-if="!isMeasureRoute"
@@ -490,6 +504,10 @@ const tabs = computed(() => {
 const clientName = ref(t('survey.page.loading'))
 const clientData = ref<any>(null)
 
+// External sync state
+const isExternalSurvey = ref(false)
+const syncingToExternal = ref(false)
+
 // Can proceed logic per tab
 const canProceed = computed(() => {
   switch (activeTab.value) {
@@ -674,6 +692,9 @@ const loadSurveyData = async () => {
       clientName.value = survey.client.name
       clientData.value = survey.client
 
+      // Check if this is an external survey
+      isExternalSurvey.value = !!(survey.ofp_survey_id || survey.ekr_survey_id)
+
       // Load consultation panel states
       if (survey.consultation_system_design_open !== null && survey.consultation_system_design_open !== undefined) {
         consultationSystemDesignOpen.value = survey.consultation_system_design_open
@@ -726,6 +747,52 @@ const handleBack = () => {
   }
 }
 
+const handleRetrySync = async () => {
+  if (!isExternalSurvey.value) return
+
+  syncingToExternal.value = true
+  const toast = useToast()
+  const { exportSurvey } = useExternalSync()
+
+  try {
+    toast.add({
+      title: 'Syncing survey...',
+      description: 'Retrying sync to external system',
+      color: 'blue',
+      timeout: 2000
+    })
+
+    const { success, error } = await exportSurvey(surveyId.value)
+
+    if (success) {
+      toast.add({
+        title: 'Success',
+        description: 'Survey synced successfully',
+        color: 'green',
+        timeout: 3000
+      })
+    } else {
+      console.error('Sync failed:', error)
+      toast.add({
+        title: 'Error',
+        description: `Sync failed: ${error || 'Unknown error'}`,
+        color: 'red',
+        timeout: 5000
+      })
+    }
+  } catch (error: any) {
+    console.error('Error in retry sync:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to sync survey',
+      color: 'red',
+      timeout: 3000
+    })
+  } finally {
+    syncingToExternal.value = false
+  }
+}
+
 const handleToggleInvestment = () => {
   showInvestmentModal.value = true
 }
@@ -772,9 +839,81 @@ const handleChangeSummaryViewMode = (mode: 'list' | 'card') => {
 }
 
 // Footer handlers
-const handleSaveExit = () => {
+const handleSaveExit = async () => {
   console.log('Save and exit')
-  router.push('/survey')
+
+  // Check if this is an external survey
+  const supabase = useSupabaseClient()
+  const toast = useToast()
+
+  try {
+    // Get survey data to check if it's external
+    const { data: survey, error: surveyError } = await supabase
+      .from('surveys')
+      .select('ofp_survey_id, ekr_survey_id')
+      .eq('id', surveyId.value)
+      .single()
+
+    if (surveyError) {
+      console.error('Failed to load survey:', surveyError)
+      // Continue to redirect even if check fails
+      router.push('/survey')
+      return
+    }
+
+    // Check if external survey
+    const isExternalSurvey = !!(survey.ofp_survey_id || survey.ekr_survey_id)
+
+    if (isExternalSurvey) {
+      // Trigger sync to external system
+      const { exportSurvey } = useExternalSync()
+
+      toast.add({
+        title: 'Syncing survey...',
+        description: 'Sending survey data to external system',
+        color: 'blue',
+        timeout: 2000
+      })
+
+      const { success, error } = await exportSurvey(surveyId.value)
+
+      if (success) {
+        toast.add({
+          title: 'Success',
+          description: 'Survey saved and synced successfully',
+          color: 'green',
+          timeout: 3000
+        })
+      } else {
+        console.error('Sync failed:', error)
+        toast.add({
+          title: 'Warning',
+          description: 'Survey saved, but sync failed. You can retry from survey details.',
+          color: 'amber',
+          timeout: 5000
+        })
+      }
+    } else {
+      // Normal Flow survey - just show success
+      toast.add({
+        title: 'Success',
+        description: 'Survey saved successfully',
+        color: 'green',
+        timeout: 2000
+      })
+    }
+  } catch (error) {
+    console.error('Error in save and exit:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to save survey',
+      color: 'red',
+      timeout: 3000
+    })
+  } finally {
+    // Always redirect after sync attempt
+    router.push('/survey')
+  }
 }
 
 const handleUploadPhotos = () => {
