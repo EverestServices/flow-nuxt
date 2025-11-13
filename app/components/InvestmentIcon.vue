@@ -5,6 +5,11 @@
     :stroke-width="strokeWidth"
     :class="$attrs.class"
   />
+  <IconAtticInsulation
+    v-else-if="name === 'custom:attic-insulation'"
+    :size="size"
+    :class-name="$attrs.class"
+  />
   <UIcon
     v-else
     :name="name"
@@ -14,6 +19,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import IconAtticInsulation from '@/components/icons/IconAtticInsulation.vue'
 
 interface Props {
   name: string

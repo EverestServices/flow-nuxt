@@ -148,8 +148,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     investmentResponses: {} as Record<string, Record<string, any>>,
 
     // Page instances for allow_multiple pages
-    // Structure: { [investmentId]: { [pageId]: { instances: [{questionName: value}, ...] } } }
-    pageInstances: {} as Record<string, Record<string, PageInstanceData>>,
+    // Structure: { [surveyId]: { [investmentId]: { [pageId]: { instances: [{questionName: value}, ...] } } } }
+    pageInstances: {} as Record<string, Record<string, Record<string, PageInstanceData>>>,
 
     // Active instance index for each page (for allow_multiple pages)
     activeInstanceIndex: {} as Record<string, number>, // key: pageId, value: index
@@ -492,14 +492,17 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             this.investmentResponses[investmentId][question.name] = answer.answer
           } else if (answer.parent_item_group === null) {
             // Answer with item_group but no parent (root-level multi-instance page)
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[surveyId]) {
+              this.pageInstances[surveyId] = {}
             }
-            if (!this.pageInstances[investmentId][page.id]) {
-              this.pageInstances[investmentId][page.id] = { instances: [] }
+            if (!this.pageInstances[surveyId][investmentId]) {
+              this.pageInstances[surveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[surveyId][investmentId][page.id]) {
+              this.pageInstances[surveyId][investmentId][page.id] = { instances: [] }
             }
 
-            const instances = this.pageInstances[investmentId][page.id].instances
+            const instances = this.pageInstances[surveyId][investmentId][page.id].instances
             const itemGroup = answer.item_group
 
             // Ensure we have enough instances
@@ -511,14 +514,17 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             instances[itemGroup][question.name] = answer.answer
           } else {
             // Answer with both item_group and parent_item_group (hierarchical subpage)
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[surveyId]) {
+              this.pageInstances[surveyId] = {}
             }
-            if (!this.pageInstances[investmentId][page.id]) {
-              this.pageInstances[investmentId][page.id] = { instances: [], subpageInstances: {} }
+            if (!this.pageInstances[surveyId][investmentId]) {
+              this.pageInstances[surveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[surveyId][investmentId][page.id]) {
+              this.pageInstances[surveyId][investmentId][page.id] = { instances: [], subpageInstances: {} }
             }
 
-            const pageData = this.pageInstances[investmentId][page.id]
+            const pageData = this.pageInstances[surveyId][investmentId][page.id]
             if (!pageData.subpageInstances) {
               pageData.subpageInstances = {}
             }
@@ -855,53 +861,70 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Get instances for a page
     getPageInstances(pageId: string): Record<string, any>[] {
-      if (!this.activeInvestmentId) return []
+      if (!this.activeInvestmentId || !this.currentSurveyId) return []
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      // If page data doesn't exist at all, create it with one instance
-      // But if it exists (even with empty array), keep it as is
-      if (!this.pageInstances[this.activeInvestmentId][pageId]) {
-        this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // If page data doesn't exist at all, create it with empty instances array
+      // Don't auto-create an empty instance - let ensurePageInstancesInitialized or sync handle it
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId] = { instances: [] }
       }
 
       // Return instances (can be empty array if all were deleted with allow_delete_first=true)
-      return this.pageInstances[this.activeInvestmentId][pageId].instances
+      return this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances
     },
 
     // Ensure page instances are initialized with default values (call this when displaying allow_multiple pages)
     async ensurePageInstancesInitialized(pageId: string) {
       if (!this.activeInvestmentId) return
 
-      // Get instances (this will create the first empty instance if needed)
+      // Get instances
       const instances = this.getPageInstances(pageId)
 
+      // If there are no instances, create one with default values
+      if (instances.length === 0) {
+        instances.push({})
+        await this.loadDefaultValuesForInstance(pageId, 0)
+      }
       // If we have exactly one instance and it's empty (no keys), it might need default values loaded
-      if (instances.length === 1 && Object.keys(instances[0]).length === 0) {
+      else if (instances.length === 1 && Object.keys(instances[0]).length === 0) {
         await this.loadDefaultValuesForInstance(pageId, 0)
       }
     },
 
     // Add a new instance for a page
     async addPageInstance(pageId: string) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
-      if (!this.pageInstances[this.activeInvestmentId][pageId]) {
-        this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId] = { instances: [{}] }
       }
 
       // Add new instance
-      this.pageInstances[this.activeInvestmentId][pageId].instances.push({})
+      this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances.push({})
 
       // Set as active
-      const newIndex = this.pageInstances[this.activeInvestmentId][pageId].instances.length - 1
+      const newIndex = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances.length - 1
       this.activeInstanceIndex[pageId] = newIndex
 
       // Load default values from source questions
@@ -910,9 +933,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Remove an instance from a page
     removePageInstance(pageId: string, index: number, allowDeleteLast: boolean = false) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[pageId]?.instances
       if (!instances || instances.length === 0) return
 
       // Remove the instance
@@ -1074,7 +1097,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
           if (page.allow_multiple) {
             // For allow_multiple pages, update all existing instances
-            const instances = this.pageInstances[dep.investmentId]?.[dep.pageId]?.instances || []
+            const instances = this.currentSurveyId
+              ? this.pageInstances[this.currentSurveyId]?.[dep.investmentId]?.[dep.pageId]?.instances || []
+              : []
 
             for (let i = 0; i < instances.length; i++) {
               instances[i][dep.question.name] = newValue
@@ -1177,16 +1202,19 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
           if (answersError) throw answersError
 
           // Update frontend state with fresh values
-          if (answers && answers.length > 0) {
+          if (answers && answers.length > 0 && this.currentSurveyId) {
             // Ensure the page instances structure exists
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[this.currentSurveyId]) {
+              this.pageInstances[this.currentSurveyId] = {}
             }
-            if (!this.pageInstances[investmentId][targetPage.id]) {
-              this.pageInstances[investmentId][targetPage.id] = { instances: [] }
+            if (!this.pageInstances[this.currentSurveyId][investmentId]) {
+              this.pageInstances[this.currentSurveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[this.currentSurveyId][investmentId][targetPage.id]) {
+              this.pageInstances[this.currentSurveyId][investmentId][targetPage.id] = { instances: [] }
             }
 
-            const instances = this.pageInstances[investmentId][targetPage.id].instances
+            const instances = this.pageInstances[this.currentSurveyId][investmentId][targetPage.id].instances
 
             // Update each instance with the fresh value from database
             for (const answer of answers) {
@@ -1267,23 +1295,30 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Get instances for a hierarchical subpage under a specific parent instance
     getSubPageInstances(subpageId: string, parentItemGroup: number): Record<string, any>[] {
-      if (!this.activeInvestmentId) return []
+      if (!this.activeInvestmentId || !this.currentSurveyId) return []
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
-      }
-      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
-        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]
       if (!pageData.subpageInstances) {
         pageData.subpageInstances = {}
       }
 
       if (!pageData.subpageInstances[parentItemGroup]) {
-        pageData.subpageInstances[parentItemGroup] = [{}] // Initialize with one empty instance
+        pageData.subpageInstances[parentItemGroup] = [] // Don't auto-create empty instance - let sync handle it
       }
 
       return pageData.subpageInstances[parentItemGroup]
@@ -1291,17 +1326,24 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Add a new instance for a hierarchical subpage
     async addSubPageInstance(subpageId: string, parentItemGroup: number) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
-      }
-      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
-        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]
       if (!pageData.subpageInstances) {
         pageData.subpageInstances = {}
       }
@@ -1320,9 +1362,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Remove an instance from a hierarchical subpage
     removeSubPageInstance(subpageId: string, parentItemGroup: number, index: number, allowDeleteLast: boolean = false) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
       if (!instances || instances.length === 0) return
 
       // Remove the instance
