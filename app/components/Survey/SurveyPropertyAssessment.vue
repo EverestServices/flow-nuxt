@@ -496,6 +496,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
+import { useWallSync } from '@/composables/useWallSync'
+import { useWallStore } from '@/stores/WallStore'
 
 const { t: $t } = useI18n()
 
@@ -759,6 +761,14 @@ const getPageInstances = (pageId: string) => {
 }
 
 const getInstanceName = (page: SurveyPage, index: number) => {
+  // Check if there's a custom name from the instance data (e.g., from marker mode)
+  const instances = store.getPageInstances(page.id)
+  const instanceData = instances[index]
+
+  if (instanceData && instanceData.wall_name) {
+    return instanceData.wall_name
+  }
+
   if (!page.item_name_template) {
     return `${page.name} ${index + 1}`
   }
@@ -790,11 +800,53 @@ const canDeleteInstance = (page: SurveyPage, index: number) => {
   return index > 0
 }
 
-const addInstance = (pageId: string) => {
-  store.addPageInstance(pageId)
+const addInstance = async (pageId: string) => {
+  // Check if this is the Facade Insulation -> Walls page
+  const page = store.surveyPages[store.activeInvestmentId || '']?.find(p => p.id === pageId)
+  const isFacadeWallsPage = page?.type === 'walls' && page?.name === 'Falak'
+
+  // Add the page instance
+  await store.addPageInstance(pageId)
+
+  // If this is the Facade Insulation Walls page, also create a wall in marker mode
+  if (isFacadeWallsPage) {
+    const wallStore = useWallStore()
+    const instances = store.getPageInstances(pageId)
+    const newIndex = instances.length - 1
+    const newInstance = instances[newIndex]
+
+    // Create a new wall in WallStore
+    const newWallId = crypto.randomUUID()
+    const wallName = `${newIndex + 1}. falfelület`
+
+    wallStore.setWall(props.surveyId, newWallId, {
+      id: newWallId,
+      name: wallName,
+      orientation: undefined,
+      images: [],
+      polygons: []
+    })
+
+    // Link the instance to the marker wall
+    if (newInstance) {
+      newInstance._markerWallId = newWallId
+      newInstance.wall_name = wallName
+    }
+  }
 }
 
 const deleteInstance = (page: SurveyPage, index: number) => {
+  // Check if this instance is linked to a marker mode wall
+  const instances = store.getPageInstances(page.id)
+  const instanceData = instances[index]
+
+  if (instanceData && instanceData._markerWallId) {
+    // This instance is linked to a marker wall - delete it from WallStore too
+    const wallStore = useWallStore()
+    wallStore.removeWall(props.surveyId, instanceData._markerWallId)
+  }
+
+  // Remove the page instance
   store.removePageInstance(page.id, index, page.allow_delete_first || false)
 }
 
@@ -804,6 +856,24 @@ const getInstanceQuestionValue = (pageId: string, instanceIndex: number, questio
 
 const updateInstanceQuestionValue = async (pageId: string, instanceIndex: number, questionName: string, value: any) => {
   await store.saveInstanceResponse(pageId, instanceIndex, questionName, value)
+
+  // If this is a wall_orientation change and the instance is linked to a marker wall, update it there too
+  if (questionName === 'wall_orientation') {
+    const instances = store.getPageInstances(pageId)
+    const instanceData = instances[instanceIndex]
+
+    if (instanceData && instanceData._markerWallId) {
+      const wallStore = useWallStore()
+      const wall = wallStore.getWallsForSurvey(props.surveyId)[instanceData._markerWallId]
+
+      if (wall) {
+        wallStore.setWall(props.surveyId, wall.id, {
+          ...wall,
+          orientation: value
+        })
+      }
+    }
+  }
 }
 
 // ========================================================================
@@ -839,6 +909,51 @@ const addSubPageInstance = (subpageId: string, parentItemGroup: number) => {
 }
 
 const deleteSubPageInstance = (subpage: SurveyPage, parentItemGroup: number, index: number) => {
+  // Check if this is an Openings (Nyílászárók) subpage
+  const isOpeningsSubpage = subpage.name === 'Nyílászárók' || subpage.type === 'openings'
+
+  if (isOpeningsSubpage) {
+    // Get the subpage instance to find the marker polygon ID
+    const subpageInstances = store.getSubPageInstances(subpage.id, parentItemGroup)
+    const instanceData = subpageInstances[index]
+
+    if (instanceData && instanceData._markerPolygonId) {
+      // This opening is linked to a marker polygon - delete it from WallStore too
+      const wallStore = useWallStore()
+
+      // Find the parent wall instance to get the marker wall ID
+      const parentPage = store.surveyPages[store.activeInvestmentId || '']?.find(
+        p => p.id === subpage.parent_page_id
+      )
+
+      if (parentPage) {
+        const parentInstances = store.getPageInstances(parentPage.id)
+        const parentInstance = parentInstances[parentItemGroup]
+
+        if (parentInstance && parentInstance._markerWallId) {
+          // Get the wall from marker mode
+          const wall = wallStore.getWallsForSurvey(props.surveyId)[parentInstance._markerWallId]
+
+          if (wall) {
+            // Remove the polygon with this ID
+            const updatedPolygons = wall.polygons.filter(
+              p => p.id !== instanceData._markerPolygonId
+            )
+
+            // Update the wall with the filtered polygons
+            wallStore.setWall(props.surveyId, wall.id, {
+              ...wall,
+              polygons: updatedPolygons
+            })
+
+            console.log(`Deleted polygon ${instanceData._markerPolygonId} from marker mode`)
+          }
+        }
+      }
+    }
+  }
+
+  // Remove the subpage instance
   store.removeSubPageInstance(subpage.id, parentItemGroup, index, subpage.allow_delete_first || false)
 }
 
@@ -1101,9 +1216,21 @@ const closeAccordion = (event: MouseEvent) => {
 onMounted(async () => {
   await store.initializeForSurvey(props.surveyId)
 
+  // Sync walls from marker mode to survey page instances
+  const { syncWallsToSurvey } = useWallSync()
+  try {
+    await syncWallsToSurvey(props.surveyId)
+  } catch (error) {
+    console.error('Error syncing walls from marker mode:', error)
+  }
+
   // Initialize default values for allow_multiple pages
+  // Skip walls and openings pages - they are managed by wall sync
   if (activePage.value?.allow_multiple && activePageId.value) {
-    await store.ensurePageInstancesInitialized(activePageId.value)
+    const skipTypes = ['walls', 'openings']
+    if (!skipTypes.includes(activePage.value.type || '')) {
+      await store.ensurePageInstancesInitialized(activePageId.value)
+    }
   }
 })
 
@@ -1113,7 +1240,11 @@ watch(activePageId, async (newPageId) => {
 
   const page = activePage.value
   if (page?.allow_multiple) {
-    await store.ensurePageInstancesInitialized(newPageId)
+    // Skip walls and openings pages - they are managed by wall sync
+    const skipTypes = ['walls', 'openings']
+    if (!skipTypes.includes(page.type || '')) {
+      await store.ensurePageInstancesInitialized(newPageId)
+    }
   }
 })
 </script>

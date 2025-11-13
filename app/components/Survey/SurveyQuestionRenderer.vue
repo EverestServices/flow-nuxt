@@ -221,35 +221,22 @@
 
     <!-- Orientation Selector (8 directions) -->
     <div v-else-if="question.type === 'orientation_selector'">
-      <div class="flex items-center gap-2 mb-2">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ questionLabel }}
-          <span v-if="question.is_required" class="text-red-500">*</span>
-        </label>
-        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="option in translatedOptions"
-          :key="option.value"
-          :disabled="isEffectivelyReadonly"
-          class="w-14 h-14 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative"
-          :class="[
-            (modelValue || question.default_value) === option.value
-              ? 'bg-primary-500 text-white shadow-md'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600',
-            isEffectivelyReadonly ? 'opacity-60 cursor-not-allowed hover:scale-100' : ''
-          ]"
-          @click="$emit('update:modelValue', option.value)"
-        >
-          <UIcon
-            name="i-lucide-navigation"
-            class="w-6 h-6 transition-transform"
-            :style="{ transform: `rotate(${getOrientationAngle(option.value)}deg)` }"
-          />
-          <span class="text-xs font-medium mt-0.5">{{ option.label }}</span>
-        </button>
-      </div>
+      <OrientationSelector
+        :model-value="modelValue || question.default_value"
+        :disabled="isEffectivelyReadonly"
+        :required="question.is_required"
+        @update:model-value="$emit('update:modelValue', $event)"
+      >
+        <template #label>
+          <div class="flex items-center gap-2">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ questionLabel }}
+              <span v-if="question.is_required" class="text-red-500">*</span>
+            </label>
+            <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+          </div>
+        </template>
+      </OrientationSelector>
     </div>
 
     <!-- Icon Selector (buttons with custom icons) -->
@@ -316,6 +303,7 @@
 import { computed } from 'vue'
 import type { SurveyQuestion } from '~/stores/surveyInvestments'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+import OrientationSelector from '@/components/shared/OrientationSelector.vue'
 
 interface Props {
   question: SurveyQuestion
@@ -595,20 +583,6 @@ const parseBoolean = (value: any): boolean => {
   return false
 }
 
-// Helper to get rotation angle for orientation selector
-const getOrientationAngle = (direction: string): number => {
-  const angleMap: Record<string, number> = {
-    'É': 0,      // North
-    'ÉK': 45,    // Northeast
-    'K': 90,     // East
-    'DK': 135,   // Southeast
-    'D': 180,    // South
-    'DNy': 225,  // Southwest
-    'Ny': 270,   // West
-    'ÉNy': 315   // Northwest
-  }
-  return angleMap[direction] || 0
-}
 
 // Determine if the field should be readonly
 // Only readonly if:
