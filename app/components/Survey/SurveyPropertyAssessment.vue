@@ -1181,6 +1181,7 @@ const getNormalQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
   return questions
     .filter(q => !q.is_special)
+    .filter(q => !q.display_settings?.hidden) // Hide questions with display_settings.hidden = true
     .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 
@@ -1188,6 +1189,7 @@ const getSpecialQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
   return questions
     .filter(q => q.is_special === true)
+    .filter(q => !q.display_settings?.hidden) // Hide questions with display_settings.hidden = true
     .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 

@@ -272,9 +272,64 @@
       </div>
     </div>
 
-    <!-- Calculated Field (read-only card showing computed value) -->
+    <!-- Color Picker -->
+    <div v-else-if="question.type === 'color_picker'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <UIColorPicker
+        :model-value="modelValue || question.default_value"
+        :disabled="isEffectivelyReadonly"
+        :colors="colorPickerOptions"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
+    </div>
+
+    <!-- Calculated Field (read-only card showing computed value OR manual input with lock) -->
     <div v-else-if="question.type === 'calculated'">
-      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+      <!-- Manual override mode: editable number input with lock button -->
+      <div v-if="allowsManualOverride">
+        <div class="flex items-center gap-2 mb-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {{ questionLabel }}
+            <span v-if="question.is_required" class="text-red-500">*</span>
+          </label>
+          <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+        </div>
+        <div class="relative flex items-center space-x-2">
+          <button
+            type="button"
+            class="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+            :title="isManualMode ? 'Zárás (automatikus számolás)' : 'Feloldás (kézi szerkesztés)'"
+            @click="toggleLockState"
+          >
+            <UIcon
+              :name="isManualMode ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+              class="w-5 h-5"
+              :class="isManualMode ? 'text-orange-500' : 'text-gray-400'"
+            />
+          </button>
+          <UIInput
+            :model-value="isManualMode ? modelValue : calculatedValue"
+            type="number"
+            :readonly="!isManualMode"
+            :disabled="!isManualMode"
+            :class="{ 'pl-10': true, 'bg-gray-100 dark:bg-gray-900': !isManualMode }"
+            class="flex-1"
+            @update:model-value="$emit('update:modelValue', $event)"
+          />
+          <span v-if="questionUnit" class="text-sm text-gray-500 dark:text-gray-400">
+            {{ questionUnit }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Standard calculated field: readonly card -->
+      <div v-else class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -555,6 +610,23 @@ const translatedOptionsWithIcons = computed(() => {
   }))
 })
 
+// Get color options for color_picker type
+const colorPickerOptions = computed(() => {
+  if (props.question.type !== 'color_picker' || !props.question.options) {
+    return undefined
+  }
+
+  // If options is an object with color codes and RGB values
+  if (typeof props.question.options === 'object' && !Array.isArray(props.question.options)) {
+    return Object.entries(props.question.options).map(([code, rgb]) => ({
+      code,
+      rgb: rgb as string
+    }))
+  }
+
+  return undefined
+})
+
 // Get options with empty option for non-required dropdowns
 const dropdownOptions = computed(() => {
   const options = [...translatedOptions.value]
@@ -588,7 +660,35 @@ const parseBoolean = (value: any): boolean => {
 // Only readonly if:
 // 1. is_readonly is true AND
 // 2. If has default_value_source, only readonly if the SOURCE field has a value
+// 3. If this field is affected by a calculated field in manual override mode
 const isEffectivelyReadonly = computed(() => {
+  // Check if this field is affected by any calculated field in manual mode
+  // Search current page for calculated fields with manual override
+  const currentPageId = Object.entries(store.surveyQuestions).find(([_, questions]) =>
+    questions.some(q => q.id === props.question.id)
+  )?.[0]
+
+  if (currentPageId) {
+    const pageQuestions = store.surveyQuestions[currentPageId] || []
+    for (const q of pageQuestions) {
+      if (q.type === 'calculated' &&
+          q.options?.allowManualOverride &&
+          q.options?.lockStateField &&
+          q.options?.affectedFields) {
+        // Check if this calculated field is in manual mode
+        const lockState = store.getResponse(q.options.lockStateField as string)
+        const isInManualMode = lockState === 'true' || lockState === true
+
+        // If in manual mode and current field is in affectedFields, make it readonly
+        if (isInManualMode &&
+            Array.isArray(q.options.affectedFields) &&
+            (q.options.affectedFields as string[]).includes(props.question.name)) {
+          return true
+        }
+      }
+    }
+  }
+
   if (!props.question.is_readonly) return false
 
   // If has default_value_source, check if the source field has a value
@@ -827,4 +927,33 @@ const activeConditionalMessage = computed<{ type: 'info' | 'warning' | 'danger';
 
   return null
 })
+
+// Check if this calculated field allows manual override
+const allowsManualOverride = computed(() => {
+  return props.question.type === 'calculated' &&
+         props.question.options?.allowManualOverride === true
+})
+
+// Check current lock state (false = locked/auto, true = unlocked/manual)
+const isManualMode = computed(() => {
+  if (!allowsManualOverride.value || !props.question.options?.lockStateField) {
+    return false
+  }
+  const lockState = store.getResponse(props.question.options.lockStateField as string)
+  return lockState === 'true' || lockState === true
+})
+
+// Toggle lock state and recalculate if needed
+async function toggleLockState() {
+  if (!props.question.options?.lockStateField) return
+
+  const newState = !isManualMode.value
+  // Update the hidden lock state question
+  await store.saveResponse(props.question.options.lockStateField as string, String(newState))
+
+  // If switching back to auto mode, recalculate the value
+  if (!newState && calculatedValue.value !== '—') {
+    emit('update:modelValue', calculatedValue.value)
+  }
+}
 </script>
