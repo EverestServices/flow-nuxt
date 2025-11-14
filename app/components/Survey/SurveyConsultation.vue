@@ -29,29 +29,26 @@
           <!-- Action Buttons -->
           <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
             <!-- AI Scenarios button -->
-            <UButton
-              color="primary"
+            <UIButtonEnhanced
+              variant="primary"
               size="sm"
               @click="$emit('ai-scenarios')"
+              class="whitespace-nowrap"
             >
-              <template #leading>
-                <UIcon name="i-lucide-zap" class="w-4 h-4" />
-              </template>
-              {{ $t('survey.consultation.aiScenarios') }}
-            </UButton>
+              <Icon name="i-lucide-zap" class="w-4 h-4 mr-2" />
+              {{ $t('survey.footer.aiScenarios') }}
+            </UIButtonEnhanced>
 
             <!-- New Scenario button -->
-            <UButton
-              color="primary"
+            <UIButtonEnhanced
               variant="outline"
               size="sm"
               @click="$emit('new-scenario')"
+              class="whitespace-nowrap"
             >
-              <template #leading>
-                <UIcon name="i-lucide-plus" class="w-4 h-4" />
-              </template>
-              {{ $t('survey.consultation.newScenario') }}
-            </UButton>
+              <Icon name="i-lucide-plus" class="w-4 h-4 mr-2" />
+              {{ $t('survey.footer.newScenario') }}
+            </UIButtonEnhanced>
           </div>
           <!-- Technical Data Container -->
           <div v-if="!hasScenarios" class="border-b border-gray-200 dark:border-gray-700">
@@ -391,6 +388,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:system-design-open': [value: boolean]
   'update:consultation-open': [value: boolean]
+  'ai-scenarios': []
+  'new-scenario': []
 }>()
 
 const scenariosStore = useScenariosStore()
