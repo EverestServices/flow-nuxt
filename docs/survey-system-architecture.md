@@ -4,7 +4,7 @@
 **Last Updated:** 2025-11-05
 **Version:** 2.6.0
 **Migrations:**
-- `003_create_survey_system.sql` - Core survey system
+- `004_create_survey_system.sql` - Core survey system
 - `031-043_products_system.sql` - Products and components
 - `070_add_investment_id_to_pivot_tables.sql` - Investment-specific tracking
 - `097-101_default_value_source_and_persistence.sql` - Default values and persistence

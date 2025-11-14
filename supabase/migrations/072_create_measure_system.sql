@@ -74,7 +74,8 @@ ALTER TABLE public.measure_wall_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.measure_polygons ENABLE ROW LEVEL SECURITY;
 
 -- measure_walls policies (by company via surveys)
-CREATE POLICY IF NOT EXISTS "Measure: select walls by company"
+DROP POLICY IF EXISTS "Measure: select walls by company" ON public.measure_walls;
+CREATE POLICY "Measure: select walls by company"
   ON public.measure_walls FOR SELECT
   USING (
     survey_id IN (
@@ -82,7 +83,9 @@ CREATE POLICY IF NOT EXISTS "Measure: select walls by company"
       WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
     )
   );
-CREATE POLICY IF NOT EXISTS "Measure: manage walls by company"
+
+DROP POLICY IF EXISTS "Measure: manage walls by company" ON public.measure_walls;
+CREATE POLICY "Measure: manage walls by company"
   ON public.measure_walls FOR ALL
   USING (
     survey_id IN (
@@ -97,7 +100,8 @@ CREATE POLICY IF NOT EXISTS "Measure: manage walls by company"
   );
 
 -- measure_wall_images policies (inherit via wall -> survey)
-CREATE POLICY IF NOT EXISTS "Measure: select images by company"
+DROP POLICY IF EXISTS "Measure: select images by company" ON public.measure_wall_images;
+CREATE POLICY "Measure: select images by company"
   ON public.measure_wall_images FOR SELECT
   USING (
     wall_id IN (
@@ -106,7 +110,9 @@ CREATE POLICY IF NOT EXISTS "Measure: select images by company"
       WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
     )
   );
-CREATE POLICY IF NOT EXISTS "Measure: manage images by company"
+
+DROP POLICY IF EXISTS "Measure: manage images by company" ON public.measure_wall_images;
+CREATE POLICY "Measure: manage images by company"
   ON public.measure_wall_images FOR ALL
   USING (
     wall_id IN (
@@ -123,7 +129,8 @@ CREATE POLICY IF NOT EXISTS "Measure: manage images by company"
   );
 
 -- measure_polygons policies (inherit via wall -> survey)
-CREATE POLICY IF NOT EXISTS "Measure: select polygons by company"
+DROP POLICY IF EXISTS "Measure: select polygons by company" ON public.measure_polygons;
+CREATE POLICY "Measure: select polygons by company"
   ON public.measure_polygons FOR SELECT
   USING (
     wall_id IN (
@@ -132,7 +139,9 @@ CREATE POLICY IF NOT EXISTS "Measure: select polygons by company"
       WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
     )
   );
-CREATE POLICY IF NOT EXISTS "Measure: manage polygons by company"
+
+DROP POLICY IF EXISTS "Measure: manage polygons by company" ON public.measure_polygons;
+CREATE POLICY "Measure: manage polygons by company"
   ON public.measure_polygons FOR ALL
   USING (
     wall_id IN (

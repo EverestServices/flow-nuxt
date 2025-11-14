@@ -897,7 +897,7 @@ try {
 - Table: `survey_pages`
 - Table: `survey_questions`
 - Table: `survey_answers`
-- Migration: `supabase/migrations/003_create_survey_system.sql`
+- Migration: `supabase/migrations/004_create_survey_system.sql`
 - Migration: `supabase/migrations/102_add_hierarchical_survey_pages.sql` - Hierarchical pages support
 - Migration: `supabase/migrations/104_create_openings_survey_page.sql` - Openings subpage
 - Migration: `supabase/migrations/105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages
