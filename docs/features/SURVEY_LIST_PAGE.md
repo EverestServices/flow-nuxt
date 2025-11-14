@@ -190,7 +190,7 @@ const { data: surveys } = await supabase
 ## Related Files
 
 ### Migrations
-- `supabase/migrations/003_create_survey_system.sql` - Survey system schema
+- `supabase/migrations/004_create_survey_system.sql` - Survey system schema
 - `supabase/migrations/999_seed_clients_and_surveys.sql` - Test data seeding
 
 ### Composables & Types

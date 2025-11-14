@@ -5,9 +5,18 @@
 DO $$
 DECLARE
     user_exists BOOLEAN;
-    current_user_id UUID := '4fffb938-176e-45a0-8b9d-bd9419a071f6';
+    current_user_id UUID;
     company_uuid UUID := 'f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44';
 BEGIN
+    -- Get first available user dynamically
+    SELECT id INTO current_user_id FROM auth.users ORDER BY created_at LIMIT 1;
+
+    -- Skip if no users exist
+    IF current_user_id IS NULL THEN
+        RAISE NOTICE 'No users found, skipping user profile fix';
+        RETURN;
+    END IF;
+
     -- Check if user profile exists
     SELECT EXISTS(
         SELECT 1 FROM public.user_profiles
