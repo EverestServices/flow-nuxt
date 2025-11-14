@@ -67,6 +67,8 @@
           :consultation-open="consultationPanelOpen"
           @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
           @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
+          @ai-scenarios="handleAIScenarios"
+          @new-scenario="handleNewScenario"
         />
 
         <!-- Offer/Contract Tab -->
