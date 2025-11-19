@@ -136,6 +136,14 @@ export interface PageInstanceData {
   subpageInstances?: Record<number, Record<string, any>[]>  // For hierarchical subpages, keyed by parent_item_group
 }
 
+export interface SurveyValueCopyRule {
+  id: string
+  condition_question_id: string
+  condition_value: string
+  source_question_id: string
+  target_question_id: string
+}
+
 export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
   state: () => ({
     // Available investments from database
@@ -162,6 +170,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Document categories for each investment
     documentCategories: {} as Record<string, DocumentCategory[]>,
+
+    // Value copy rules for conditional field copying
+    valueCopyRules: [] as SurveyValueCopyRule[],
 
     // Uploaded photos count for each category
     // Structure: { [categoryId]: count }
@@ -245,6 +256,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     hasSelectedInvestments(state): boolean {
       return state.selectedInvestmentIds.length > 0
     },
+
+    // Get value copy rules where the given question is the target
+    getValueCopyRulesForTarget: (state) => (targetQuestionId: string): SurveyValueCopyRule[] => {
+      return state.valueCopyRules.filter(rule => rule.target_question_id === targetQuestionId)
+    },
   },
 
   actions: {
@@ -301,6 +317,17 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // If we have selected investments, load their pages
         if (this.selectedInvestmentIds.length > 0) {
           await this.loadInvestmentData(this.selectedInvestmentIds)
+
+          // Load value copy rules from database
+          const { data: valueCopyRules, error: rulesError } = await supabase
+            .from('survey_value_copy_rules')
+            .select('*')
+
+          if (rulesError) {
+            console.error('Error loading value copy rules:', rulesError)
+          } else {
+            this.valueCopyRules = valueCopyRules || []
+          }
 
           // Load existing answers from database
           await this.loadExistingAnswers(surveyId)

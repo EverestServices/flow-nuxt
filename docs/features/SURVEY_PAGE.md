@@ -287,6 +287,63 @@ emit('next')                          // Proceed to next tab
 - Automatic unit conversion (cm to m²)
 - Real-time updates as user inputs data
 
+### Advanced Survey Question Features (2025-11-17)
+
+**Drawing Area Question Type:**
+- New survey question type: `drawing_area`
+- Opens a modal with canvas-based drawing interface
+- Features:
+  - Pen tool with 2px width for drawing
+  - Eraser tool with 20px width for corrections
+  - Undo functionality (up to 20 states)
+  - Clear all button to reset canvas
+  - Touch support for mobile/tablet devices
+  - Preview thumbnail of saved drawing
+- Saves drawings as PNG base64 strings
+- Configurable canvas dimensions via question options:
+  - `canvas_width` (default: 800px)
+  - `canvas_height` (default: 600px)
+  - `button_text` (translatable button label)
+- Component: `app/components/Survey/DrawingModal.vue`
+
+**Conditional Info Messages:**
+- Display info/warning/danger icons next to questions based on field values
+- Configuration via `conditional_info_messages` array in question definition
+- Supports checking own field value with `field: 'self'`
+- Available operators: `equals`, `not_equals`, `greater_than`, `less_than`, `contains`
+- Message types with visual styling:
+  - `info` - Blue information icon
+  - `warning` - Yellow warning icon
+  - `danger` - Red danger icon
+- Translatable messages via `message_translations`
+- Example use case: Show danger icon when defect is marked on a switch
+- Positioned immediately left of switch controls or next to question labels
+
+**Calculated Field Unit Conversions:**
+- Automatic unit conversion in calculated field formulas
+- Configuration via `field_unit_conversions` in formula options
+- Multipliers applied before calculation
+- Example: Convert cm to m by multiplying with 0.01
+  ```typescript
+  {
+    operation: 'multiply',
+    fields: ['foundation_height', 'wall_length'],
+    field_unit_conversions: {
+      'foundation_height': 0.01,  // cm → m
+      'wall_length': 0.01         // cm → m
+    },
+    decimals: 2
+  }
+  ```
+- Supports all calculation operations: multiply, add, subtract, divide
+
+**Modal Enhancements:**
+- `maxWidth` prop added to UIModal component
+- Allows custom max-width values (e.g., "800px", "50rem")
+- Overrides default size-based widths when specified
+- Used by DrawingModal for large canvas displays
+- `scrollable` prop for scrollable modal content
+
 ### Data Storage
 
 **Store:** `/app/stores/surveyInvestments.ts`
@@ -972,10 +1029,17 @@ try {
 ---
 
 **Created:** 2025-10-20
-**Last Updated:** 2025-10-30
-**Status:** Phase 1 Complete - Property Assessment Fully Implemented with Hierarchical Pages & Calculations
+**Last Updated:** 2025-11-17
+**Status:** Phase 1 Complete - Property Assessment Fully Implemented with Advanced Question Types
 **Next Steps:** Implement Consultation and Offer/Contract tabs
 **Dependencies:** Survey system migration, Supabase integration
+
+**Major Updates (2025-11-17):**
+- ✅ **Drawing Area question type** - New survey question type for canvas-based drawing
+- ✅ **DrawingModal component** - Full-featured drawing interface with pen, eraser, undo, clear
+- ✅ **Conditional Info Messages** - Info/warning/danger icons next to questions based on conditions
+- ✅ **Calculated Field Unit Conversions** - field_unit_conversions support for automatic unit conversion in formulas
+- ✅ **Modal maxWidth prop** - Custom maxWidth support for modals (e.g., drawing modal with large canvas)
 
 **Major Updates (2025-10-30):**
 - ✅ Property Assessment tab fully implemented
