@@ -140,10 +140,70 @@ export function useExternalApiKeys() {
     return !!data
   }
 
+  /**
+   * Get the user's OFP API key from their profile
+   * This is the key they set manually from their OFP account
+   */
+  async function getOfpApiKey(): Promise<string | null> {
+    if (!user.value) return null
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('ofp_api_key')
+      .eq('user_id', user.value.id)
+      .single()
+
+    if (error || !data) {
+      console.error('Failed to fetch OFP API key:', error)
+      return null
+    }
+
+    return data.ofp_api_key || null
+  }
+
+  /**
+   * Set the user's OFP API key in their profile
+   */
+  async function setOfpApiKey(apiKey: string): Promise<boolean> {
+    if (!user.value) {
+      throw new Error('User not authenticated')
+    }
+
+    const { data, error } = await supabase.rpc('update_ofp_api_key', {
+      p_api_key: apiKey
+    })
+
+    if (error) {
+      console.error('Failed to save OFP API key:', error)
+      return false
+    }
+
+    return data?.success || false
+  }
+
+  /**
+   * Check if user has OFP API key configured
+   */
+  async function hasOfpApiKey(): Promise<boolean> {
+    const key = await getOfpApiKey()
+    return !!key
+  }
+
+  /**
+   * Get user email for OFP authentication
+   */
+  function getUserEmail(): string | null {
+    return user.value?.email || null
+  }
+
   return {
     getApiKeys,
     generateApiKey,
     deactivateApiKey,
-    hasApiKey
+    hasApiKey,
+    getOfpApiKey,
+    setOfpApiKey,
+    hasOfpApiKey,
+    getUserEmail
   }
 }
