@@ -1,12 +1,31 @@
 import { defineStore } from 'pinia'
 import { useSupabaseClient } from '#imports'
 
+export interface OfpCalculationResult {
+  calculated_at: string
+  calculations: {
+    wall_insulation?: any
+    roof_insulation?: any
+    window_replacement?: any
+    heat_pump?: any
+  }
+  totals: {
+    total_investment_gross: number
+    total_investment_net: number
+    total_self_strength: number
+    total_non_refundable: number
+    total_interest_free_loan: number
+  }
+  percentage: number
+}
+
 export interface Scenario {
   id: string
   survey_id: string
   name: string
   sequence: number
   description?: string
+  ofp_calculation?: OfpCalculationResult | null
   created_at: string
   updated_at: string
 }

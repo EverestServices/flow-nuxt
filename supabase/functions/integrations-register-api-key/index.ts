@@ -99,6 +99,14 @@ Deno.serve(async (req) => {
         )
       }
 
+      // Also store plain text API key in user_profiles for reverse direction (Flow -> OFP)
+      if (externalSystem === 'OFP') {
+        await supabase
+          .from('user_profiles')
+          .update({ ofp_api_key: apiKey })
+          .eq('user_id', user.id)
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -126,6 +134,14 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'Failed to register API key' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Also store plain text API key in user_profiles for reverse direction (Flow -> OFP)
+    if (externalSystem === 'OFP') {
+      await supabase
+        .from('user_profiles')
+        .update({ ofp_api_key: apiKey })
+        .eq('user_id', user.id)
     }
 
     return new Response(
