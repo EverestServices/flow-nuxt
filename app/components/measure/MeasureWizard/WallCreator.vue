@@ -57,7 +57,7 @@ const surveyId = computed(() => String(route.params.surveyId));
 const walls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const supabase = useSupabaseClient();
 const user = useSupabaseUser();
-const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage, deleteWall } = useMeasure();
+const { uploadImage, fetchWallsBySurvey, createWall, insertWallImage, deleteWall, getImageDataUrl, deleteWallImage, setOriginalImageBlob, setProcessedImageBlob } = useMeasure();
 
 const generateId = (): string => crypto.randomUUID();
 
@@ -109,17 +109,17 @@ async function compressToJpeg(blob: Blob, maxDim = 1600, quality = 0.85): Promis
 // Load walls from Supabase on mount
 onMounted(async () => {
   console.log('🔄 WallCreator mounted, loading walls from Supabase...');
-  const surveyId = String(route.params.surveyId);
-  console.log('Survey ID:', surveyId);
+  const sid = String(route.params.surveyId);
+  console.log('Survey ID:', sid);
 
-  if (!surveyId) {
+  if (!sid) {
     console.warn('No survey ID found');
     return;
   }
 
   try {
     console.log('Fetching walls from Supabase...');
-    const dbWalls = await fetchWallsBySurvey(surveyId);
+    const dbWalls = await fetchWallsBySurvey(sid);
     console.log('📦 Fetched walls from DB:', dbWalls);
     console.log('📦 Number of walls:', dbWalls?.length);
 
@@ -190,10 +190,10 @@ onMounted(async () => {
         }
       }
       console.log('✅ Setting wall in store:', wall);
-      store.setWall(surveyId.value, wall.id, wall);
+      store.setWall(sid, wall.id, wall);
     }
 
-    console.log('✅ All walls loaded successfully! Current store:', store.getWallsForSurvey(surveyId.value));
+    console.log('✅ All walls loaded successfully! Current store:', store.getWallsForSurvey(sid));
   } catch (err) {
     console.error('❌ Failed to load walls from Supabase:', err);
     // Ha nem sikerül betölteni, használjuk a localStorage-ból amit már van
@@ -330,10 +330,19 @@ const removeImage = async (wall: Wall, imageId: string) => {
   store.setWall(surveyId.value, wall.id, wall);
 };
 
-const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => {
+const handleImageChange = async (wall: Wall, image: WallImage | undefined, event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
+
+  if (!wall.images) {
+    wall.images = [] as WallImage[];
+  }
+  if (!image) {
+    const placeholder = createEmptyImage();
+    wall.images.push(placeholder);
+    image = placeholder;
+  }
 
   image.file = file;
   image.fileName = file.name;
@@ -369,33 +378,33 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
         throw profileErr;
       }
 
-      companyId = profile?.company_id;
+      const companyId = (profile?.company_id ?? null) as string | null;
       console.log('Company ID:', companyId, 'Wall ID:', wall.id, 'Survey ID:', route.params.surveyId);
 
+      // Mindig letöltjük a feldolgozott képet a proxy-n keresztül
+      console.log('Downloading processed image from ArUco API via proxy:', res.image_url);
+      const proxyResponse = await $fetch('/api/proxy-image', {
+        method: 'POST',
+        body: { imageUrl: res.image_url },
+        responseType: 'blob',
+      });
+      const processedImageBlob: Blob = proxyResponse instanceof Blob
+        ? (proxyResponse as Blob)
+        : new Blob([proxyResponse as any], { type: 'image/png' });
+      const processedImageFile = new File([processedImageBlob], `processed_${file.name}`, { type: 'image/png' });
+
       if (companyId) {
-        // Feltöltjük az eredeti képet Storage-ba
+        // Feltöltjük az eredeti és a feldolgozott képet a Storage-ba
         console.log('Attempting upload to Supabase Storage...');
         const originalUpload = await uploadImage(file, companyId, surveyId.value, wall.id, 'original');
         console.log('Upload successful! URL:', originalUpload.publicUrl);
         uploadedUrl = originalUpload.publicUrl;
 
-        // Letöltjük a feldolgozott képet az ArUco API-ról a proxy endpoint-on keresztül
-        console.log('Downloading processed image from ArUco API via proxy:', res.image_url);
-        const proxyResponse = await $fetch('/api/proxy-image', {
-          method: 'POST',
-          body: { imageUrl: res.image_url },
-          responseType: 'blob',
-        });
-        const processedImageBlob = proxyResponse as Blob;
-        const processedImageFile = new File([processedImageBlob], `processed_${file.name}`, { type: 'image/png' });
-
-        // Feltöltjük a feldolgozott képet Storage-ba
         console.log('Uploading processed image to Supabase Storage...');
         const processedUpload = await uploadImage(processedImageFile, companyId, surveyId.value, wall.id, 'processed');
         console.log('Processed image upload successful! URL:', processedUpload.publicUrl);
-        processedImageUrl = processedUpload.publicUrl; // Use permanent Supabase URL
+        processedImageUrl = processedUpload.publicUrl; // Permanent Supabase URL
 
-        // Mentjük a kép metaadatait a DB-be
         console.log('Inserting wall image metadata...');
         const insertedImage = await insertWallImage(wall.id, {
           originalUrl: originalUpload.publicUrl,
@@ -408,13 +417,25 @@ const handleImageChange = async (wall: Wall, image: WallImage, event: Event) => 
           referenceLengthCm: null,
         });
         console.log('Wall image metadata saved successfully!', insertedImage);
-
-        // Update the image ID in the store to match the database
         image.imageId = insertedImage.id;
       } else {
-        console.warn('No company ID found, skipping upload');
-        processedImageUrl = null;
-        uploadedUrl = null;
+        // Fallback: DB blob mentés, ha nincs companyId
+        console.warn('No company ID found, falling back to DB blob storage');
+        const insertedImage = await insertWallImage(wall.id, {
+          originalUrl: null,
+          processedUrl: null,
+          meterPerPixel: res.real_pixel_size,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        await setOriginalImageBlob(insertedImage.id, file);
+        await setProcessedImageBlob(insertedImage.id, processedImageBlob, `processed_${file.name}`);
+        uploadedUrl = await getImageDataUrl(insertedImage.id, 'original');
+        processedImageUrl = await getImageDataUrl(insertedImage.id, 'processed');
+        image.imageId = insertedImage.id;
       }
     } catch (uploadErr: any) {
       console.error('❌ Supabase Storage upload/save failed:', uploadErr);
