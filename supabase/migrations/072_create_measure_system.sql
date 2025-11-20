@@ -86,124 +86,88 @@ ALTER TABLE public.measure_wall_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.measure_polygons ENABLE ROW LEVEL SECURITY;
 
 -- measure_walls policies (by company via surveys)
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_walls' AND policyname = 'Measure: select walls by company'
-  ) THEN
-    CREATE POLICY "Measure: select walls by company"
-    ON public.measure_walls FOR SELECT
-    USING (
-      survey_id IN (
-        SELECT id FROM public.surveys
-        WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: select walls by company" ON public.measure_walls;
+CREATE POLICY "Measure: select walls by company"
+  ON public.measure_walls FOR SELECT
+  USING (
+    survey_id IN (
+      SELECT id FROM public.surveys
+      WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_walls' AND policyname = 'Measure: manage walls by company'
-  ) THEN
-    CREATE POLICY "Measure: manage walls by company"
-    ON public.measure_walls FOR ALL
-    USING (
-      survey_id IN (
-        SELECT id FROM public.surveys
-        WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    ) WITH CHECK (
-      survey_id IN (
-        SELECT id FROM public.surveys
-        WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: manage walls by company" ON public.measure_walls;
+CREATE POLICY "Measure: manage walls by company"
+  ON public.measure_walls FOR ALL
+  USING (
+    survey_id IN (
+      SELECT id FROM public.surveys
+      WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  ) WITH CHECK (
+    survey_id IN (
+      SELECT id FROM public.surveys
+      WHERE company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
 -- measure_wall_images policies (inherit via wall -> survey)
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_wall_images' AND policyname = 'Measure: select images by company'
-  ) THEN
-    CREATE POLICY "Measure: select images by company"
-    ON public.measure_wall_images FOR SELECT
-    USING (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: select images by company" ON public.measure_wall_images;
+CREATE POLICY "Measure: select images by company"
+  ON public.measure_wall_images FOR SELECT
+  USING (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_wall_images' AND policyname = 'Measure: manage images by company'
-  ) THEN
-    CREATE POLICY "Measure: manage images by company"
-    ON public.measure_wall_images FOR ALL
-    USING (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    ) WITH CHECK (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: manage images by company" ON public.measure_wall_images;
+CREATE POLICY "Measure: manage images by company"
+  ON public.measure_wall_images FOR ALL
+  USING (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  ) WITH CHECK (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
 -- measure_polygons policies (inherit via wall -> survey)
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_polygons' AND policyname = 'Measure: select polygons by company'
-  ) THEN
-    CREATE POLICY "Measure: select polygons by company"
-    ON public.measure_polygons FOR SELECT
-    USING (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: select polygons by company" ON public.measure_polygons;
+CREATE POLICY "Measure: select polygons by company"
+  ON public.measure_polygons FOR SELECT
+  USING (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
-DO $policy$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'public' AND tablename = 'measure_polygons' AND policyname = 'Measure: manage polygons by company'
-  ) THEN
-    CREATE POLICY "Measure: manage polygons by company"
-    ON public.measure_polygons FOR ALL
-    USING (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    ) WITH CHECK (
-      wall_id IN (
-        SELECT mw.id FROM public.measure_walls mw
-        JOIN public.surveys s ON s.id = mw.survey_id
-        WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
-      )
-    );
-  END IF;
-END $policy$;
+DROP POLICY IF EXISTS "Measure: manage polygons by company" ON public.measure_polygons;
+CREATE POLICY "Measure: manage polygons by company"
+  ON public.measure_polygons FOR ALL
+  USING (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  ) WITH CHECK (
+    wall_id IN (
+      SELECT mw.id FROM public.measure_walls mw
+      JOIN public.surveys s ON s.id = mw.survey_id
+      WHERE s.company_id IN (SELECT company_id FROM public.user_profiles WHERE user_id = auth.uid())
+    )
+  );
 
 -- 6) GRANTS
 GRANT ALL ON public.measure_walls TO authenticated;

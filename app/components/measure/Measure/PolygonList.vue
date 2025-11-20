@@ -397,9 +397,10 @@ watch(
       } else if (
         polygon.type === SurfaceType.WINDOW_DOOR &&
         polygon.closed &&
-        polygon.points.length >= 3
+        polygon.points.length >= 3 &&
+        !polygon.subType // Only auto-detect if subType is not set
       ) {
-        // Frissítsük az altípust változáskor
+        // Auto-detect subType only if not manually set
         polygon.subType = detectWindowDoorSubType(polygon);
       }
     }

@@ -7,10 +7,10 @@
         @click.self="handleBackdropClick"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-white/50 backdrop-blur-xs" />
+        <div class="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-xs" />
 
         <!-- Modal Container -->
-        <div :class="computedModalClasses" role="dialog" aria-modal="true">
+        <div :class="computedModalClasses" :style="computedModalStyles" role="dialog" aria-modal="true">
           <!-- Header -->
           <div v-if="$slots.header || title" class="p-6 border-b border-gray-200 dark:border-gray-700">
             <div class="flex items-start justify-between gap-4">
@@ -48,12 +48,13 @@
 </template>
 
 <script setup lang="ts">
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'
 
 interface Props {
   modelValue: boolean
   title?: string
   size?: ModalSize
+  maxWidth?: string  // Custom max-width (e.g., "800px", "50rem")
   closeable?: boolean
   closeOnBackdrop?: boolean
   scrollable?: boolean
@@ -99,6 +100,10 @@ const computedModalClasses = computed(() => {
     md: 'max-w-md',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
     full: 'max-w-full h-full m-0 rounded-none'
   }
   classes.push(sizeClasses[props.size])
@@ -111,6 +116,16 @@ const computedModalClasses = computed(() => {
   }
 
   return classes.join(' ')
+})
+
+const computedModalStyles = computed(() => {
+  // If custom maxWidth is provided, use it
+  if (props.maxWidth) {
+    return {
+      maxWidth: props.maxWidth
+    }
+  }
+  return {}
 })
 
 const bodyClasses = computed(() => {

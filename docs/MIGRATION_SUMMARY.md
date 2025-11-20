@@ -99,7 +99,7 @@ Created comprehensive docs:
 
 **Option A - Supabase Dashboard:**
 1. Open Supabase Dashboard → SQL Editor
-2. Copy contents of `supabase/migrations/003_create_survey_system.sql`
+2. Copy contents of `supabase/migrations/004_create_survey_system.sql`
 3. Click Run
 4. ✅ Tables created
 
@@ -112,7 +112,7 @@ npx supabase db push
 
 **Option A - Supabase Dashboard:**
 1. Open Supabase Dashboard → SQL Editor
-2. Copy contents of `supabase/migrations/005_fix_document_categories_extra_costs_ids.sql`
+2. Copy contents of `supabase/migrations/007_fix_document_categories_extra_costs_ids.sql`
 3. Click Run
 4. ✅ persist_name and survey_pages columns added
 
@@ -262,9 +262,9 @@ await createScenario({
 flow-nuxt/
 ├── supabase/
 │   └── migrations/
-│       ├── 003_create_survey_system.sql              # Main migration (creates base tables)
+│       ├── 004_create_survey_system.sql              # Main migration (creates base tables)
 │       ├── 004_seed_survey_base_data.sql             # Seed data from FlowFrontend
-│       └── 005_fix_document_categories_extra_costs_ids.sql  # Adds persist_name & survey_pages columns
+│       └── 007_fix_document_categories_extra_costs_ids.sql  # Adds persist_name & survey_pages columns
 ├── scripts/
 │   └── seed-survey-data.ts                           # TypeScript seeder (deprecated)
 ├── app/

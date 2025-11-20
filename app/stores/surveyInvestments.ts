@@ -32,12 +32,52 @@ export interface SurveyPage {
 export interface SurveyQuestionOption {
   value: string
   label: { en: string; hu: string }
+  icon?: string  // Optional icon for icon_selector type questions
 }
 
 export interface DisplayCondition {
   field: string
-  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains'
-  value: string | number | boolean
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains' | 'contains_any'
+  value: string | number | boolean | string[]
+}
+
+export interface TemplateVariable {
+  type: 'matched_conditional_values' | 'field_value' | 'conditional_count'
+  field: string
+}
+
+export interface DisplaySettings {
+  width?: 'full' | '1/2' | '1/3' | '1/4'
+}
+
+export interface DynamicRangeRule {
+  when: string
+  min: number
+  max: number
+}
+
+export interface DynamicRangeRules {
+  based_on_field: string
+  rules: DynamicRangeRule[]
+  default: {
+    min: number
+    max: number
+  }
+}
+
+/**
+ * Conditional info message that appears next to a question when a condition is met.
+ * Used to display info/warning/danger icons with tooltips based on field values.
+ * Example: Show a danger message when a defect switch is enabled.
+ */
+export interface ConditionalInfoMessage {
+  condition: {
+    field: string  // 'self' means the question itself
+    operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains'
+    value: string | number | boolean
+  }
+  type: 'info' | 'warning' | 'danger'  // Determines icon color and tooltip border
+  message_translations: { en: string; hu: string }
 }
 
 export interface SurveyQuestion {
@@ -63,7 +103,15 @@ export interface SurveyQuestion {
   info_message?: string
   info_message_translations?: { en: string; hu: string }
   display_conditions?: DisplayCondition
+  display_settings?: DisplaySettings | null
+  template_variables?: Record<string, TemplateVariable>
+  apply_template_to_placeholder?: boolean
+  dynamic_range_rules?: DynamicRangeRules
+  conditional_info_messages?: ConditionalInfoMessage[]  // Array of messages shown when conditions are met
   sequence?: number
+  // Shared question support
+  shared_question_id?: string | null
+  is_shared_instance?: boolean
 }
 
 export interface DocumentCategory {
@@ -88,6 +136,14 @@ export interface PageInstanceData {
   subpageInstances?: Record<number, Record<string, any>[]>  // For hierarchical subpages, keyed by parent_item_group
 }
 
+export interface SurveyValueCopyRule {
+  id: string
+  condition_question_id: string
+  condition_value: string
+  source_question_id: string
+  target_question_id: string
+}
+
 export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
   state: () => ({
     // Available investments from database
@@ -100,8 +156,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     investmentResponses: {} as Record<string, Record<string, any>>,
 
     // Page instances for allow_multiple pages
-    // Structure: { [investmentId]: { [pageId]: { instances: [{questionName: value}, ...] } } }
-    pageInstances: {} as Record<string, Record<string, PageInstanceData>>,
+    // Structure: { [surveyId]: { [investmentId]: { [pageId]: { instances: [{questionName: value}, ...] } } } }
+    pageInstances: {} as Record<string, Record<string, Record<string, PageInstanceData>>>,
 
     // Active instance index for each page (for allow_multiple pages)
     activeInstanceIndex: {} as Record<string, number>, // key: pageId, value: index
@@ -114,6 +170,13 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Document categories for each investment
     documentCategories: {} as Record<string, DocumentCategory[]>,
+
+    // Value copy rules for conditional field copying
+    valueCopyRules: [] as SurveyValueCopyRule[],
+
+    // Uploaded photos count for each category
+    // Structure: { [categoryId]: count }
+    categoryPhotoCounts: {} as Record<string, number>,
 
     // Current active investment and page
     activeInvestmentId: null as string | null,
@@ -193,6 +256,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     hasSelectedInvestments(state): boolean {
       return state.selectedInvestmentIds.length > 0
     },
+
+    // Get value copy rules where the given question is the target
+    getValueCopyRulesForTarget: (state) => (targetQuestionId: string): SurveyValueCopyRule[] => {
+      return state.valueCopyRules.filter(rule => rule.target_question_id === targetQuestionId)
+    },
   },
 
   actions: {
@@ -250,8 +318,22 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         if (this.selectedInvestmentIds.length > 0) {
           await this.loadInvestmentData(this.selectedInvestmentIds)
 
+          // Load value copy rules from database
+          const { data: valueCopyRules, error: rulesError } = await supabase
+            .from('survey_value_copy_rules')
+            .select('*')
+
+          if (rulesError) {
+            console.error('Error loading value copy rules:', rulesError)
+          } else {
+            this.valueCopyRules = valueCopyRules || []
+          }
+
           // Load existing answers from database
           await this.loadExistingAnswers(surveyId)
+
+          // Load photo counts from database
+          await this.loadCategoryPhotoCounts(surveyId)
 
           // Set first investment and page as active
           if (!this.activeInvestmentId) {
@@ -437,14 +519,17 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             this.investmentResponses[investmentId][question.name] = answer.answer
           } else if (answer.parent_item_group === null) {
             // Answer with item_group but no parent (root-level multi-instance page)
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[surveyId]) {
+              this.pageInstances[surveyId] = {}
             }
-            if (!this.pageInstances[investmentId][page.id]) {
-              this.pageInstances[investmentId][page.id] = { instances: [] }
+            if (!this.pageInstances[surveyId][investmentId]) {
+              this.pageInstances[surveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[surveyId][investmentId][page.id]) {
+              this.pageInstances[surveyId][investmentId][page.id] = { instances: [] }
             }
 
-            const instances = this.pageInstances[investmentId][page.id].instances
+            const instances = this.pageInstances[surveyId][investmentId][page.id].instances
             const itemGroup = answer.item_group
 
             // Ensure we have enough instances
@@ -456,14 +541,17 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             instances[itemGroup][question.name] = answer.answer
           } else {
             // Answer with both item_group and parent_item_group (hierarchical subpage)
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[surveyId]) {
+              this.pageInstances[surveyId] = {}
             }
-            if (!this.pageInstances[investmentId][page.id]) {
-              this.pageInstances[investmentId][page.id] = { instances: [], subpageInstances: {} }
+            if (!this.pageInstances[surveyId][investmentId]) {
+              this.pageInstances[surveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[surveyId][investmentId][page.id]) {
+              this.pageInstances[surveyId][investmentId][page.id] = { instances: [], subpageInstances: {} }
             }
 
-            const pageData = this.pageInstances[investmentId][page.id]
+            const pageData = this.pageInstances[surveyId][investmentId][page.id]
             if (!pageData.subpageInstances) {
               pageData.subpageInstances = {}
             }
@@ -629,6 +717,44 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       this.clientType = clientType
     },
 
+    // ========================================================================
+    // Shared Question Support
+    // ========================================================================
+
+    // Resolve question to master question ID if it's a shared instance
+    // Returns: { questionId, actualQuestionId, question }
+    // - questionId: The ID of the question we're working with (instance or master)
+    // - actualQuestionId: The ID to use for database operations (always the master)
+    // - question: The question object
+    findQuestionAndResolveShared(questionName: string): {
+      questionId: string
+      actualQuestionId: string
+      question: SurveyQuestion
+    } | null {
+      if (!this.activeInvestmentId) return null
+
+      const pages = this.surveyPages[this.activeInvestmentId] || []
+
+      for (const page of pages) {
+        const questions = this.surveyQuestions[page.id] || []
+        const question = questions.find(q => q.name === questionName)
+        if (question) {
+          // If this is a shared instance, resolve to master question ID
+          const actualQuestionId = question.is_shared_instance && question.shared_question_id
+            ? question.shared_question_id
+            : question.id
+
+          return {
+            questionId: question.id,
+            actualQuestionId,
+            question
+          }
+        }
+      }
+
+      return null
+    },
+
     // Save response for a question
     async saveResponse(questionName: string, value: any) {
       if (!this.activeInvestmentId || !this.currentSurveyId) return
@@ -636,36 +762,57 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       try {
         const supabase = useSupabaseClient()
 
-        // Update local state
-        if (!this.investmentResponses[this.activeInvestmentId]) {
-          this.investmentResponses[this.activeInvestmentId] = {}
-        }
-        this.investmentResponses[this.activeInvestmentId][questionName] = value
+        // Find the question and resolve if it's a shared instance
+        const questionInfo = this.findQuestionAndResolveShared(questionName)
 
-        // Find the question ID by name (search in all pages of active investment)
-        let questionId: string | null = null
-        const pages = this.surveyPages[this.activeInvestmentId] || []
-
-        for (const page of pages) {
-          const questions = this.surveyQuestions[page.id] || []
-          const question = questions.find(q => q.name === questionName)
-          if (question) {
-            questionId = question.id
-            break
-          }
-        }
-
-        if (!questionId) {
+        if (!questionInfo) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database
+        const { actualQuestionId, question } = questionInfo
+
+        // Update local state - if shared instance, update the master investment's state
+        if (question.is_shared_instance && question.shared_question_id) {
+          // Find the master question and its investment
+          let masterInvestmentId: string | null = null
+          let masterQuestionName: string | null = null
+
+          for (const investmentId in this.surveyPages) {
+            const pages = this.surveyPages[investmentId]
+            for (const page of pages) {
+              const questions = this.surveyQuestions[page.id] || []
+              const masterQuestion = questions.find(q => q.id === actualQuestionId && !q.is_shared_instance)
+              if (masterQuestion) {
+                masterInvestmentId = investmentId
+                masterQuestionName = masterQuestion.name
+                break
+              }
+            }
+            if (masterInvestmentId) break
+          }
+
+          if (masterInvestmentId && masterQuestionName) {
+            // Update the master investment's state
+            if (!this.investmentResponses[masterInvestmentId]) {
+              this.investmentResponses[masterInvestmentId] = {}
+            }
+            this.investmentResponses[masterInvestmentId][masterQuestionName] = value
+          }
+        } else {
+          // Not a shared instance, update current investment's state normally
+          if (!this.investmentResponses[this.activeInvestmentId]) {
+            this.investmentResponses[this.activeInvestmentId] = {}
+          }
+          this.investmentResponses[this.activeInvestmentId][questionName] = value
+        }
+
+        // Save to database using the actual question ID (master if shared, otherwise same as questionId)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .is('item_group', null)
           .maybeSingle()
 
@@ -682,7 +829,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: null
             })
@@ -690,10 +837,11 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         }
 
         // Update dependent questions in frontend state (questions that use this as default_value_source)
-        await this.syncDependentQuestionsInState(questionId, String(value))
+        // Use the actual question ID for dependency sync
+        await this.syncDependentQuestionsInState(actualQuestionId, String(value))
 
         // Refresh values that were copied by conditional copy rules
-        await this.refreshCopiedValuesFromRules(questionId)
+        await this.refreshCopiedValuesFromRules(actualQuestionId)
 
       } catch (error) {
         console.error('Error saving response:', error)
@@ -703,6 +851,34 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
     // Get response for a question
     getResponse(questionName: string): any {
       if (!this.activeInvestmentId) return null
+
+      // Find the question and resolve if it's a shared instance
+      const questionInfo = this.findQuestionAndResolveShared(questionName)
+
+      if (!questionInfo) {
+        // Question not found, try direct lookup as fallback
+        return this.investmentResponses[this.activeInvestmentId]?.[questionName]
+      }
+
+      const { question, actualQuestionId } = questionInfo
+
+      // If this is a shared instance, we need to find the master question's investment
+      if (question.is_shared_instance && question.shared_question_id) {
+        // Find which investment contains the master question
+        for (const investmentId in this.surveyPages) {
+          const pages = this.surveyPages[investmentId]
+          for (const page of pages) {
+            const questions = this.surveyQuestions[page.id] || []
+            const masterQuestion = questions.find(q => q.id === actualQuestionId && !q.is_shared_instance)
+            if (masterQuestion) {
+              // Found the master question - get the response from that investment
+              return this.investmentResponses[investmentId]?.[masterQuestion.name]
+            }
+          }
+        }
+      }
+
+      // Not a shared instance, or couldn't find master - use normal lookup
       return this.investmentResponses[this.activeInvestmentId]?.[questionName]
     },
 
@@ -712,53 +888,70 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Get instances for a page
     getPageInstances(pageId: string): Record<string, any>[] {
-      if (!this.activeInvestmentId) return []
+      if (!this.activeInvestmentId || !this.currentSurveyId) return []
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      // If page data doesn't exist at all, create it with one instance
-      // But if it exists (even with empty array), keep it as is
-      if (!this.pageInstances[this.activeInvestmentId][pageId]) {
-        this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // If page data doesn't exist at all, create it with empty instances array
+      // Don't auto-create an empty instance - let ensurePageInstancesInitialized or sync handle it
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId] = { instances: [] }
       }
 
       // Return instances (can be empty array if all were deleted with allow_delete_first=true)
-      return this.pageInstances[this.activeInvestmentId][pageId].instances
+      return this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances
     },
 
     // Ensure page instances are initialized with default values (call this when displaying allow_multiple pages)
     async ensurePageInstancesInitialized(pageId: string) {
       if (!this.activeInvestmentId) return
 
-      // Get instances (this will create the first empty instance if needed)
+      // Get instances
       const instances = this.getPageInstances(pageId)
 
+      // If there are no instances, create one with default values
+      if (instances.length === 0) {
+        instances.push({})
+        await this.loadDefaultValuesForInstance(pageId, 0)
+      }
       // If we have exactly one instance and it's empty (no keys), it might need default values loaded
-      if (instances.length === 1 && Object.keys(instances[0]).length === 0) {
+      else if (instances.length === 1 && Object.keys(instances[0]).length === 0) {
         await this.loadDefaultValuesForInstance(pageId, 0)
       }
     },
 
     // Add a new instance for a page
     async addPageInstance(pageId: string) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
-      if (!this.pageInstances[this.activeInvestmentId][pageId]) {
-        this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId] = { instances: [{}] }
       }
 
       // Add new instance
-      this.pageInstances[this.activeInvestmentId][pageId].instances.push({})
+      this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances.push({})
 
       // Set as active
-      const newIndex = this.pageInstances[this.activeInvestmentId][pageId].instances.length - 1
+      const newIndex = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances.length - 1
       this.activeInstanceIndex[pageId] = newIndex
 
       // Load default values from source questions
@@ -767,9 +960,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Remove an instance from a page
     removePageInstance(pageId: string, index: number, allowDeleteLast: boolean = false) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[pageId]?.instances
       if (!instances || instances.length === 0) return
 
       // Remove the instance
@@ -824,26 +1017,26 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // Save the value locally
         instances[instanceIndex][questionName] = value
 
-        // Find the question ID by name (search in this page's questions)
-        let questionId: string | null = null
+        // Find the question and resolve if it's a shared instance
         const questions = this.surveyQuestions[pageId] || []
         const question = questions.find(q => q.name === questionName)
 
-        if (question) {
-          questionId = question.id
-        }
-
-        if (!questionId) {
+        if (!question) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database with item_group
+        // Resolve to master question ID if this is a shared instance
+        const actualQuestionId = question.is_shared_instance && question.shared_question_id
+          ? question.shared_question_id
+          : question.id
+
+        // Save to database with item_group using the actual question ID (master if shared)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .eq('item_group', instanceIndex)
           .maybeSingle()
 
@@ -863,7 +1056,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: instanceIndex
             })
@@ -931,7 +1124,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
           if (page.allow_multiple) {
             // For allow_multiple pages, update all existing instances
-            const instances = this.pageInstances[dep.investmentId]?.[dep.pageId]?.instances || []
+            const instances = this.currentSurveyId
+              ? this.pageInstances[this.currentSurveyId]?.[dep.investmentId]?.[dep.pageId]?.instances || []
+              : []
 
             for (let i = 0; i < instances.length; i++) {
               instances[i][dep.question.name] = newValue
@@ -1034,16 +1229,19 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
           if (answersError) throw answersError
 
           // Update frontend state with fresh values
-          if (answers && answers.length > 0) {
+          if (answers && answers.length > 0 && this.currentSurveyId) {
             // Ensure the page instances structure exists
-            if (!this.pageInstances[investmentId]) {
-              this.pageInstances[investmentId] = {}
+            if (!this.pageInstances[this.currentSurveyId]) {
+              this.pageInstances[this.currentSurveyId] = {}
             }
-            if (!this.pageInstances[investmentId][targetPage.id]) {
-              this.pageInstances[investmentId][targetPage.id] = { instances: [] }
+            if (!this.pageInstances[this.currentSurveyId][investmentId]) {
+              this.pageInstances[this.currentSurveyId][investmentId] = {}
+            }
+            if (!this.pageInstances[this.currentSurveyId][investmentId][targetPage.id]) {
+              this.pageInstances[this.currentSurveyId][investmentId][targetPage.id] = { instances: [] }
             }
 
-            const instances = this.pageInstances[investmentId][targetPage.id].instances
+            const instances = this.pageInstances[this.currentSurveyId][investmentId][targetPage.id].instances
 
             // Update each instance with the fresh value from database
             for (const answer of answers) {
@@ -1124,23 +1322,30 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Get instances for a hierarchical subpage under a specific parent instance
     getSubPageInstances(subpageId: string, parentItemGroup: number): Record<string, any>[] {
-      if (!this.activeInvestmentId) return []
+      if (!this.activeInvestmentId || !this.currentSurveyId) return []
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
-      }
-      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
-        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]
       if (!pageData.subpageInstances) {
         pageData.subpageInstances = {}
       }
 
       if (!pageData.subpageInstances[parentItemGroup]) {
-        pageData.subpageInstances[parentItemGroup] = [{}] // Initialize with one empty instance
+        pageData.subpageInstances[parentItemGroup] = [] // Don't auto-create empty instance - let sync handle it
       }
 
       return pageData.subpageInstances[parentItemGroup]
@@ -1148,17 +1353,24 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Add a new instance for a hierarchical subpage
     async addSubPageInstance(subpageId: string, parentItemGroup: number) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      // Initialize if doesn't exist
-      if (!this.pageInstances[this.activeInvestmentId]) {
-        this.pageInstances[this.activeInvestmentId] = {}
-      }
-      if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
-        this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      // Initialize survey level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId]) {
+        this.pageInstances[this.currentSurveyId] = {}
       }
 
-      const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+      // Initialize investment level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+      }
+
+      // Initialize page level if doesn't exist
+      if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]) {
+        this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+      }
+
+      const pageData = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]
       if (!pageData.subpageInstances) {
         pageData.subpageInstances = {}
       }
@@ -1177,9 +1389,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Remove an instance from a hierarchical subpage
     removeSubPageInstance(subpageId: string, parentItemGroup: number, index: number, allowDeleteLast: boolean = false) {
-      if (!this.activeInvestmentId) return
+      if (!this.activeInvestmentId || !this.currentSurveyId) return
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
       if (!instances || instances.length === 0) return
 
       // Remove the instance
@@ -1231,26 +1443,26 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
         // Save the value locally
         instances[instanceIndex][questionName] = value
 
-        // Find the question ID by name
-        let questionId: string | null = null
+        // Find the question and resolve if it's a shared instance
         const questions = this.surveyQuestions[subpageId] || []
         const question = questions.find(q => q.name === questionName)
 
-        if (question) {
-          questionId = question.id
-        }
-
-        if (!questionId) {
+        if (!question) {
           console.warn(`Question not found for name: ${questionName}`)
           return
         }
 
-        // Save to database with both item_group and parent_item_group
+        // Resolve to master question ID if this is a shared instance
+        const actualQuestionId = question.is_shared_instance && question.shared_question_id
+          ? question.shared_question_id
+          : question.id
+
+        // Save to database with both item_group and parent_item_group using the actual question ID (master if shared)
         const { data: existing, error: checkError } = await supabase
           .from('survey_answers')
           .select('id')
           .eq('survey_id', this.currentSurveyId)
-          .eq('survey_question_id', questionId)
+          .eq('survey_question_id', actualQuestionId)
           .eq('item_group', instanceIndex)
           .eq('parent_item_group', parentItemGroup)
           .maybeSingle()
@@ -1271,7 +1483,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .from('survey_answers')
             .insert({
               survey_id: this.currentSurveyId,
-              survey_question_id: questionId,
+              survey_question_id: actualQuestionId,
               answer: String(value),
               item_group: instanceIndex,
               parent_item_group: parentItemGroup
@@ -1350,6 +1562,47 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
       } catch (error) {
         console.error('Error loading default values for subpage instance:', error)
+      }
+    },
+
+    // Update photo count for a category
+    updateCategoryPhotoCount(categoryId: string, count: number) {
+      this.categoryPhotoCounts[categoryId] = count
+    },
+
+    // Get photo count for a category
+    getCategoryPhotoCount(categoryId: string): number {
+      return this.categoryPhotoCounts[categoryId] || 0
+    },
+
+    // Load all photo counts from database
+    async loadCategoryPhotoCounts(surveyId: string) {
+      try {
+        console.log('📊 Loading photo counts for survey:', surveyId)
+        const supabase = useSupabaseClient()
+
+        // Get all documents for this survey grouped by category
+        const { data, error } = await supabase
+          .from('documents')
+          .select('document_category_id')
+          .eq('survey_id', surveyId)
+
+        if (error) throw error
+
+        console.log('📊 Documents from database:', data)
+
+        // Count documents per category
+        const counts: Record<string, number> = {}
+        data?.forEach(doc => {
+          const categoryId = doc.document_category_id
+          counts[categoryId] = (counts[categoryId] || 0) + 1
+        })
+
+        // Update store
+        this.categoryPhotoCounts = counts
+        console.log('✅ Photo counts loaded:', counts)
+      } catch (error) {
+        console.error('❌ Error loading category photo counts:', error)
       }
     },
   }

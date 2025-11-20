@@ -63,7 +63,8 @@
       "theme": "Téma",
       "save": "Beállítások mentése",
       "saveSuccess": "Beállítások sikeresen frissítve",
-      "saveError": "Nem sikerült frissíteni a beállításokat"
+      "saveError": "Nem sikerült frissíteni a beállításokat",
+      "languageChanged": "Nyelv sikeresen módosítva"
     },
     "avatar": {
       "title": "Profilkép",
@@ -215,6 +216,13 @@
       "graphicMode": "Grafikus mód",
       "markerMode": "Jelölő mód",
       "selectScenario": "Forgatókönyv kiválasztása"
+    },
+    "unsavedChanges": {
+      "title": "Nem mentett változtatások",
+      "message": "Vannak el nem mentett változtatások. Mit szeretne tenni?",
+      "saveAndExit": "Mentés és kilépés",
+      "discardAndExit": "Elvetés és kilépés",
+      "cancel": "Mégse"
     },
     "footer": {
       "saveAndExit": "Mentés és kilépés",
@@ -466,6 +474,150 @@
       "addComponent": "Komponens hozzáadása",
       "noComponentsAdded": "Még nincsenek komponensek hozzáadva. Kattints a \"Komponens hozzáadása\" gombra komponensek hozzáadásához."
     }
+  },
+  "wizard": {
+    "list": {
+      "title": "Ajánlat/Szerződés varázsló",
+      "offerForNewClient": "Ajánlat új ügyfél részére",
+      "contractForNewClient": "Szerződés új ügyfél részére",
+      "searchPlaceholder": "Ügyfelek keresése...",
+      "noWizardsFound": "Nincs ajánlat vagy szerződés",
+      "noClientsForFilter": "Nincs ügyfél a kiválasztott szűrőhöz",
+      "startByCreating": "Kezdjen egy új ajánlat vagy szerződés létrehozásával",
+      "filters": {
+        "allTime": "Összes",
+        "today": "Ma",
+        "yesterday": "Tegnap",
+        "thisWeek": "Ezen a héten",
+        "lastWeek": "Múlt héten",
+        "pending": "Függőben"
+      }
+    }
+  },
+  "todo": {
+    "title": "Teendők",
+    "subtitle": "Szervezze és kövesse nyomon napi feladatait hatékonyan",
+    "statistics": {
+      "totalTasks": "Összes feladat",
+      "pending": "Függőben",
+      "completed": "Befejezett"
+    },
+    "filters": {
+      "label": "Szűrők",
+      "all": "Összes",
+      "overdue": "Lejárt",
+      "today": "Ma",
+      "next3days": "Következő 3 nap",
+      "searchPlaceholder": "Teendők - Keresés..."
+    },
+    "categories": {
+      "all": "Összes",
+      "tickets": "Jegyek",
+      "news": "Hírek",
+      "backInCar": "Vissza az autóban",
+      "coursesExams": "Kurzusok és vizsgák",
+      "energyConsultation": "Energia konzultáció",
+      "leadsToClients": "Leadek ügyfelekké",
+      "contractToCollect": "Beszedendő szerződés",
+      "todoMadeByMe": "Általam készített teendők",
+      "completed": "Befejezett"
+    },
+    "pagination": {
+      "show": "Megjelenítés",
+      "entries": "bejegyzés",
+      "showing": "{start}-{end} megjelenítése {total} eredményből"
+    },
+    "emptyStates": {
+      "noTasksFound": "Nem található feladat",
+      "noOverdueTasks": "Nincs lejárt feladat",
+      "noTasksToday": "Nincs ma esedékes feladat",
+      "noTasksNext3Days": "Nincs a következő 3 napban esedékes feladat",
+      "getStarted": "Kezdje el az első feladat létrehozásával"
+    },
+    "actions": {
+      "createTask": "Feladat létrehozása",
+      "deleteTask": "Feladat törlése",
+      "editTask": "Feladat szerkesztése",
+      "updateTask": "Feladat frissítése",
+      "saveChanges": "Módosítások mentése",
+      "cancel": "Mégse",
+      "add": "Hozzáadás"
+    },
+    "deleteModal": {
+      "title": "Feladat törlése",
+      "warning": "Figyelmeztetés",
+      "confirmMessage": "Biztosan törölni szeretné ezt a feladatot? Ez a művelet nem vonható vissza.",
+      "taskLabel": "Feladat:"
+    },
+    "createModal": {
+      "titleNew": "Új teendő hozzáadása",
+      "titleEdit": "Feladat szerkesztése",
+      "fields": {
+        "title": "Cím",
+        "titlePlaceholder": "Adja meg a feladat címét",
+        "description": "Leírás",
+        "descriptionPlaceholder": "Adjon hozzá további részleteket a feladathoz (opcionális)",
+        "priority": "Prioritás",
+        "category": "Kategória",
+        "categoryPlaceholder": "pl. Munka, Személyes",
+        "dueDate": "Határidő",
+        "assignTo": "Hozzárendelés",
+        "assignToPlaceholder": "Válasszon egy kollégát (opcionális)",
+        "tags": "Címkék",
+        "tagsOptional": "(opcionális)",
+        "addTag": "Címke hozzáadása"
+      }
+    },
+    "editModal": {
+      "title": "Feladat szerkesztése",
+      "fields": {
+        "title": "Cím",
+        "titlePlaceholder": "Feladat címe",
+        "description": "Leírás",
+        "descriptionPlaceholder": "Feladat leírása (opcionális)",
+        "priority": "Prioritás",
+        "category": "Kategória",
+        "categoryPlaceholder": "pl. Munka",
+        "dueDate": "Határidő",
+        "taskStatus": "Feladat állapota",
+        "taskStatusDescription": "Jelölje be befejezettként, ha kész"
+      }
+    },
+    "item": {
+      "noTitle": "Nincs cím",
+      "noDueDate": "Nincs határidő",
+      "lastSeen": "utoljára látható {time}",
+      "isOnline": "online"
+    },
+    "priority": {
+      "urgent": "Sürgős",
+      "high": "Magas",
+      "medium": "Közepes",
+      "low": "Alacsony",
+      "noPriority": "Nincs prioritás",
+      "urgentEmoji": "🔴 Sürgős",
+      "highEmoji": "🟠 Magas",
+      "mediumEmoji": "🟡 Közepes",
+      "lowEmoji": "🟢 Alacsony"
+    },
+    "time": {
+      "justNow": "épp most",
+      "minutesAgo": "{n} perce",
+      "hoursAgo": "{n} órája",
+      "daysAgo": "{n} napja"
+    },
+    "errors": {
+      "errorLoadingTasks": "Hiba a feladatok betöltésekor",
+      "failedToUpdate": "Nem sikerült frissíteni a feladatot",
+      "failedToDelete": "Nem sikerült törölni a feladatot",
+      "failedToFetch": "Nem sikerült betölteni a feladatokat",
+      "failedToUpdateRetry": "Nem sikerült frissíteni a feladatot. Kérem próbálja újra."
+    }
+  },
+  "colorPicker": {
+    "selectedColor": "Kiválasztott szín",
+    "selectColor": "Válasszon színt",
+    "clearSelection": "Kiválasztás törlése"
   },
   "client": {
     "header": {

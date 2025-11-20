@@ -56,9 +56,10 @@
                 <UIcon name="i-lucide-chevron-left" class="w-5 h-5" />
               </button>
               <div class="flex items-center gap-2 min-w-[200px] justify-center">
-                <UIcon
+                <InvestmentIcon
                   :name="investment.icon"
-                  class="w-5 h-5 text-gray-600 dark:text-gray-400"
+                  :size="20"
+                  class="text-gray-600 dark:text-gray-400"
                 />
                 <span class="text-sm font-semibold text-gray-900 dark:text-white">
                   {{ translate(investment.name_translations, investment.name) }}
@@ -112,8 +113,8 @@
               </button>
             </div>
 
-            <!-- Page címe (ha nincs single mód) -->
-            <div v-else class="p-3 bg-gray-50 dark:bg-gray-900">
+            <!-- Page címe (csak akkor jelenik meg, ha az investment-hez több page tartozik) -->
+            <div v-else-if="shouldShowPageTitle(investment.id)" class="p-3 bg-gray-50 dark:bg-gray-900">
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
                 {{ translatePage(page.name) }}
               </h4>
@@ -155,18 +156,20 @@
                   </template>
 
                   <template #[`instance-${page.id}-${index}`]>
-                    <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                      <!-- Normal Questions -->
-                      <div
-                        v-for="question in getNormalQuestions(page.id, index)"
-                        :key="question.id"
-                        class="space-y-2"
-                      >
-                        <SurveyQuestionRenderer
-                          :question="question"
-                          :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                          @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                        />
+                    <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                      <!-- Normal Questions - Grid Layout -->
+                      <div class="grid grid-cols-12 gap-6">
+                        <div
+                          v-for="question in getNormalQuestions(page.id, index)"
+                          :key="question.id"
+                          :class="getWidthClass(question)"
+                        >
+                          <SurveyQuestionRenderer
+                            :question="question"
+                            :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                            @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                          />
+                        </div>
                       </div>
 
                       <!-- Special Questions Accordion -->
@@ -179,17 +182,20 @@
                           }]"
                         >
                           <template #[`special-${page.id}-${index}`]>
-                            <div class="p-4 space-y-6 bg-white dark:bg-gray-900 rounded-b-lg">
-                              <div
-                                v-for="question in getSpecialQuestions(page.id, index)"
-                                :key="question.id"
-                                class="space-y-2"
-                              >
-                                <SurveyQuestionRenderer
-                                  :question="question"
-                                  :model-value="getInstanceQuestionValue(page.id, index, question.name)"
-                                  @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
-                                />
+                            <div class="p-4 bg-white dark:bg-gray-900 rounded-b-lg">
+                              <!-- Special Questions - Grid Layout -->
+                              <div class="grid grid-cols-12 gap-6">
+                                <div
+                                  v-for="question in getSpecialQuestions(page.id, index)"
+                                  :key="question.id"
+                                  :class="getWidthClass(question)"
+                                >
+                                  <SurveyQuestionRenderer
+                                    :question="question"
+                                    :model-value="getInstanceQuestionValue(page.id, index, question.name)"
+                                    @update:model-value="updateInstanceQuestionValue(page.id, index, question.name, $event)"
+                                  />
+                                </div>
                               </div>
                               <!-- Close Button -->
                               <div class="flex justify-end pt-2">
@@ -246,18 +252,20 @@
                               </template>
 
                               <template #[`subinstance-${subpage.id}-${index}-${subIndex}`]>
-                                <div class="p-3 space-y-4 bg-white dark:bg-gray-900 rounded-b-lg">
-                                  <!-- Subpage Questions -->
-                                  <div
-                                    v-for="question in getNormalQuestions(subpage.id, subIndex)"
-                                    :key="question.id"
-                                    class="space-y-2"
-                                  >
-                                    <SurveyQuestionRenderer
-                                      :question="question"
-                                      :model-value="getSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name)"
-                                      @update:model-value="updateSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name, $event)"
-                                    />
+                                <div class="p-3 bg-white dark:bg-gray-900 rounded-b-lg">
+                                  <!-- Subpage Questions - Grid Layout -->
+                                  <div class="grid grid-cols-12 gap-4">
+                                    <div
+                                      v-for="question in getNormalQuestions(subpage.id, subIndex)"
+                                      :key="question.id"
+                                      :class="getWidthClass(question)"
+                                    >
+                                      <SurveyQuestionRenderer
+                                        :question="question"
+                                        :model-value="getSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name)"
+                                        @update:model-value="updateSubPageInstanceQuestionValue(subpage.id, index, subIndex, question.name, $event)"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               </template>
@@ -384,18 +392,20 @@
 
               <!-- No Allow Multiple: Regular question rendering -->
               <div v-else>
-                <div v-if="store.surveyQuestions[page.id]?.length > 0" class="space-y-6">
-                  <!-- Normal Questions -->
-                  <div
-                    v-for="question in getNormalQuestions(page.id)"
-                    :key="question.id"
-                    class="space-y-2"
-                  >
-                    <SurveyQuestionRenderer
-                      :question="question"
-                      :model-value="getQuestionValue(question.name)"
-                      @update:model-value="updateQuestionValue(question.name, $event)"
-                    />
+                <div v-if="store.surveyQuestions[page.id]?.length > 0">
+                  <!-- Normal Questions - Grid Layout -->
+                  <div class="grid grid-cols-12 gap-6">
+                    <div
+                      v-for="question in getNormalQuestions(page.id)"
+                      :key="question.id"
+                      :class="getWidthClass(question)"
+                    >
+                      <SurveyQuestionRenderer
+                        :question="question"
+                        :model-value="getQuestionValue(question.name)"
+                        @update:model-value="updateQuestionValue(question.name, $event)"
+                      />
+                    </div>
                   </div>
 
                   <!-- Special Questions Accordion -->
@@ -408,17 +418,20 @@
                       }]"
                     >
                       <template #[`special-${page.id}`]>
-                        <div class="p-4 space-y-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
-                          <div
-                            v-for="question in getSpecialQuestions(page.id)"
-                            :key="question.id"
-                            class="space-y-2"
-                          >
-                            <SurveyQuestionRenderer
-                              :question="question"
-                              :model-value="getQuestionValue(question.name)"
-                              @update:model-value="updateQuestionValue(question.name, $event)"
-                            />
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                          <!-- Special Questions - Grid Layout -->
+                          <div class="grid grid-cols-12 gap-6">
+                            <div
+                              v-for="question in getSpecialQuestions(page.id)"
+                              :key="question.id"
+                              :class="getWidthClass(question)"
+                            >
+                              <SurveyQuestionRenderer
+                                :question="question"
+                                :model-value="getQuestionValue(question.name)"
+                                @update:model-value="updateQuestionValue(question.name, $event)"
+                              />
+                            </div>
                           </div>
                           <!-- Close Button -->
                           <div class="flex justify-end pt-2">
@@ -467,6 +480,7 @@
         @page-click="handlePageClick"
         @category-click="handleCategoryClick"
         @toggle-list-view="emit('toggle-list-view')"
+        @change-view-mode="handleViewModeChange"
       />
     </div>
   </div>
@@ -482,6 +496,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
+import { useWallSync } from '@/composables/useWallSync'
+import { useWallStore } from '@/stores/WallStore'
 
 const { t: $t } = useI18n()
 
@@ -505,8 +521,10 @@ const emit = defineEmits<{
   'update:showInvestmentModal': [value: boolean]
   'toggle-list-view': []
   'set-display-mode': [mode: 'single' | 'investment' | 'all']
-  'open-photo-upload': [categoryId: string]
+  'open-photo-upload': [categoryId: string, investmentId: string]
   'open-camera': [investmentId: string]
+  'toggle-view-mode': [mode: 'photos' | 'data' | 'all']
+  'update-investment-filter': [investmentId: string]
 }>()
 
 // Translations
@@ -624,6 +642,13 @@ const showPageNavigation = computed(() => {
   return props.pageDisplayMode === 'single' && activeSurveyPages.value.length > 1
 })
 
+// Check if investment has only one root page (to hide redundant page title)
+const shouldShowPageTitle = (investmentId: string): boolean => {
+  const pages = store.surveyPages[investmentId] || []
+  const rootPages = pages.filter(p => !p.parent_page_id)
+  return rootPages.length > 1
+}
+
 // Investment navigation
 const currentInvestmentIndex = computed(() => {
   return selectedInvestments.value.findIndex(inv => inv.id === activeInvestmentId.value)
@@ -636,6 +661,7 @@ const goToPreviousInvestment = () => {
   if (hasPreviousInvestment.value) {
     const prevInvestment = selectedInvestments.value[currentInvestmentIndex.value - 1]
     store.setActiveInvestment(prevInvestment.id)
+    emit('update-investment-filter', prevInvestment.id)
   }
 }
 
@@ -643,6 +669,7 @@ const goToNextInvestment = () => {
   if (hasNextInvestment.value) {
     const nextInvestment = selectedInvestments.value[currentInvestmentIndex.value + 1]
     store.setActiveInvestment(nextInvestment.id)
+    emit('update-investment-filter', nextInvestment.id)
   }
 }
 
@@ -712,13 +739,17 @@ const handlePageClick = (pageId: string) => {
   emit('set-display-mode', 'single')
 }
 
-const handleCategoryClick = (categoryId: string) => {
-  emit('open-photo-upload', categoryId)
+const handleCategoryClick = (categoryId: string, investmentId: string) => {
+  emit('open-photo-upload', categoryId, investmentId)
 }
 
 const handleCameraClick = () => {
   if (!activeInvestmentId.value) return
   emit('open-camera', activeInvestmentId.value)
+}
+
+const handleViewModeChange = (mode: 'photos' | 'data' | 'all') => {
+  emit('toggle-view-mode', mode)
 }
 
 // ========================================================================
@@ -730,6 +761,14 @@ const getPageInstances = (pageId: string) => {
 }
 
 const getInstanceName = (page: SurveyPage, index: number) => {
+  // Check if there's a custom name from the instance data (e.g., from marker mode)
+  const instances = store.getPageInstances(page.id)
+  const instanceData = instances[index]
+
+  if (instanceData && instanceData.wall_name) {
+    return instanceData.wall_name
+  }
+
   if (!page.item_name_template) {
     return `${page.name} ${index + 1}`
   }
@@ -761,11 +800,53 @@ const canDeleteInstance = (page: SurveyPage, index: number) => {
   return index > 0
 }
 
-const addInstance = (pageId: string) => {
-  store.addPageInstance(pageId)
+const addInstance = async (pageId: string) => {
+  // Check if this is the Facade Insulation -> Walls page
+  const page = store.surveyPages[store.activeInvestmentId || '']?.find(p => p.id === pageId)
+  const isFacadeWallsPage = page?.type === 'walls' && page?.name === 'Falak'
+
+  // Add the page instance
+  await store.addPageInstance(pageId)
+
+  // If this is the Facade Insulation Walls page, also create a wall in marker mode
+  if (isFacadeWallsPage) {
+    const wallStore = useWallStore()
+    const instances = store.getPageInstances(pageId)
+    const newIndex = instances.length - 1
+    const newInstance = instances[newIndex]
+
+    // Create a new wall in WallStore
+    const newWallId = crypto.randomUUID()
+    const wallName = `${newIndex + 1}. falfelület`
+
+    wallStore.setWall(props.surveyId, newWallId, {
+      id: newWallId,
+      name: wallName,
+      orientation: undefined,
+      images: [],
+      polygons: []
+    })
+
+    // Link the instance to the marker wall
+    if (newInstance) {
+      newInstance._markerWallId = newWallId
+      newInstance.wall_name = wallName
+    }
+  }
 }
 
 const deleteInstance = (page: SurveyPage, index: number) => {
+  // Check if this instance is linked to a marker mode wall
+  const instances = store.getPageInstances(page.id)
+  const instanceData = instances[index]
+
+  if (instanceData && instanceData._markerWallId) {
+    // This instance is linked to a marker wall - delete it from WallStore too
+    const wallStore = useWallStore()
+    wallStore.removeWall(props.surveyId, instanceData._markerWallId)
+  }
+
+  // Remove the page instance
   store.removePageInstance(page.id, index, page.allow_delete_first || false)
 }
 
@@ -775,6 +856,24 @@ const getInstanceQuestionValue = (pageId: string, instanceIndex: number, questio
 
 const updateInstanceQuestionValue = async (pageId: string, instanceIndex: number, questionName: string, value: any) => {
   await store.saveInstanceResponse(pageId, instanceIndex, questionName, value)
+
+  // If this is a wall_orientation change and the instance is linked to a marker wall, update it there too
+  if (questionName === 'wall_orientation') {
+    const instances = store.getPageInstances(pageId)
+    const instanceData = instances[instanceIndex]
+
+    if (instanceData && instanceData._markerWallId) {
+      const wallStore = useWallStore()
+      const wall = wallStore.getWallsForSurvey(props.surveyId)[instanceData._markerWallId]
+
+      if (wall) {
+        wallStore.setWall(props.surveyId, wall.id, {
+          ...wall,
+          orientation: value
+        })
+      }
+    }
+  }
 }
 
 // ========================================================================
@@ -810,6 +909,51 @@ const addSubPageInstance = (subpageId: string, parentItemGroup: number) => {
 }
 
 const deleteSubPageInstance = (subpage: SurveyPage, parentItemGroup: number, index: number) => {
+  // Check if this is an Openings (Nyílászárók) subpage
+  const isOpeningsSubpage = subpage.name === 'Nyílászárók' || subpage.type === 'openings'
+
+  if (isOpeningsSubpage) {
+    // Get the subpage instance to find the marker polygon ID
+    const subpageInstances = store.getSubPageInstances(subpage.id, parentItemGroup)
+    const instanceData = subpageInstances[index]
+
+    if (instanceData && instanceData._markerPolygonId) {
+      // This opening is linked to a marker polygon - delete it from WallStore too
+      const wallStore = useWallStore()
+
+      // Find the parent wall instance to get the marker wall ID
+      const parentPage = store.surveyPages[store.activeInvestmentId || '']?.find(
+        p => p.id === subpage.parent_page_id
+      )
+
+      if (parentPage) {
+        const parentInstances = store.getPageInstances(parentPage.id)
+        const parentInstance = parentInstances[parentItemGroup]
+
+        if (parentInstance && parentInstance._markerWallId) {
+          // Get the wall from marker mode
+          const wall = wallStore.getWallsForSurvey(props.surveyId)[parentInstance._markerWallId]
+
+          if (wall) {
+            // Remove the polygon with this ID
+            const updatedPolygons = wall.polygons.filter(
+              p => p.id !== instanceData._markerPolygonId
+            )
+
+            // Update the wall with the filtered polygons
+            wallStore.setWall(props.surveyId, wall.id, {
+              ...wall,
+              polygons: updatedPolygons
+            })
+
+            console.log(`Deleted polygon ${instanceData._markerPolygonId} from marker mode`)
+          }
+        }
+      }
+    }
+  }
+
+  // Remove the subpage instance
   store.removeSubPageInstance(subpage.id, parentItemGroup, index, subpage.allow_delete_first || false)
 }
 
@@ -980,8 +1124,52 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
       return Number(fieldValue) <= Number(condition.value)
     case 'contains':
       return String(fieldValue || '').includes(String(condition.value))
+    case 'contains_any': {
+      // Check if field value (array or comma-separated string) contains any of the specified values
+      if (!fieldValue) return false
+
+      // Convert field value to array
+      let fieldArray: string[] = []
+      if (Array.isArray(fieldValue)) {
+        fieldArray = fieldValue
+      } else if (typeof fieldValue === 'string') {
+        // Try to parse as JSON array first
+        try {
+          const parsed = JSON.parse(fieldValue)
+          fieldArray = Array.isArray(parsed) ? parsed : [fieldValue]
+        } catch {
+          // If not JSON, treat as comma-separated
+          fieldArray = fieldValue.split(',').map(v => v.trim())
+        }
+      }
+
+      // Get the values to check against (should be an array in condition.value)
+      const valuesToCheck = Array.isArray(condition.value) ? condition.value : [condition.value]
+
+      // Check if any of the field values match any of the condition values
+      return fieldArray.some(fv => valuesToCheck.some(cv => fv === cv))
+    }
     default:
       return true
+  }
+}
+
+// ========================================================================
+// Display Width Handling
+// ========================================================================
+
+const getWidthClass = (question: any): string => {
+  const width = question.display_settings?.width
+  switch (width) {
+    case '1/2':
+      return 'col-span-12 md:col-span-6'
+    case '1/3':
+      return 'col-span-12 md:col-span-4'
+    case '1/4':
+      return 'col-span-12 md:col-span-3'
+    case 'full':
+    default:
+      return 'col-span-12'
   }
 }
 
@@ -993,6 +1181,7 @@ const getNormalQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
   return questions
     .filter(q => !q.is_special)
+    .filter(q => !q.display_settings?.hidden) // Hide questions with display_settings.hidden = true
     .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 
@@ -1000,6 +1189,7 @@ const getSpecialQuestions = (pageId: string, instanceIndex?: number) => {
   const questions = store.surveyQuestions[pageId] || []
   return questions
     .filter(q => q.is_special === true)
+    .filter(q => !q.display_settings?.hidden) // Hide questions with display_settings.hidden = true
     .filter(q => evaluateDisplayCondition(q, pageId, instanceIndex))
 }
 
@@ -1028,9 +1218,21 @@ const closeAccordion = (event: MouseEvent) => {
 onMounted(async () => {
   await store.initializeForSurvey(props.surveyId)
 
+  // Sync walls from marker mode to survey page instances
+  const { syncWallsToSurvey } = useWallSync()
+  try {
+    await syncWallsToSurvey(props.surveyId)
+  } catch (error) {
+    console.error('Error syncing walls from marker mode:', error)
+  }
+
   // Initialize default values for allow_multiple pages
+  // Skip walls and openings pages - they are managed by wall sync
   if (activePage.value?.allow_multiple && activePageId.value) {
-    await store.ensurePageInstancesInitialized(activePageId.value)
+    const skipTypes = ['walls', 'openings']
+    if (!skipTypes.includes(activePage.value.type || '')) {
+      await store.ensurePageInstancesInitialized(activePageId.value)
+    }
   }
 })
 
@@ -1040,7 +1242,11 @@ watch(activePageId, async (newPageId) => {
 
   const page = activePage.value
   if (page?.allow_multiple) {
-    await store.ensurePageInstancesInitialized(newPageId)
+    // Skip walls and openings pages - they are managed by wall sync
+    const skipTypes = ['walls', 'openings']
+    if (!skipTypes.includes(page.type || '')) {
+      await store.ensurePageInstancesInitialized(newPageId)
+    }
   }
 })
 </script>

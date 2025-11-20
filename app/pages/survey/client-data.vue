@@ -11,7 +11,7 @@
       <div :class="showMap ? 'w-1/2' : 'w-full max-w-2xl mx-auto'" class="pointer-events-auto relative">
 
         <!-- Progress Section - Fixed Top Center -->
-        <div class="absolute left-1/2 transform -translate-x-1/2 z-20 w-full max-w-96 text-center px-6 pointer-events-auto">
+        <div class="absolute -top-24 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-96 text-center px-6 pointer-events-auto">
           <UIBox>
             <div class="p-4">
               <div class="flex items-center gap-3">
@@ -384,6 +384,7 @@ const handleSaveAndStart = async () => {
       console.log('Creating new client with company_id:', profile.company_id)
       const clientData = {
         company_id: profile.company_id,
+        user_id: user.id,
         name: form.value.name.trim(),
         email: form.value.email.trim() || null,
         phone: form.value.phone.trim() || null,
@@ -409,12 +410,14 @@ const handleSaveAndStart = async () => {
       console.log('New client created successfully:', newClient)
 
       // Create a new survey for this client
+      const now = new Date().toISOString() // Format: YYYY-MM-DDTHH:mm:ss.sssZ
       const { data: newSurvey, error: surveyError } = await supabase
         .from('surveys')
         .insert({
           client_id: newClient.id,
           company_id: profile.company_id,
-          status: 'draft'
+          user_id: user.id,
+          at: now
         })
         .select()
         .single()

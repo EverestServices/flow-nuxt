@@ -63,7 +63,8 @@
       "theme": "Theme",
       "save": "Save Preferences",
       "saveSuccess": "Preferences updated successfully",
-      "saveError": "Failed to update preferences"
+      "saveError": "Failed to update preferences",
+      "languageChanged": "Language changed successfully"
     },
     "avatar": {
       "title": "Profile Photo",
@@ -466,6 +467,150 @@
       "addComponent": "Add Component",
       "noComponentsAdded": "No components added yet. Click \"Add Component\" to add components."
     }
+  },
+  "wizard": {
+    "list": {
+      "title": "Offer/Contract Wizard",
+      "offerForNewClient": "Offer for new Client",
+      "contractForNewClient": "Contract for new Client",
+      "searchPlaceholder": "Search clients...",
+      "noWizardsFound": "No offers or contracts found",
+      "noClientsForFilter": "No clients found for selected filter",
+      "startByCreating": "Start by creating a new offer or contract",
+      "filters": {
+        "allTime": "All Time",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "lastWeek": "Last Week",
+        "pending": "Pending"
+      }
+    }
+  },
+  "todo": {
+    "title": "Todo",
+    "subtitle": "Organize and track your daily tasks efficiently",
+    "statistics": {
+      "totalTasks": "Total Tasks",
+      "pending": "Pending",
+      "completed": "Completed"
+    },
+    "filters": {
+      "label": "Filters",
+      "all": "All",
+      "overdue": "Overdue",
+      "today": "Today",
+      "next3days": "Next 3 days",
+      "searchPlaceholder": "ToDo - Search..."
+    },
+    "categories": {
+      "all": "All",
+      "tickets": "Tickets",
+      "news": "News",
+      "backInCar": "Back in the car",
+      "coursesExams": "Courses & Exams",
+      "energyConsultation": "Energy Consultation",
+      "leadsToClients": "Leads to Clients",
+      "contractToCollect": "Contract to Collect",
+      "todoMadeByMe": "ToDo made by me",
+      "completed": "Completed"
+    },
+    "pagination": {
+      "show": "Show",
+      "entries": "entries",
+      "showing": "Showing {start} to {end} of {total} results"
+    },
+    "emptyStates": {
+      "noTasksFound": "No tasks found",
+      "noOverdueTasks": "No overdue tasks",
+      "noTasksToday": "No tasks due today",
+      "noTasksNext3Days": "No tasks due in the next 3 days",
+      "getStarted": "Get started by creating your first task"
+    },
+    "actions": {
+      "createTask": "Create Task",
+      "deleteTask": "Delete Task",
+      "editTask": "Edit Task",
+      "updateTask": "Update Task",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
+      "add": "Add"
+    },
+    "deleteModal": {
+      "title": "Delete Task",
+      "warning": "Warning",
+      "confirmMessage": "Are you sure you want to delete this task? This action cannot be undone.",
+      "taskLabel": "Task:"
+    },
+    "createModal": {
+      "titleNew": "Add New ToDo",
+      "titleEdit": "Edit Task",
+      "fields": {
+        "title": "Title",
+        "titlePlaceholder": "Enter task title",
+        "description": "Description",
+        "descriptionPlaceholder": "Add more details about this task (optional)",
+        "priority": "Priority",
+        "category": "Category",
+        "categoryPlaceholder": "e.g., Work, Personal",
+        "dueDate": "Due Date",
+        "assignTo": "Assign To",
+        "assignToPlaceholder": "Select a colleague (optional)",
+        "tags": "Tags",
+        "tagsOptional": "(optional)",
+        "addTag": "Add a tag"
+      }
+    },
+    "editModal": {
+      "title": "Edit Task",
+      "fields": {
+        "title": "Title",
+        "titlePlaceholder": "Task title",
+        "description": "Description",
+        "descriptionPlaceholder": "Task description (optional)",
+        "priority": "Priority",
+        "category": "Category",
+        "categoryPlaceholder": "e.g., Work",
+        "dueDate": "Due Date",
+        "taskStatus": "Task Status",
+        "taskStatusDescription": "Mark as completed when done"
+      }
+    },
+    "item": {
+      "noTitle": "No title",
+      "noDueDate": "No due date",
+      "lastSeen": "was last seen {time}",
+      "isOnline": "is online"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "noPriority": "No Priority",
+      "urgentEmoji": "🔴 Urgent",
+      "highEmoji": "🟠 High",
+      "mediumEmoji": "🟡 Medium",
+      "lowEmoji": "🟢 Low"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    },
+    "errors": {
+      "errorLoadingTasks": "Error Loading Tasks",
+      "failedToUpdate": "Failed to update task",
+      "failedToDelete": "Failed to delete task",
+      "failedToFetch": "Failed to fetch tasks",
+      "failedToUpdateRetry": "Failed to update task. Please try again."
+    }
+  },
+  "colorPicker": {
+    "selectedColor": "Selected color",
+    "selectColor": "Select color",
+    "clearSelection": "Clear selection"
   },
   "client": {
     "header": {

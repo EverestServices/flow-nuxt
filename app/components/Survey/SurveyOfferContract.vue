@@ -1,11 +1,12 @@
 <template>
-  <div class="h-full flex bg-gray-50 dark:bg-gray-900">
+  <div class="min-h-screen flex relative overflow-hidden">
     <!-- Left Column - Scenario Selector and Technical Details -->
-    <div class="w-1/2 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-      <div class="flex-1 overflow-auto p-6">
+    <div class="fixed left-3 top-20 bottom-20 w-[48%] backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20">
+      <div class="flex-1 overflow-auto p-6 space-y-4">
         <!-- Scenario Selector Section -->
-        <div class="mb-6">
-          <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+        <div class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl p-4 shadow-sm">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <UIcon name="i-lucide-layers" class="w-5 h-5" />
             {{ t('survey.offerContract.selectScenario') }}
           </h3>
 
@@ -14,10 +15,10 @@
             <button
               v-for="scenario in scenarios"
               :key="scenario.id"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors whitespace-nowrap"
+              class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap shadow-sm"
               :class="selectedScenarioId === scenario.id && !contractsStore.activeContractId
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:shadow-lg hover:scale-105'
+                : 'bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 hover:scale-105'"
               @click="handleSelectScenario(scenario.id)"
             >
               <!-- Investment icons -->
@@ -34,16 +35,19 @@
           </div>
 
           <!-- No scenarios message -->
-          <p v-if="scenarios.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-            {{ t('survey.offerContract.noScenarios') }}
-          </p>
+          <div v-if="scenarios.length === 0" class="text-center py-8">
+            <UIcon name="i-lucide-inbox" class="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('survey.offerContract.noScenarios') }}
+            </p>
+          </div>
         </div>
 
         <!-- Technical Details Accordion -->
-        <div v-if="selectedScenarioId" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="technicalDetailsOpen = !technicalDetailsOpen"
           >
             <div class="flex items-center gap-2">
@@ -71,10 +75,10 @@
         </div>
 
         <!-- Tető konfiguráció Accordion - Only for Solar Panel scenarios -->
-        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="roofConfigurationOpen = !roofConfigurationOpen"
           >
             <div class="flex items-center gap-2">
@@ -102,10 +106,10 @@
         </div>
 
         <!-- Compatibility Check Accordion - Only for Solar Panel scenarios -->
-        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="compatibilityCheckOpen = !compatibilityCheckOpen"
           >
             <div class="flex items-center gap-2">
@@ -132,10 +136,10 @@
         </div>
 
         <!-- Extra Costs Accordion - Only for Solar Panel scenarios -->
-        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="extraCostsOpen = !extraCostsOpen"
           >
             <div class="flex items-center gap-2">
@@ -164,10 +168,10 @@
         </div>
 
         <!-- Facade Insulation Extra Costs Accordion -->
-        <div v-if="selectedScenarioId && hasFacadeInsulationInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasFacadeInsulationInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="facadeInsulationExtraCostsOpen = !facadeInsulationExtraCostsOpen"
           >
             <div class="flex items-center gap-2">
@@ -196,10 +200,10 @@
         </div>
 
         <!-- Attic Floor Insulation Extra Costs Accordion -->
-        <div v-if="selectedScenarioId && hasAtticFloorInsulationInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasAtticFloorInsulationInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="atticFloorInsulationExtraCostsOpen = !atticFloorInsulationExtraCostsOpen"
           >
             <div class="flex items-center gap-2">
@@ -228,10 +232,10 @@
         </div>
 
         <!-- Windows Extra Costs Accordion -->
-        <div v-if="selectedScenarioId && hasWindowsInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasWindowsInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="windowsExtraCostsOpen = !windowsExtraCostsOpen"
           >
             <div class="flex items-center gap-2">
@@ -260,10 +264,10 @@
         </div>
 
         <!-- General Extra Costs Accordion -->
-        <div v-if="selectedScenarioId" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="generalExtraCostsOpen = !generalExtraCostsOpen"
           >
             <div class="flex items-center gap-2">
@@ -291,10 +295,10 @@
         </div>
 
         <!-- Discounts Accordion - Only for Solar Panel scenarios -->
-        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId && hasSolarPanelInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="discountsOpen = !discountsOpen"
           >
             <div class="flex items-center gap-2">
@@ -324,13 +328,13 @@
     </div>
 
     <!-- Right Column - Contract Details and Prices -->
-    <div class="w-1/2 bg-white dark:bg-gray-800 flex flex-col">
-      <div class="flex-1 overflow-auto p-6">
+    <div class="fixed right-3 top-20 bottom-20 w-[48%] backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-3xl border border-white/20 dark:border-gray-700/20 shadow-2xl flex flex-col z-20">
+      <div class="flex-1 overflow-auto p-6 space-y-4">
         <!-- Contract Details Accordion -->
-        <div v-if="selectedScenarioId" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="contractDetailsOpen = !contractDetailsOpen"
           >
             <div class="flex items-center gap-2">
@@ -359,10 +363,10 @@
         </div>
 
         <!-- Prices Accordion -->
-        <div v-if="selectedScenarioId" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mt-4">
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
             type="button"
-            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
             @click="pricesOpen = !pricesOpen"
           >
             <div class="flex items-center gap-2">
@@ -392,6 +396,38 @@
           </div>
         </div>
 
+        <!-- OFP Calculation Accordion - Only for OFP-relevant investments -->
+        <div v-if="selectedScenarioId && hasOfpInvestments" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
+            @click="ofpCalculationOpen = !ofpCalculationOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-calculator" class="w-5 h-5" />
+              <span>OFP Kalkuláció</span>
+            </div>
+            <UIcon
+              :name="ofpCalculationOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="ofpCalculationOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- OFP Calculation Content -->
+              <ScenarioOfpCalculation
+                v-if="selectedScenarioId"
+                :scenario-id="selectedScenarioId"
+                :ofp-calculation="currentOfpCalculation"
+                @calculate="handleOfpCalculate"
+              />
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -403,8 +439,12 @@ import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useContractsStore } from '~/stores/contracts'
+import { useOfpCalculation, type OfpCalculationResult } from '~/composables/useOfpCalculation'
+import { useExternalApiKeys } from '~/composables/useExternalApiKeys'
 
 const { t } = useI18n()
+const { calculateOfp, loading: ofpLoading, error: ofpError } = useOfpCalculation()
+const { getOfpApiKey, getUserEmail, hasOfpApiKey } = useExternalApiKeys()
 
 interface Props {
   surveyId: string
@@ -432,6 +472,7 @@ const generalExtraCostsOpen = ref(true)
 const discountsOpen = ref(true)
 const contractDetailsOpen = ref(true)
 const pricesOpen = ref(false)
+const ofpCalculationOpen = ref(false)
 
 // Commission rate state
 const commissionRate = ref(0.12) // Default 12% (red)
@@ -489,6 +530,82 @@ const hasWindowsInvestment = computed(() => {
     return investment && investment.persist_name === 'windows'
   })
 })
+
+// Check if selected scenario has Heat Pump investment
+const hasHeatPumpInvestment = computed(() => {
+  if (!selectedScenarioId.value) return false
+
+  const investmentIds = scenarioInvestments.value[selectedScenarioId.value] || []
+
+  return investmentIds.some(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && investment.persist_name === 'heatPump'
+  })
+})
+
+// Check if selected scenario has any OFP-relevant investments
+const hasOfpInvestments = computed(() => {
+  return hasFacadeInsulationInvestment.value ||
+    hasAtticFloorInsulationInvestment.value ||
+    hasWindowsInvestment.value ||
+    hasHeatPumpInvestment.value
+})
+
+// Get current scenario's OFP calculation
+const currentOfpCalculation = computed(() => {
+  if (!selectedScenarioId.value) return null
+  const scenario = scenarios.value.find(s => s.id === selectedScenarioId.value)
+  return scenario?.ofp_calculation || null
+})
+
+// Handle OFP calculation
+const handleOfpCalculate = async () => {
+  if (!selectedScenarioId.value) return
+
+  const toast = useToast()
+
+  // Get API key from user profile
+  const apiKey = await getOfpApiKey()
+  const userEmail = getUserEmail()
+
+  if (!apiKey) {
+    toast.add({
+      title: 'OFP Kalkuláció',
+      description: 'Az OFP API key nincs beállítva. Kérjük, állítsa be a profil beállításokban.',
+      color: 'yellow',
+    })
+    return
+  }
+
+  if (!userEmail) {
+    toast.add({
+      title: 'OFP Kalkuláció',
+      description: 'Felhasználói email nem található.',
+      color: 'red',
+    })
+    return
+  }
+
+  // Call OFP calculation
+  const result = await calculateOfp(selectedScenarioId.value, apiKey, userEmail)
+
+  if (result) {
+    toast.add({
+      title: 'OFP Kalkuláció',
+      description: 'A kalkuláció sikeresen elkészült.',
+      color: 'green',
+    })
+
+    // Refresh scenario data to get updated ofp_calculation
+    await scenariosStore.loadScenarios(props.surveyId)
+  } else if (ofpError.value) {
+    toast.add({
+      title: 'OFP Kalkuláció hiba',
+      description: ofpError.value,
+      color: 'red',
+    })
+  }
+}
 
 // Calculate total discounts
 const discountsTotal = computed(() => {

@@ -35,7 +35,8 @@ const router = useRouter();
 const route = useRoute();
 
 const store = useWallStore();
-const wallList = computed(() => Object.values(store.walls));
+const surveyId = computed(() => String(route.params.surveyId));
+const wallList = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const MIN_WALL_COUNT = 4;
 
 const allImagesReady = computed(() => {

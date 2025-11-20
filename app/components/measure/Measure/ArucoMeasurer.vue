@@ -214,7 +214,7 @@
         <div class="mb-4 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <button
-              @click="router.push(`/survey/${String(route.params.surveyId)}/measure`)"
+              @click="handleBackToMeasureList"
               class="p-2 rounded-full hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
             >
               <Icon name="i-lucide-layout-list" class="h-5 w-5 text-gray-700 dark:text-gray-300" />
@@ -243,7 +243,7 @@
               v-else
               v-model="wallName"
               type="text"
-              class="w-full px-3 py-2 rounded-full bg-white/20 dark:bg-black/20 border border-white/40 dark:border-black/10 text-sm font-medium text-gray-800 dark:text-gray-200 backdrop-blur-xs focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              class="w-full px-3 py-2 rounded-full bg-white/20 dark:bg-black/20 border border-black/40 dark:border-black/10 text-sm font-medium text-gray-800 dark:text-gray-200 backdrop-blur-xs focus:outline-none focus:ring-2 focus:ring-primary-500/50"
               @blur="stopEditingWallName"
               @keyup.enter="stopEditingWallName"
             />
@@ -254,15 +254,10 @@
         <div class="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent mb-4"></div>
 
         <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
-          <select
-            :value="wallOrientation || ''"
-            @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-          >
-            <option value="">—</option>
-            <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
+          <OrientationSelector
+            v-model="wallOrientation"
+            label="Tájolás"
+          />
         </div>
 
         <PolygonList
@@ -402,27 +397,30 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect, unref } from 'vue';
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch, watchEffect } from 'vue';
 import { Orientation } from '@/model/Measure/ArucoWallSurface';
 import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
+import OrientationSelector from '@/components/shared/OrientationSelector.vue';
 import { useWallStore, clonePolygonData } from '@/stores/WallStore';
 import { useRoute, useRouter } from 'vue-router';
+import { useWallSync } from '@/composables/useWallSync';
 const store = useWallStore();
 const route = useRoute();
 const router = useRouter();
+const { syncWallsToSurvey } = useWallSync();
+const surveyId = computed(() => String(route.params.surveyId));
 const wallId = computed(() => String(route.params.wallId));
 const wall = computed<Wall>(() => {
-  const mapRaw = unref(store.walls) as Record<string, Wall> | undefined;
-  const map: Record<string, Wall> = mapRaw ?? {};
-  const w = map[wallId.value] as Wall | undefined;
+  const surveyWalls = store.getWallsForSurvey(surveyId.value);
+  const w = surveyWalls[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
 
 // Wall navigation
-const allWalls = computed(() => Object.values(store.walls));
+const allWalls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
 const currentWallIndex = computed(() =>
   allWalls.value.findIndex((w) => w.id === wallId.value)
 );
@@ -434,6 +432,16 @@ const nextWall = computed(() => {
   const index = currentWallIndex.value;
   return index >= 0 && index < allWalls.value.length - 1 ? allWalls.value[index + 1] : null;
 });
+
+const handleBackToMeasureList = async () => {
+  // Sync walls to survey before navigating back
+  try {
+    await syncWallsToSurvey(surveyId.value);
+  } catch (error) {
+    console.error('Error syncing walls:', error);
+  }
+  await router.push(`/survey/${String(route.params.surveyId)}/measure`);
+};
 
 const navigateToPreviousWall = () => {
   if (previousWall.value) {
@@ -450,25 +458,18 @@ const wallName = computed<string>({
   get: () => wall.value?.name ?? '',
   set: (val: string) => {
     if (wall.value) {
-      store.setWall(wall.value.id, { ...wall.value, name: val });
+      store.setWall(surveyId.value, wall.value.id, { ...wall.value, name: val });
     }
   },
 });
-const orientationOptions: Orientation[] = [
-  Orientation.N, Orientation.NW, Orientation.W, Orientation.SW,
-  Orientation.S, Orientation.SE, Orientation.E, Orientation.NE,
-];
 const wallOrientation = computed<Orientation | null>({
   get: () => (wall.value?.orientation ?? null) as Orientation | null,
   set: (val: Orientation | null) => {
     if (wall.value) {
-      store.setWall(wall.value.id, { ...wall.value, orientation: val ?? undefined });
+      store.setWall(surveyId.value, wall.value.id, { ...wall.value, orientation: val ?? undefined });
     }
   },
 });
-const onOrientationChange = (val: string) => {
-  wallOrientation.value = (val ? (val as Orientation) : null);
-};
 const editingWallName = ref<boolean>(false);
 const startEditingWallName = () => {
   editingWallName.value = true;
@@ -507,7 +508,7 @@ const polygons = computed({
   get: () => wall.value?.polygons ?? [],
   set: (newPolygons) => {
     if (wall.value) {
-      store.setWall(wall.value.id, {
+      store.setWall(surveyId.value, wall.value.id, {
         ...wall.value,
         polygons: [...newPolygons],
       });
@@ -1131,7 +1132,7 @@ const applyCalibration = () => {
     firstImage.value.referenceLengthCm = calibrationLength.value ?? null;
     // Do not overwrite stored mpp; allow restore button to work against original server value
     // Persist mutated image meta into store
-    store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, images: [...wall.value.images] });
   }
   allowRefOverride.value = false;
   // Exit calibration and clear draft/overlay
@@ -1673,7 +1674,7 @@ const onImageLoad = () => {
     if (imgMeta) {
       imgMeta.processedImageWidth = imageWidth.value;
       imgMeta.processedImageHeight = imageHeight.value;
-      store.setWall(wall.value.id, {
+      store.setWall(surveyId.value, wall.value.id, {
         ...wall.value,
         images: [...wall.value.images],
       });

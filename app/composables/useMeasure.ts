@@ -244,7 +244,11 @@ export const useMeasure = () => {
       `)
       .eq('survey_id', surveyId)
       .order('created_at', { ascending: true })
-    if (err) throw err
+    if (err) {
+      console.error('❌ Error fetching walls:', err)
+      throw err
+    }
+    console.log('✅ Successfully fetched walls, count:', data?.length)
     return (data ?? []) as Array<any>
   }
 

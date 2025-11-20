@@ -1,18 +1,20 @@
 # Survey System Architecture Documentation
 
 **Created:** 2025-10-17
-**Last Updated:** 2025-11-03
-**Version:** 2.5.0
+**Last Updated:** 2025-11-05
+**Version:** 2.6.0
 **Migrations:**
-- `003_create_survey_system.sql` - Core survey system
+- `004_create_survey_system.sql` - Core survey system
 - `031-043_products_system.sql` - Products and components
 - `070_add_investment_id_to_pivot_tables.sql` - Investment-specific tracking
 - `097-101_default_value_source_and_persistence.sql` - Default values and persistence
 - `102_add_hierarchical_survey_pages.sql` - Hierarchical pages
 - `104_create_openings_survey_page.sql` - Openings subpage
 - `105_add_planned_investment_and_site_conditions_pages.sql` - Additional pages
-- `136_add_conditional_value_copy_rules.sql` - Conditional value copy rules (NEW)
-- `137_remove_old_default_value_source_refs.sql` - Cleanup old references (NEW)
+- `136_add_conditional_value_copy_rules.sql` - Conditional value copy rules
+- `137_remove_old_default_value_source_refs.sql` - Cleanup old references
+- `1006_add_multiselect_question_type.sql` - Multiselect question type (NEW)
+- `1009_add_template_variables.sql` - Dynamic template variables (NEW)
 
 ---
 
@@ -51,6 +53,8 @@ A complete survey management system for handling client property assessments, in
 - ✅ **Hierarchical survey pages with parent-child relationships** (NEW - 2025-10-30)
 - ✅ **Automated wall metrics calculations for facade insulation** (NEW - 2025-10-30)
 - ✅ **Conditional value copy rules with flexible condition-based copying** (NEW - 2025-11-03)
+- ✅ **Multiselect question type with checkbox-based multi-option selection** (NEW - 2025-11-05)
+- ✅ **Dynamic template variables for survey question text substitution** (NEW - 2025-11-05)
 
 ---
 
@@ -269,14 +273,20 @@ Questions within survey pages.
 | step | DECIMAL(10,2) | Step value |
 | unit | VARCHAR(50) | Unit (e.g., m², kWp) |
 | width | INTEGER | UI width |
+| **template_variables** | JSONB | Dynamic variable definitions for text substitution ⭐⭐ |
+| **display_conditions** | JSONB | Conditions for conditional question visibility |
+| **name_translations** | JSONB | Localized question text |
+| **options_translations** | JSONB | Localized option values |
 
 ⭐ **NEW - 2025-10-30:** Default value inheritance and readonly support
+⭐⭐ **NEW - 2025-11-05:** Template variables for dynamic text replacement
 
 **Question Types:**
 - `text`, `textarea`, `switch`, `dropdown`
 - `title`, `phase_toggle`, `dual_toggle`
 - `slider`, `range`, `number`
 - `orientation_selector`, `warning`, `calculated`
+- `multiselect` ⭐⭐ (NEW - 2025-11-05)
 
 **Relations:**
 - 1 Page → Many Questions
@@ -638,12 +648,31 @@ All entities have:
 
 Plus specific fields as documented in Database Schema section.
 
-**SurveyQuestion Interface (NEW fields - 2025-10-30):**
+**SurveyQuestion Interface (NEW fields):**
 ```typescript
 interface SurveyQuestion {
   // ... existing fields
-  default_value_source_question_id?: string  // UUID of source question
-  is_readonly?: boolean                       // Field is readonly
+  default_value_source_question_id?: string  // UUID of source question (NEW - 2025-10-30)
+  is_readonly?: boolean                       // Field is readonly (NEW - 2025-10-30)
+  template_variables?: Record<string, TemplateVariable>  // Dynamic variables (NEW - 2025-11-05)
+  display_conditions?: DisplayCondition       // Conditional visibility (NEW - 2025-11-05)
+}
+```
+
+**TemplateVariable Interface (NEW - 2025-11-05):**
+```typescript
+interface TemplateVariable {
+  type: 'matched_conditional_values' | 'field_value' | 'conditional_count'
+  field: string  // The field name to get value from
+}
+```
+
+**DisplayCondition Interface (NEW - 2025-11-05):**
+```typescript
+interface DisplayCondition {
+  field: string  // Question name to check
+  operator: 'contains_any' | 'equals' | 'not_equals'  // Comparison operator
+  value: string | string[]  // Expected value(s)
 }
 ```
 
@@ -2134,6 +2163,583 @@ async saveResponse(questionName: string, value: any) {
 - **No Partial Matching:** Condition must exactly match (no ranges, no patterns)
 - **Overwrite Behavior:** Always overwrites target values when condition is met
 - **No History:** Previous values are lost when rule applies
+
+---
+
+### Template Variables System (NEW - 2025-11-05)
+
+**Overview:**
+A dynamic text substitution system that allows survey question labels to display runtime-calculated values based on user responses. Variables are defined in the database as JSON configurations and processed at render time on the frontend.
+
+**Key Use Case:**
+Warning messages that dynamically show which specific options were selected by the user, rather than displaying static text that may become outdated when options change.
+
+#### Database Schema
+
+**survey_questions.template_variables Column:**
+```sql
+ALTER TABLE public.survey_questions
+ADD COLUMN IF NOT EXISTS template_variables JSONB;
+
+COMMENT ON COLUMN public.survey_questions.template_variables IS
+  'Template variable definitions for dynamic text replacement.
+   Example: {"selectedHeatingMethods": {"type": "matched_conditional_values", "field": "heating_methods"}}.
+   Supported types:
+   - matched_conditional_values: values that match display_conditions
+   - field_value: direct field value
+   - conditional_count: count of matched conditions';
+```
+
+**Structure:**
+```json
+{
+  "variableName": {
+    "type": "matched_conditional_values" | "field_value" | "conditional_count",
+    "field": "question_name_to_reference"
+  }
+}
+```
+
+#### Variable Types
+
+**1. matched_conditional_values**
+Returns the intersection of selected values and the question's display_conditions.
+
+**Purpose:** Show which selected options triggered a conditional question to appear.
+
+**Example:**
+```json
+{
+  "selectedHeatingMethods": {
+    "type": "matched_conditional_values",
+    "field": "heating_methods"
+  }
+}
+```
+
+**Behavior:**
+- Gets current value of `heating_methods` field
+- Parses as array (handles JSON, comma-separated, or array format)
+- Gets `display_conditions.value` from current question
+- Returns intersection of both arrays
+- Joins matched values with `, ` separator
+
+**Output:** `"Gázkazán, Elektromos fűtés, Olajkályha"`
+
+**2. field_value**
+Returns the direct value of a specified field.
+
+**Purpose:** Display current answer to another question.
+
+**Example:**
+```json
+{
+  "roofArea": {
+    "type": "field_value",
+    "field": "roof_area_m2"
+  }
+}
+```
+
+**Behavior:**
+- Gets current value of `roof_area_m2` field
+- Converts to string
+- Returns raw value
+
+**Output:** `"150"` (if roof_area_m2 = 150)
+
+**3. conditional_count**
+Returns the count of selected values that match display_conditions.
+
+**Purpose:** Show number of matching items (e.g., "3 heating methods selected").
+
+**Example:**
+```json
+{
+  "matchedCount": {
+    "type": "conditional_count",
+    "field": "heating_methods"
+  }
+}
+```
+
+**Behavior:**
+- Gets current value of `heating_methods` field
+- Parses as array
+- Counts intersection with `display_conditions.value`
+- Returns count as string
+
+**Output:** `"3"` (if 3 heating methods match)
+
+#### Frontend Implementation
+
+**Location:** `/app/components/Survey/SurveyQuestionRenderer.vue`
+
+**Processing Function:**
+```typescript
+const processTemplateVariables = (text: string): string => {
+  if (!text || !props.question.template_variables) {
+    return text
+  }
+
+  let processedText = text
+  const templateVarRegex = /\{([^}]+)\}/g  // Matches {variableName}
+  const matches = text.match(templateVarRegex)
+
+  if (!matches) {
+    return text
+  }
+
+  for (const match of matches) {
+    const varName = match.slice(1, -1)  // Remove { and }
+    const varDef = props.question.template_variables[varName]
+
+    if (!varDef) {
+      continue  // Unknown variable, skip
+    }
+
+    let replacement = ''
+
+    switch (varDef.type) {
+      case 'matched_conditional_values': {
+        // Get field value
+        const fieldValue = store.getResponse(varDef.field)
+
+        // Parse to array
+        let fieldArray: string[] = []
+        if (Array.isArray(fieldValue)) {
+          fieldArray = fieldValue
+        } else if (typeof fieldValue === 'string') {
+          try {
+            const parsed = JSON.parse(fieldValue)
+            fieldArray = Array.isArray(parsed) ? parsed : [fieldValue]
+          } catch {
+            fieldArray = fieldValue.split(',').map(v => v.trim())
+          }
+        }
+
+        // Get conditional values
+        const conditionalValues = Array.isArray(props.question.display_conditions.value)
+          ? props.question.display_conditions.value
+          : [props.question.display_conditions.value]
+
+        // Find intersection
+        const matchedValues = fieldArray.filter(fv =>
+          conditionalValues.some(cv => fv === cv)
+        )
+
+        replacement = matchedValues.join(', ')
+        break
+      }
+
+      case 'field_value': {
+        const fieldValue = store.getResponse(varDef.field)
+        replacement = fieldValue ? String(fieldValue) : ''
+        break
+      }
+
+      case 'conditional_count': {
+        const fieldValue = store.getResponse(varDef.field)
+        // ... parse to array (same as above) ...
+        const matchedCount = fieldArray.filter(fv =>
+          conditionalValues.some(cv => fv === cv)
+        ).length
+        replacement = String(matchedCount)
+        break
+      }
+    }
+
+    processedText = processedText.replace(match, replacement)
+  }
+
+  return processedText
+}
+```
+
+**Integration with Computed Property:**
+```typescript
+const questionLabel = computed(() => {
+  const rawLabel = translate(
+    props.question.name_translations,
+    translateField(props.question.name)
+  )
+  return processTemplateVariables(rawLabel)
+})
+```
+
+**Reactivity:**
+- Computed property automatically re-runs when:
+  - Store responses change
+  - Question template_variables change
+  - Question name_translations change
+- Real-time updates as user selects options
+
+#### Variable Syntax
+
+**In Database (name_translations):**
+```json
+{
+  "hu": "💡 Az alábbi kérdések a kiválasztott fűtési módok miatt jelennek meg: {selectedHeatingMethods}",
+  "en": "💡 The following questions appear due to the selected heating methods: {selectedHeatingMethods}"
+}
+```
+
+**Pattern:** `{variableName}`
+- Must match exactly with key in `template_variables` object
+- Case-sensitive
+- No spaces inside braces
+- Can appear anywhere in text (beginning, middle, end)
+- Multiple variables per text supported
+
+**Invalid Examples:**
+- `{ selectedHeatingMethods }` (spaces)
+- `{{selectedHeatingMethods}}` (double braces)
+- `$selectedHeatingMethods` (wrong syntax)
+
+#### Real-World Examples
+
+**Example 1: Electric Storage Heater Warning**
+
+**Database Setup:**
+```sql
+UPDATE survey_questions
+SET
+  name_translations = jsonb_build_object(
+    'hu', '💡 Az alábbi kérdések a kiválasztott fűtési módok miatt jelennek meg: {selectedHeatingMethods}',
+    'en', '💡 The following questions appear due to the selected heating methods: {selectedHeatingMethods}'
+  ),
+  template_variables = jsonb_build_object(
+    'selectedHeatingMethods', jsonb_build_object(
+      'type', 'matched_conditional_values',
+      'field', 'heating_methods'
+    )
+  ),
+  display_conditions = jsonb_build_object(
+    'field', 'heating_methods',
+    'operator', 'contains_any',
+    'value', jsonb_build_array(
+      'Elektromos tárolós fűtés / Éjszakai fűtés',
+      'Elektromos áramlásos fűtés / Elektromos radiátor',
+      'Elektromos padlófűtés',
+      'Elektromos infra fűtés'
+    )
+  )
+WHERE name = 'electric_storage_heater_warning';
+```
+
+**User Selects:**
+- "Elektromos tárolós fűtés / Éjszakai fűtés"
+- "Gázkazán" (not in display_conditions)
+- "Elektromos padlófűtés"
+
+**Rendered Output (Hungarian):**
+> 💡 Az alábbi kérdések a kiválasztott fűtési módok miatt jelennek meg: Elektromos tárolós fűtés / Éjszakai fűtés, Elektromos padlófűtés
+
+**Example 2: Gas Heating Methods Warning**
+
+**Database Setup:**
+```sql
+INSERT INTO survey_questions (
+  survey_page_id,
+  name,
+  name_translations,
+  type,
+  sequence,
+  display_conditions,
+  template_variables
+) VALUES (
+  page_id,
+  'gas_heating_methods_warning',
+  jsonb_build_object(
+    'hu', '💡 Az alábbi kérdések a kiválasztott fűtési módok miatt jelennek meg: {selectedGasHeatingMethods}',
+    'en', '💡 The following questions appear due to the selected heating methods: {selectedGasHeatingMethods}'
+  ),
+  'warning',
+  17,
+  jsonb_build_object(
+    'field', 'heating_methods',
+    'operator', 'contains_any',
+    'value', jsonb_build_array(
+      'Állandó hőmérsékletű kazán (hagyományos gázkazán radiátoros fűtéshez, általában pincében vagy fürdőszobában elhelyezve)',
+      'Alacsony hőmérsékletű kazán (modern gázkazán padlófűtéshez optimalizálva, alacsonyabb hőmérsékleten üzemel)',
+      'Kondenzációs kazán (legkorszerűbb, energiatakarékos gázkazán kondenzációs technológiával)',
+      'Hagyományos gázkonvektor (falra szerelt, egyedi szobafűtés gázzal működtetve)',
+      'Nyílt égésterű gravitációs gázkonvektor (régebbi típusú fali gázfűtés, kéménybe kötött, természetes légáramlással)',
+      'Külsőfali gázkonvektor (falra szerelt, külső falon át levegőt vevő egyedi fűtés)'
+    )
+  ),
+  jsonb_build_object(
+    'selectedGasHeatingMethods', jsonb_build_object(
+      'type', 'matched_conditional_values',
+      'field', 'heating_methods'
+    )
+  )
+);
+```
+
+**User Selects:**
+- "Kondenzációs kazán (legkorszerűbb, energiatakarékos gázkazán kondenzációs technológiával)"
+- "Napelemes rendszer" (not in display_conditions)
+
+**Rendered Output (Hungarian):**
+> 💡 Az alábbi kérdések a kiválasztott fűtési módok miatt jelennek meg: Kondenzációs kazán (legkorszerűbb, energiatakarékos gázkazán kondenzációs technológiával)
+
+**Display Behavior:**
+- Warning only appears when at least one gas heating method is selected
+- Dynamic text updates in real-time as user changes selections
+- If user deselects all gas methods → warning disappears entirely
+
+#### Workflow
+
+**1. Page Load:**
+```
+User navigates to survey page
+  ↓
+SurveyQuestionRenderer receives question
+  ↓
+Checks if template_variables exists
+  ↓
+If YES: processTemplateVariables() called
+  ↓
+Rendered with substituted values
+```
+
+**2. User Interaction:**
+```
+User selects/deselects heating method
+  ↓
+Store updates response
+  ↓
+Computed property (questionLabel) re-runs
+  ↓
+processTemplateVariables() called again
+  ↓
+UI updates with new values
+```
+
+**3. Conditional Display:**
+```
+User selects option that matches display_conditions
+  ↓
+Question becomes visible (conditional rendering)
+  ↓
+Template variables processed
+  ↓
+Shows matched selections in text
+```
+
+#### Type Safety
+
+**TypeScript Interfaces:**
+```typescript
+// /app/stores/surveyInvestments.ts
+
+export interface TemplateVariable {
+  type: 'matched_conditional_values' | 'field_value' | 'conditional_count'
+  field: string
+}
+
+export interface SurveyQuestion {
+  id: string
+  name: string
+  type: SurveyQuestionType
+  name_translations?: Record<string, string>
+  template_variables?: Record<string, TemplateVariable>
+  display_conditions?: {
+    field: string
+    operator: 'contains_any' | 'equals' | 'not_equals'
+    value: string | string[]
+  }
+  // ... other fields
+}
+```
+
+**Benefits:**
+- TypeScript ensures correct variable structure
+- Autocomplete for variable types
+- Compile-time error detection
+- Clear interface documentation
+
+#### Performance Considerations
+
+**Regex Execution:**
+- Simple pattern: `/\{([^}]+)\}/g`
+- Runs on every computed property evaluation
+- Negligible performance impact for typical text lengths
+
+**Store Access:**
+- `store.getResponse()` is O(1) lookup
+- No database queries (frontend-only processing)
+- Reactive updates handled by Vue's computed properties
+
+**Array Operations:**
+- Parsing and filtering scale with array size
+- Typical arrays: 1-20 items
+- No noticeable performance impact
+
+**Optimization:**
+- Early return if no template_variables
+- Early return if no matches in text
+- Skip unknown variable names
+
+#### Limitations
+
+**Current Limitations:**
+1. **Single Field Reference:** Each variable can only reference one field
+2. **No Nested Variables:** Cannot use `{var1{var2}}` syntax
+3. **No Expressions:** Cannot compute `{field1 + field2}` or `{field * 2}`
+4. **String Output Only:** All replacements become strings
+5. **No Formatting:** No date formatting, number formatting, etc.
+6. **Frontend Only:** No server-side rendering of variables
+
+**Workarounds:**
+- For complex logic: Create separate computed properties in component
+- For formatting: Use frontend filters/pipes after substitution
+- For multiple fields: Create multiple variables
+
+#### Future Enhancements
+
+**Potential Improvements:**
+- [ ] Custom formatting functions (date, number, currency)
+- [ ] Multiple field references per variable
+- [ ] Conditional expressions within variables
+- [ ] Server-side variable resolution for PDF exports
+- [ ] Variable preview in admin interface
+- [ ] Variable validation at migration time
+- [ ] Support for nested variables
+- [ ] Arithmetic expressions
+
+#### Migration Files
+
+**1009_add_template_variables.sql** - Creates template variable system
+- Adds `template_variables` column
+- Adds column comment with documentation
+- Updates `electric_storage_heater_warning` question with example usage
+- Demonstrates complete setup pattern
+
+**1010_add_gas_heating_warning.sql** - Additional usage example
+- Creates `gas_heating_methods_warning` question
+- Uses `matched_conditional_values` type
+- Shows conditional display + template variables together
+
+#### Advantages
+
+**1. Database-Driven:**
+- Variable logic stored in database, not hardcoded
+- Can add/modify variables without code deployment
+- Migration-based versioning
+
+**2. Flexible:**
+- Three variable types cover common use cases
+- Extensible architecture for new types
+- Works with any question type
+
+**3. Reactive:**
+- Real-time updates as user interacts
+- No manual refresh needed
+- Leverages Vue's computed properties
+
+**4. Localized:**
+- Variables work with translated text
+- Same variable in multiple languages
+- Consistent behavior across locales
+
+**5. Maintainable:**
+- Clear separation: database config + frontend processing
+- TypeScript interfaces ensure correctness
+- Self-documenting code with strong types
+
+**6. Performant:**
+- Frontend-only processing (no API calls)
+- Computed properties cache results
+- Minimal overhead
+
+#### Common Patterns
+
+**Pattern 1: Warning with Matched Values**
+```sql
+-- Question that appears conditionally and shows what matched
+template_variables = {
+  "matchedItems": {
+    "type": "matched_conditional_values",
+    "field": "option_field"
+  }
+}
+display_conditions = {
+  "field": "option_field",
+  "operator": "contains_any",
+  "value": ["Option A", "Option B", "Option C"]
+}
+name_translations = {
+  "en": "⚠️ You selected: {matchedItems}"
+}
+```
+
+**Pattern 2: Dynamic Field Display**
+```sql
+-- Show value from another question
+template_variables = {
+  "clientName": {
+    "type": "field_value",
+    "field": "client_name"
+  }
+}
+name_translations = {
+  "en": "Hello {clientName}, please confirm your details"
+}
+```
+
+**Pattern 3: Count Display**
+```sql
+-- Show count of matched items
+template_variables = {
+  "selectedCount": {
+    "type": "conditional_count",
+    "field": "features"
+  }
+}
+name_translations = {
+  "en": "You have selected {selectedCount} features"
+}
+```
+
+#### Testing Template Variables
+
+**Manual Testing Steps:**
+1. Navigate to survey page with template variable question
+2. Ensure question has display_conditions and is initially hidden
+3. Select options that match display_conditions
+4. Verify question appears
+5. Verify variable substitution shows correct values
+6. Select/deselect options
+7. Verify text updates in real-time
+8. Check multiple language variants
+9. Verify text formatting (spaces, punctuation)
+
+**Example Test Case:**
+```
+Given: heating_methods question with multiselect
+And: electric_storage_heater_warning with {selectedHeatingMethods} variable
+When: User selects "Elektromos tárolós fűtés / Éjszakai fűtés"
+Then: Warning appears with text containing selected method name
+When: User adds "Elektromos padlófűtés" selection
+Then: Text updates to show both methods separated by ", "
+When: User deselects all electric methods
+Then: Warning disappears
+```
+
+#### Related Features
+
+**Works Together With:**
+- **Display Conditions:** Controls when questions appear
+- **Multiselect Questions:** Common source for template variables
+- **Localization:** Template variables respect i18n
+- **Question Types:** Works with all question types, especially `warning` and `title`
+
+**Comparison with Other Systems:**
+- **vs default_value_source_question_id:** Template vars are for display text, not for copying answer values
+- **vs Conditional Value Copy Rules:** Template vars show text, copy rules modify data
+- **vs Computed Questions:** Template vars are text-only, computed questions calculate numeric values
 
 ---
 

@@ -1,20 +1,21 @@
 <template>
-  <div class="relative w-full max-w-2xl">
-    <!-- Lista ikon gomb (jobb felső sarok) - csak Data vagy All módban -->
-    <button
-      v-if="viewMode === 'data' || viewMode === 'all'"
-      class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white dark:bg-gray-800 border-2 border-primary-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center z-10"
-      @click="$emit('toggle-list-view')"
-    >
-      <UIcon name="i-lucide-list" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-    </button>
+  <div class="flex flex-col items-center gap-4">
+    <div class="relative w-full max-w-2xl">
+      <!-- Lista ikon gomb (jobb felső sarok) - csak Data vagy All módban -->
+      <button
+        v-if="viewMode === 'data' || viewMode === 'all'"
+        class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white dark:bg-gray-800 border-2 border-primary-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center z-10"
+        @click="$emit('toggle-list-view')"
+      >
+        <UIcon name="i-lucide-list" class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+      </button>
 
-    <!-- House Image -->
-    <img
-      src="/images/houseVisualization.png"
-      alt="House Visualization"
-      class="w-full h-auto"
-    />
+      <!-- House Image -->
+      <img
+        src="/images/houseVisualization.png"
+        alt="House Visualization"
+        class="w-full h-auto"
+      />
 
     <!-- Survey Page Buttons with Progress Indicator -->
     <div
@@ -68,10 +69,13 @@
     <button
       v-for="(categories, persistName, index) in groupedCategories"
       :key="`category-${persistName}`"
-      class="absolute rounded-full bg-white dark:bg-gray-800 border-2 border-blue-500 shadow-lg hover:scale-110 transition-transform flex items-center justify-center group"
-      :class="getCategoryButtonSizeByCount(categories.length)"
-      :style="getCategoryButtonPosition(categories[0], index)"
-      @click="$emit('category-click', categories[0].id)"
+      class="absolute rounded-full bg-white/50 dark:bg-gray-800 border-2 shadow-lg hover:scale-110 transition-transform flex items-center justify-center group backdrop-blur-xs"
+      :class="[
+        getCategoryButtonSizeByCount(categories.length),
+        areCategoriesComplete(categories) ? 'border-green-500' : 'border-blue-500'
+      ]"
+      :style="getCategoryButtonPosition(categories[0]!, index)"
+      @click="handleCategoryClick(categories)"
     >
       <!-- Camera Icons (multiple if multiple investments need this category) -->
       <div class="flex items-center justify-center space-x-0.5">
@@ -79,24 +83,48 @@
           v-for="n in categories.length"
           :key="n"
           name="i-lucide-camera"
-          class="w-4 h-4 text-blue-600 dark:text-blue-400"
+          :class="[
+            'w-4 h-4',
+            areCategoriesComplete(categories) ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'
+          ]"
         />
       </div>
 
       <!-- Tooltip -->
       <div class="absolute bottom-full mb-2 hidden group-hover:block z-10">
         <div class="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded px-2 py-1 whitespace-nowrap max-w-xs">
-          {{ categories[0].name }}
+          {{ categories[0]?.name }}
         </div>
       </div>
     </button>
+    </div>
+
+    <!-- View Mode Toggle -->
+    <div class="flex items-center gap-2 p-2 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 rounded-full border border-white/20 dark:border-gray-700/20 shadow-lg">
+      <button
+        v-for="mode in viewModes"
+        :key="mode.value"
+        :class="[
+          'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+          viewMode === mode.value
+            ? 'bg-primary-500 text-white shadow-sm'
+            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+        ]"
+        @click="$emit('change-view-mode', mode.value)"
+      >
+        {{ mode.label }}
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Investment, SurveyPage } from '~/stores/surveyInvestments'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
+
+const { t } = useI18n()
 
 interface DocumentCategoryWithInvestment {
   id: string
@@ -124,13 +152,21 @@ const props = withDefaults(defineProps<Props>(), {
   investmentFilter: 'all'
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'page-click': [pageId: string]
-  'category-click': [categoryId: string]
+  'category-click': [categoryId: string, investmentId: string]
   'toggle-list-view': []
+  'change-view-mode': [mode: 'photos' | 'data' | 'all']
 }>()
 
 const store = useSurveyInvestmentsStore()
+
+// View mode options
+const viewModes = computed(() => [
+  { value: 'photos' as const, label: t('survey.header.photos') },
+  { value: 'data' as const, label: t('survey.header.data') },
+  { value: 'all' as const, label: t('survey.header.all') }
+])
 
 // Calculate completion percentage for a page
 const getPageCompletionPercentage = (page: SurveyPage): number => {
@@ -239,5 +275,31 @@ const getCategoryButtonPosition = (category: DocumentCategoryWithInvestment, ind
     top: `${baseTop + offset}px`,
     right: `${baseRight}px`
   }
+}
+
+// Handle category click - select the correct category based on investment filter
+const handleCategoryClick = (categories: DocumentCategoryWithInvestment[]) => {
+  if (categories.length === 0) return
+
+  // If investment filter is set and not 'all', find the category for that investment
+  if (props.investmentFilter && props.investmentFilter !== 'all') {
+    const category = categories.find(cat => cat.investmentId === props.investmentFilter)
+    if (category) {
+      emit('category-click', category.id, category.investmentId)
+      return
+    }
+  }
+
+  // Otherwise, use the first category (default behavior)
+  const category = categories[0]!
+  emit('category-click', category.id, category.investmentId)
+}
+
+// Check if all categories in the group have sufficient photos
+const areCategoriesComplete = (categories: DocumentCategoryWithInvestment[]): boolean => {
+  return categories.every(cat => {
+    const uploadedCount = store.getCategoryPhotoCount(cat.id)
+    return uploadedCount >= cat.min_photos
+  })
 }
 </script>

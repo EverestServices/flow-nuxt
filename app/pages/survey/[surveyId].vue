@@ -6,6 +6,7 @@
       :client-name="clientName"
       :show-mode-toggle="activeTab === 'property-assessment'"
       :selected-investments="selectedInvestments"
+      :investment-filter="investmentFilter"
       :scenarios="scenarios"
       :active-scenario-id="activeScenario?.id"
       :scenario-investments="scenarioInvestments"
@@ -13,6 +14,7 @@
       :contracts="contracts"
       :active-contract-id="activeContract?.id"
       :contract-investments="contractInvestments"
+      :summary-view-mode="summaryViewMode"
       :hide-investment-controls="isMeasureRoute"
       @back="handleBack"
       @toggle-investment="handleToggleInvestment"
@@ -23,7 +25,22 @@
       @select-scenario="handleSelectScenario"
       @change-contract-mode="handleContractModeChange"
       @select-contract="handleSelectContract"
+      @change-summary-view-mode="handleChangeSummaryViewMode"
     />
+
+    <!-- External Sync Retry Button -->
+    <div v-if="isExternalSurvey && !isMeasureRoute" class="fixed top-20 right-4 z-40">
+      <UIButtonEnhanced
+        size="sm"
+        variant="outline"
+        @click="handleRetrySync"
+        :loading="syncingToExternal"
+        class="shadow-lg"
+      >
+        <Icon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
+        Retry Sync
+      </UIButtonEnhanced>
+    </div>
 
     <!-- Navigation Tabs (hidden when in marker mode/measure route) -->
     <SurveyNavigation
@@ -52,6 +69,8 @@
           @set-display-mode="handleSetDisplayMode"
           @open-photo-upload="handleOpenPhotoUpload"
           @open-camera="handleOpenCamera"
+          @toggle-view-mode="handleToggleViewMode"
+          @update-investment-filter="handleToggleInvestmentFilter"
         />
 
         <!-- Consultation Tab -->
@@ -62,6 +81,8 @@
           :consultation-open="consultationPanelOpen"
           @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
           @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
+          @ai-scenarios="handleAIScenarios"
+          @new-scenario="handleNewScenario"
         />
 
         <!-- Offer/Contract Tab -->
@@ -84,6 +105,7 @@
           v-else-if="activeTab === 'summary'"
           :survey-id="surveyId"
           :client-data="clientData"
+          :view-mode="summaryViewMode"
           @save-without-send="handleSaveWithoutSend"
           @save-and-send="handleSaveAndSendSingle"
           @sign-now="handleSignNowSingle"
@@ -102,6 +124,7 @@
       :can-save-contract="canSaveContract"
       :contract-count="contracts.length"
       :show-scenario-footer="scenarioFooterVisible"
+      :fill-all-data-active="fillAllDataActive"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -384,12 +407,26 @@
       :client-data="clientData"
       @sign="handleSignAllContractsComplete"
     />
+
+    <!-- Survey Report Modal -->
+    <SurveyReportModal
+      v-model="showReportModal"
+    />
+
+    <!-- Unsaved Changes Modal -->
+    <SurveyUnsavedChangesModal
+      v-if="showUnsavedChangesModal"
+      v-model="showUnsavedChangesModal"
+      @save-and-exit="handleSaveAndExitUnsaved"
+      @discard-and-exit="handleDiscardAndExit"
+      @cancel="handleCancelExit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useScenariosStore } from '~/stores/scenarios'
@@ -431,6 +468,9 @@ const activeTab = ref<'property-assessment' | 'consultation' | 'offer-contract' 
 // Contract mode state (null = not set, 'offer' = Offer mode, 'contract' = Contract mode)
 const contractMode = ref<'offer' | 'contract' | null>(null)
 
+// Summary view mode state
+const summaryViewMode = ref<'list' | 'card'>('list')
+
 // Check if there are any saved contracts
 const hasContracts = computed(() => contracts.value.length > 0)
 
@@ -466,6 +506,10 @@ const tabs = computed(() => {
 const clientName = ref(t('survey.page.loading'))
 const clientData = ref<any>(null)
 
+// External sync state
+const isExternalSurvey = ref(false)
+const syncingToExternal = ref(false)
+
 // Can proceed logic per tab
 const canProceed = computed(() => {
   switch (activeTab.value) {
@@ -492,8 +536,8 @@ const missingItemsCount = computed(() => {
   investmentsStore.selectedInvestments.forEach(investment => {
     const categories = investmentsStore.documentCategories[investment.id] || []
     categories.forEach(category => {
-      // TODO: Get actual uploaded photo count from store/database
-      const uploadedCount = 0 // Placeholder
+      // Get actual uploaded photo count from store
+      const uploadedCount = investmentsStore.getCategoryPhotoCount(category.id)
       if (uploadedCount < category.min_photos) {
         count++
       }
@@ -560,6 +604,10 @@ watch(isMeasureRoute, (isMeasure) => {
 // Page display mode - 'single' | 'investment' | 'all'
 const pageDisplayMode = ref<'single' | 'investment' | 'all'>('single')
 
+// Store previous display mode when toggling "Fill All Data"
+const previousDisplayMode = ref<'single' | 'investment' | 'all'>('single')
+const fillAllDataActive = ref(false)
+
 // Felugró ablakok állapota
 const showInvestmentModal = ref(false)
 const showMissingItemsModal = ref(false)
@@ -575,6 +623,14 @@ const showSendAllContractsModal = ref(false)
 const showSignAllContractsModal = ref(false)
 const selectedContractForSend = ref<any>(null)
 const selectedContractForSign = ref<any>(null)
+
+// Survey Report modal
+const showReportModal = ref(false)
+
+// Unsaved changes tracking
+const showUnsavedChangesModal = ref(false)
+const hasUnsavedChanges = ref(false)
+const pendingNavigation = ref<any>(null)
 
 // Photo upload modal states
 const showPhotoUploadModal = ref(false)
@@ -638,6 +694,9 @@ const loadSurveyData = async () => {
       clientName.value = survey.client.name
       clientData.value = survey.client
 
+      // Check if this is an external survey
+      isExternalSurvey.value = !!(survey.ofp_survey_id || survey.ekr_survey_id)
+
       // Load consultation panel states
       if (survey.consultation_system_design_open !== null && survey.consultation_system_design_open !== undefined) {
         consultationSystemDesignOpen.value = survey.consultation_system_design_open
@@ -671,7 +730,69 @@ const loadSurveyData = async () => {
 
 // Header handlers
 const handleBack = () => {
-  router.push('/survey')
+  // If in measure mode, go back to the survey page
+  if (isMeasureRoute.value) {
+    router.push(`/survey/${surveyId.value}`)
+    return
+  }
+
+  // Find current tab index
+  const currentIndex = tabs.value.findIndex(tab => tab.id === activeTab.value)
+
+  // If we're not on the first tab, go to previous tab
+  if (currentIndex > 0) {
+    const previousTab = tabs.value[currentIndex - 1]
+    activeTab.value = previousTab.id as any
+  } else {
+    // Only on first tab, go back to survey list
+    router.push('/survey')
+  }
+}
+
+const handleRetrySync = async () => {
+  if (!isExternalSurvey.value) return
+
+  syncingToExternal.value = true
+  const toast = useToast()
+  const { exportSurvey } = useExternalSync()
+
+  try {
+    toast.add({
+      title: 'Syncing survey...',
+      description: 'Retrying sync to external system',
+      color: 'blue',
+      timeout: 2000
+    })
+
+    const { success, error } = await exportSurvey(surveyId.value)
+
+    if (success) {
+      toast.add({
+        title: 'Success',
+        description: 'Survey synced successfully',
+        color: 'green',
+        timeout: 3000
+      })
+    } else {
+      console.error('Sync failed:', error)
+      toast.add({
+        title: 'Error',
+        description: `Sync failed: ${error || 'Unknown error'}`,
+        color: 'red',
+        timeout: 5000
+      })
+    }
+  } catch (error: any) {
+    console.error('Error in retry sync:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to sync survey',
+      color: 'red',
+      timeout: 3000
+    })
+  } finally {
+    syncingToExternal.value = false
+  }
 }
 
 const handleToggleInvestment = () => {
@@ -690,6 +811,19 @@ const handleToggleViewMode = (mode: 'photos' | 'data' | 'all') => {
 const handleToggleInvestmentFilter = (investmentId: string) => {
   investmentFilter.value = investmentId
   console.log('Toggle investment filter:', investmentId)
+
+  // Also set the active investment in the store (for the left side form)
+  if (investmentId !== 'all') {
+    investmentsStore.setActiveInvestment(investmentId)
+
+    // Switch to 'investment' mode to show all pages of this investment
+    // (or keep current mode if already in 'single' or 'investment')
+    if (pageDisplayMode.value === 'all') {
+      pageDisplayMode.value = 'investment'
+      // Disable "Fill All Data" toggle when manually changing mode
+      fillAllDataActive.value = false
+    }
+  }
 }
 
 const handleToggleVisualization = (show: boolean) => {
@@ -702,10 +836,86 @@ const handleContractModeChange = (mode: 'offer' | 'contract' | null) => {
   console.log('Contract mode changed:', mode)
 }
 
+const handleChangeSummaryViewMode = (mode: 'list' | 'card') => {
+  summaryViewMode.value = mode
+}
+
 // Footer handlers
-const handleSaveExit = () => {
+const handleSaveExit = async () => {
   console.log('Save and exit')
-  router.push('/survey')
+
+  // Check if this is an external survey
+  const supabase = useSupabaseClient()
+  const toast = useToast()
+
+  try {
+    // Get survey data to check if it's external
+    const { data: survey, error: surveyError } = await supabase
+      .from('surveys')
+      .select('ofp_survey_id, ekr_survey_id')
+      .eq('id', surveyId.value)
+      .single()
+
+    if (surveyError) {
+      console.error('Failed to load survey:', surveyError)
+      // Continue to redirect even if check fails
+      router.push('/survey')
+      return
+    }
+
+    // Check if external survey
+    const isExternalSurvey = !!(survey.ofp_survey_id || survey.ekr_survey_id)
+
+    if (isExternalSurvey) {
+      // Trigger sync to external system
+      const { exportSurvey } = useExternalSync()
+
+      toast.add({
+        title: 'Syncing survey...',
+        description: 'Sending survey data to external system',
+        color: 'blue',
+        timeout: 2000
+      })
+
+      const { success, error } = await exportSurvey(surveyId.value)
+
+      if (success) {
+        toast.add({
+          title: 'Success',
+          description: 'Survey saved and synced successfully',
+          color: 'green',
+          timeout: 3000
+        })
+      } else {
+        console.error('Sync failed:', error)
+        toast.add({
+          title: 'Warning',
+          description: 'Survey saved, but sync failed. You can retry from survey details.',
+          color: 'amber',
+          timeout: 5000
+        })
+      }
+    } else {
+      // Normal Flow survey - just show success
+      toast.add({
+        title: 'Success',
+        description: 'Survey saved successfully',
+        color: 'green',
+        timeout: 2000
+      })
+    }
+  } catch (error) {
+    console.error('Error in save and exit:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to save survey',
+      color: 'red',
+      timeout: 3000
+    })
+  } finally {
+    // Always redirect after sync attempt
+    router.push('/survey')
+  }
 }
 
 const handleUploadPhotos = () => {
@@ -716,8 +926,18 @@ const handleUploadPhotos = () => {
 }
 
 const handleFillAllData = () => {
-  pageDisplayMode.value = 'all'
-  console.log('Fill all data - switched to all mode')
+  if (fillAllDataActive.value) {
+    // Currently active - toggle OFF, restore previous mode
+    pageDisplayMode.value = previousDisplayMode.value
+    fillAllDataActive.value = false
+    console.log('Fill all data - toggled OFF, restored to:', previousDisplayMode.value)
+  } else {
+    // Currently inactive - toggle ON, switch to 'all' mode
+    previousDisplayMode.value = pageDisplayMode.value
+    pageDisplayMode.value = 'all'
+    fillAllDataActive.value = true
+    console.log('Fill all data - toggled ON, saved previous mode:', previousDisplayMode.value)
+  }
 }
 
 const handleToggleListView = () => {
@@ -726,16 +946,22 @@ const handleToggleListView = () => {
   } else {
     pageDisplayMode.value = 'investment'
   }
+  // Disable "Fill All Data" toggle when manually changing mode
+  fillAllDataActive.value = false
   console.log('Toggle list view:', pageDisplayMode.value)
 }
 
 const handleSetDisplayMode = (mode: 'single' | 'investment' | 'all') => {
   pageDisplayMode.value = mode
+  // Disable "Fill All Data" toggle when manually changing mode (unless it's being set to 'all')
+  if (mode !== 'all') {
+    fillAllDataActive.value = false
+  }
   console.log('Set display mode:', mode)
 }
 
 const handleGenerateAssessment = () => {
-  console.log('Generate assessment sheet')
+  showReportModal.value = true
 }
 
 const handleToggleMarkerMode = (enabled: boolean) => {
@@ -775,10 +1001,10 @@ const handleOpenSurveyPageFromMissing = (pageId: string) => {
   investmentsStore.setActivePage(pageId)
 }
 
-const handleOpenPhotoUpload = (categoryId: string) => {
+const handleOpenPhotoUpload = (categoryId: string, investmentId: string) => {
   photoUploadMode.value = 'single'
   photoUploadCategoryId.value = categoryId
-  photoUploadInvestmentId.value = undefined
+  photoUploadInvestmentId.value = investmentId
   showPhotoUploadModal.value = true
 }
 
@@ -1206,6 +1432,75 @@ const handleSignAllContractsComplete = (data: any) => {
   console.log('Sign all contracts:', data)
   // TODO: Implement - Save all signatures and update contract statuses
 }
+
+// Unsaved changes handlers
+const handleSaveAndExitUnsaved = async () => {
+  // Save all changes
+  await saveAllChanges()
+  // Clear the flags
+  hasUnsavedChanges.value = false
+  showUnsavedChangesModal.value = false
+  // Proceed with navigation
+  if (pendingNavigation.value) {
+    await router.push(pendingNavigation.value)
+    pendingNavigation.value = null
+  }
+}
+
+const handleDiscardAndExit = () => {
+  // Clear the flags without saving
+  hasUnsavedChanges.value = false
+  showUnsavedChangesModal.value = false
+  // Proceed with navigation
+  if (pendingNavigation.value) {
+    router.push(pendingNavigation.value)
+    pendingNavigation.value = null
+  }
+}
+
+const handleCancelExit = () => {
+  // Just cancel - close modal and do nothing
+  showUnsavedChangesModal.value = false
+  pendingNavigation.value = null
+}
+
+const saveAllChanges = async () => {
+  // Save survey responses
+  await investmentsStore.saveAllResponses(surveyId.value)
+  console.log('All changes saved')
+  // TODO: Add toast notification
+}
+
+// Mark changes when user interacts with the survey
+// Use flush: 'post' and a flag to skip initial load
+const isInitialLoad = ref(true)
+onMounted(() => {
+  // After initial mount, allow tracking changes
+  setTimeout(() => {
+    isInitialLoad.value = false
+  }, 1000) // Give 1 second for initial data to load
+})
+
+watch(() => investmentsStore.responses, () => {
+  if (!isInitialLoad.value) {
+    hasUnsavedChanges.value = true
+  }
+}, { deep: true, flush: 'post' })
+
+// Navigation guard - prevent leaving if there are unsaved changes
+onBeforeRouteLeave((to, from, next) => {
+  if (hasUnsavedChanges.value) {
+    // Store the pending navigation
+    pendingNavigation.value = to.fullPath
+    // Show the modal
+    showUnsavedChangesModal.value = true
+    // Cancel the navigation for now
+    next(false)
+  } else {
+    // No unsaved changes, allow navigation
+    next()
+  }
+})
 
 definePageMeta({
   layout: 'fullwidth'
