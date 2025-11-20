@@ -137,11 +137,12 @@ onMounted(async () => {
         console.log('📷 Processing image:', img);
         console.log('   - Original URL:', img.original_url);
         console.log('   - Processed URL:', img.processed_url);
+        const hasProcessed = Boolean(img.processed_url);
         return {
           imageId: img.id,
           file: null,
           fileName: (img.original_url || img.processed_url)?.split('/').pop() || null,
-          uploadStatus: 'success' as const,
+          uploadStatus: (hasProcessed ? 'success' : 'failed'),
           message: null,
           previewUrl: img.original_url || img.processed_url || '',
           processedImageUrl: img.processed_url || '',
@@ -151,6 +152,7 @@ onMounted(async () => {
           referenceStart: img.reference_start ?? null,
           referenceEnd: img.reference_end ?? null,
           referenceLengthCm: img.reference_length_cm,
+          manual: !hasProcessed,
         };
       });
 
@@ -440,9 +442,27 @@ const handleImageChange = async (wall: Wall, image: WallImage | undefined, event
     } catch (uploadErr: any) {
       console.error('❌ Supabase Storage upload/save failed:', uploadErr);
       console.error('Error details:', JSON.stringify(uploadErr, null, 2));
-      // Don't set image URLs - upload failed
-      processedImageUrl = null;
-      uploadedUrl = null;
+      // Fallback: save original to DB blob so manual measurement remains possible
+      try {
+        const insertedImage = await insertWallImage(wall.id, {
+          originalUrl: null,
+          processedUrl: null,
+          meterPerPixel: null,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        await setOriginalImageBlob(insertedImage.id, file);
+        uploadedUrl = await getImageDataUrl(insertedImage.id, 'original');
+        processedImageUrl = null;
+        image.imageId = insertedImage.id;
+      } catch (fallbackErr) {
+        console.error('❌ DB blob fallback failed:', fallbackErr);
+        processedImageUrl = null;
+        uploadedUrl = null;
+      }
     }
 
     // Update with permanent Supabase URLs if upload was successful
@@ -451,23 +471,66 @@ const handleImageChange = async (wall: Wall, image: WallImage | undefined, event
       image.message = 'Sikeresen feltöltve és feldolgozva!';
       image.processedImageUrl = processedImageUrl; // Permanent Supabase URL
       image.previewUrl = uploadedUrl; // Original image Supabase URL
+      image.manual = false;
       store.setWall(surveyId.value, wall.id, wall);
       console.log('✅ Image successfully uploaded and saved!');
     } else {
-      // Upload failed - show error
+      // Upload failed - show error but keep preview and allow manual measurement
       image.uploadStatus = 'failed';
-      image.message = 'A feltöltés nem sikerült. Ellenőrizd a kapcsolatot és próbáld újra.';
+      image.message = 'A feltöltés nem sikerült. Kézi mérés elérhető.';
       image.processedImageUrl = '';
-      image.previewUrl = '';
+      if (uploadedUrl) image.previewUrl = uploadedUrl;
+      image.manual = true;
       store.setWall(surveyId.value, wall.id, wall);
-      console.error('❌ Image upload failed - URLs not set');
+      console.error('❌ Image upload failed - falling back to manual mode');
     }
   } catch (err: any) {
     console.error('❌ Feldolgozás hiba:', err);
     image.uploadStatus = 'failed';
-    image.message = err?.message || 'Hiba történt a feldolgozás során. Próbáld újra.';
+    image.message = err?.message || 'Hiba történt a feldolgozás során. Kézi mérés elérhető.';
     image.processedImageUrl = '';
-    image.previewUrl = '';
+    image.manual = true;
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('user_id', user.value?.id)
+        .single();
+      const companyId = (profile?.company_id ?? null) as string | null;
+      let origUrl: string | null = null;
+      if (companyId) {
+        const originalUpload = await uploadImage(file, companyId, surveyId.value, wall.id, 'original');
+        origUrl = originalUpload.publicUrl;
+        const inserted = await insertWallImage(wall.id, {
+          originalUrl: originalUpload.publicUrl,
+          processedUrl: null,
+          meterPerPixel: null,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        image.imageId = inserted.id;
+      } else {
+        const inserted = await insertWallImage(wall.id, {
+          originalUrl: null,
+          processedUrl: null,
+          meterPerPixel: null,
+          processedImageWidth: null,
+          processedImageHeight: null,
+          referenceStart: null,
+          referenceEnd: null,
+          referenceLengthCm: null,
+        });
+        await setOriginalImageBlob(inserted.id, file);
+        origUrl = await getImageDataUrl(inserted.id, 'original');
+        image.imageId = inserted.id;
+      }
+      if (origUrl) image.previewUrl = origUrl;
+    } catch (saveErr) {
+      console.error('❌ Eredeti kép mentése sikertelen feldolgozás hiba után:', saveErr);
+    }
     store.setWall(surveyId.value, wall.id, wall);
   }
 };

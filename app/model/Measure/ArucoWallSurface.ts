@@ -16,6 +16,7 @@ export type WallImage = {
   referenceStart?: Point | null;
   referenceEnd?: Point | null;
   referenceLengthCm?: number | null;
+  manual?: boolean;
 };
 
 export type Wall = {

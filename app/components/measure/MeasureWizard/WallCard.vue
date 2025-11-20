@@ -82,6 +82,16 @@
           <Icon name="i-lucide-ruler" class="w-4 h-4" /> Mérés
         </UButton>
       </div>
+      <div v-else-if="wall.images[0]?.uploadStatus === 'failed' && wall.images[0]?.previewUrl" class="absolute top-2 right-2">
+        <UButton
+          :to="`/survey/${String(route.params.surveyId)}/measure/${wall.id}?manual=1`"
+          color="warning"
+          size="sm"
+          class="gap-1"
+        >
+          <Icon name="i-lucide-ruler" class="w-4 h-4" /> Kézi mérés
+        </UButton>
+      </div>
     </div>
 
     <!-- TARTALOM -->

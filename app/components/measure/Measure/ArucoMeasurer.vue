@@ -549,6 +549,7 @@ const calibrationMode = ref<boolean>(false);
 const highlightRef = ref<boolean>(false);
 const showSavedReference = ref<boolean>(false);
 const allowRefOverride = ref<boolean>(false);
+const manualInitDone = ref<boolean>(false);
 
 // Computed property to check if we're in view mode (not editing)
 const isViewMode = computed(() => !editingMode.value && !editPointsMode.value && !calibrationMode.value);
@@ -1724,6 +1725,10 @@ const onKeyup = (e: KeyboardEvent) => {
 };
 
 onMounted(() => {
+  const manual = String((route.query as any)?.manual ?? '');
+  if (manual && ['1','true','yes'].includes(manual.toLowerCase())) {
+    setMode('calibrate');
+  }
   window.addEventListener('resize', handleResize);
   window.addEventListener('keydown', onKeydown);
   window.addEventListener('keyup', onKeyup);
