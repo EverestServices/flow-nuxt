@@ -37,8 +37,9 @@
         <Icon name="i-lucide-zoom-in" class="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>
       <div class="h-6 w-px bg-gray-400/30 mx-1"></div>
-      <span class="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">{{ pixelPerMeterLabel }}</span>
-      <span v-if="referenceSet" class="px-2 py-1 rounded-full bg-green-500/20 text-green-700 dark:text-green-300 text-xs font-semibold">
+      <span v-if="!manualActive" class="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400">{{ pixelPerMeterLabel }}</span>
+      <span v-else class="px-2 py-1 rounded-full bg-amber-400/80 text-black text-xs font-semibold">Kézi kijelölés mód</span>
+      <span v-if="!manualActive && referenceSet" class="px-2 py-1 rounded-full bg-green-500/20 text-green-700 dark:text-green-300 text-xs font-semibold">
         Referencia OK
       </span>
       <div class="h-6 w-px bg-gray-400/30 mx-1"></div>
@@ -65,6 +66,8 @@
       </button>
     </div>
   </Transition>
+
+  
 
   <!-- Mode Selector - Fixed to Screen Bottom Center -->
   <Transition
@@ -110,6 +113,7 @@
         Edit
       </button>
       <button
+        v-if="!manualActive"
         @click="() => setMode('calibrate')"
         :class="[
           'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
@@ -253,6 +257,12 @@
         <!-- Divider -->
         <div class="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-700 to-transparent mb-4"></div>
 
+        <div v-if="manualActive" class="mb-3 flex items-center gap-2">
+          <UBadge color="warning" size="xs">Kézi kijelölés</UBadge>
+        </div>
+
+        
+
         <div class="mb-3">
           <OrientationSelector
             v-model="wallOrientation"
@@ -262,12 +272,13 @@
 
         <PolygonList
           v-if="imageRef"
-          :wallId="wall.id"
-          v-model:polygons="polygons"
-          :meterPerPixel="meterPerPixel"
-          :image-natural-height="imageRef.naturalHeight"
-          :image-natural-width="imageRef.naturalWidth"
-          :selected-id="selectedPolygonId ?? ''"
+          :polygons="polygons as any"
+          :meter-per-pixel="meterPerPixel || storedMeterPerPixel"
+          :image-natural-width="imageWidth"
+          :image-natural-height="imageHeight"
+          :wall-id="wall.id"
+          :selected-id="selectedPolygonId || undefined"
+          :manual-active="manualActive"
           @removePoligon="removePoligonsById"
           @removeAllPoligon="removeAllPoligon"
           @updateVisibility="onUpdateVisibility"
@@ -321,9 +332,80 @@
               @mouseup="handleMouseUp"
               @touchstart="handleCanvasTouch"
             ></canvas>
+            <div
+              v-if="manualActive && selectedRectangle && rectEdges"
+              class="absolute z-30"
+              :style="{ left: (rectEdges.a.x - 22) + 'px', top: (rectEdges.a.y - 8) + 'px' }"
+            >
+              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
+                <input
+                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
+                  type="number"
+                  inputmode="numeric"
+                  step="1"
+                  v-model="edgeInputA"
+                  placeholder="cm"
+                  @keyup.enter="saveEdgeNote('a')"
+                  @blur="saveEdgeNote('a')"
+                />
+                <span class="text-[10px] opacity-80">cm</span>
+              </div>
+            </div>
+            <!-- Generic per-edge inputs for all non-rectangle polygons in manual mode -->
+            <div
+              v-for="ov in allEdgeOverlays"
+              :key="ov.key"
+              v-if="manualActive"
+              class="absolute z-30"
+              :style="{ left: (ov.x - 22) + 'px', top: (ov.y - 8) + 'px' }"
+            >
+              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
+                <input
+                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
+                  type="number"
+                  inputmode="numeric"
+                  step="1"
+                  :value="ov.value"
+                  placeholder="cm"
+                  @input="onEdgeInputBuffer(ov.key, $event)"
+                  @keyup.enter="saveEdgeInput(ov.key)"
+                  @blur="saveEdgeInput(ov.key)"
+                />
+                <span class="text-[10px] opacity-80">cm</span>
+              </div>
+            </div>
+            <div
+              v-if="manualActive && selectedRectangle && rectEdges"
+              class="absolute z-30"
+              :style="{ left: (rectEdges.b.x - 22) + 'px', top: (rectEdges.b.y - 8) + 'px' }"
+            >
+              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
+                <input
+                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
+                  type="number"
+                  inputmode="numeric"
+                  step="1"
+                  v-model="edgeInputB"
+                  placeholder="cm"
+                  @keyup.enter="saveEdgeNote('b')"
+                  @blur="saveEdgeNote('b')"
+                />
+                <span class="text-[10px] opacity-80">cm</span>
+              </div>
+            </div>
+            <!-- Manual area display at polygon center (manual mode, read-only) -->
+            <div
+              v-if="manualActive && selectedPolygonCenter && manualAreaLabel"
+              class="absolute z-30"
+              :style="{ left: selectedPolygonCenter.x + 'px', top: selectedPolygonCenter.y + 'px', transform: 'translate(-50%, -50%)' }"
+            >
+              <div class="flex items-center gap-1 bg-neutral-900/85 text-white rounded-full px-2 py-1 shadow select-none">
+                <span class="text-xs font-semibold">{{ manualAreaLabel }}</span>
+              </div>
+            </div>
             <!-- Inline calibration input overlay near the segment midpoint -->
             <div
-              v-if="calibrationMode && calibrationStart && (calibrationEnd || mousePos) && calibrationMidOverlay"
+              v-if="!manualActive && calibrationMode && calibrationStart && (calibrationEnd || mousePos) && calibrationMidOverlay"
               class="absolute z-30"
               :style="{ left: `${calibrationMidOverlay.x}px`, top: `${calibrationMidOverlay.y}px`, transform: 'translate(-50%, -120%)' }"
             >
@@ -352,7 +434,7 @@
 
           <!-- Bottom-left: Reference controls (only in calibration mode) -->
           <div
-            v-if="calibrationMode"
+            v-if="calibrationMode && !manualActive"
             class="pointer-events-auto absolute left-3 bottom-3 flex items-center gap-1 bg-white/20 dark:bg-black/20 border border-white dark:border-black/10 rounded-full backdrop-blur-xs h-12 px-2 shadow-sm"
           >
             <button
@@ -384,7 +466,7 @@
           </div>
 
           <!-- Calibration helper (only message, no buttons) -->
-          <div v-if="calibrationMode" class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+          <div v-if="calibrationMode && !manualActive" class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
             <div class="pointer-events-auto bg-neutral-900/80 text-white text-sm rounded-full px-3 py-1 flex items-center gap-2 shadow">
               <UBadge color="error" size="sm" class="px-2 py-0.5">Setup Reference</UBadge>
               <span>{{ calibrationInfoText }}</span>
@@ -407,6 +489,8 @@ import OrientationSelector from '@/components/shared/OrientationSelector.vue';
 import { useWallStore, clonePolygonData } from '@/stores/WallStore';
 import { useRoute, useRouter } from 'vue-router';
 import { useWallSync } from '@/composables/useWallSync';
+import { useMeasure } from '@/composables/useMeasure';
+import { deriveShape } from '@/service/Measurment/ShapeDeriveService';
 const store = useWallStore();
 const route = useRoute();
 const router = useRouter();
@@ -418,6 +502,8 @@ const wall = computed<Wall>(() => {
   const w = surveyWalls[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
+
+ 
 
 // Wall navigation
 const allWalls = computed(() => Object.values(store.getWallsForSurvey(surveyId.value)));
@@ -441,6 +527,15 @@ const handleBackToMeasureList = async () => {
     console.error('Error syncing walls:', error);
   }
   await router.push(`/survey/${String(route.params.surveyId)}/measure`);
+};
+
+const toggleManualMode = () => {
+  const imgMeta = firstImage.value;
+  if (!imgMeta || !wall.value) return;
+  imgMeta.manual = !Boolean(imgMeta.manual);
+  store.setWall(surveyId.value, wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  if (imgMeta.manual) setMode('edit');
+  drawAllPolygons();
 };
 
 const navigateToPreviousWall = () => {
@@ -488,6 +583,12 @@ const imageSrc = computed(() => firstImage.value?.processedImageUrl || firstImag
 const error = ref<string | null>(null);
 const meterPerPixel = ref<number>(firstImage.value?.meterPerPixel || 0);
 const storedMeterPerPixel = computed(() => firstImage.value?.meterPerPixel || 1);
+const manualActive = computed(() => {
+  const q = String((route.query as any)?.manual ?? '');
+  const fromQuery = q && ['1','true','yes'].includes(q.toLowerCase());
+  const meta = firstImage.value;
+  return Boolean(fromQuery || meta?.manual || !meta?.processedImageUrl);
+});
 const pixelPerMeterLabel = computed(() => {
   const mpp = meterPerPixel.value || 0;
   if (!mpp) return '— px/m';
@@ -550,6 +651,408 @@ const highlightRef = ref<boolean>(false);
 const showSavedReference = ref<boolean>(false);
 const allowRefOverride = ref<boolean>(false);
 const manualInitDone = ref<boolean>(false);
+const edgeInputBuffer = ref<string>('');
+
+const selectedRectangle = computed(() => {
+  if (!selectedPolygonId.value) return null as null | PolygonSurface;
+  const p = polygons.value.find((x) => x.id === selectedPolygonId.value) || null;
+  if (!p || !p.closed || p.points.length !== 4) return null as null | PolygonSurface;
+  return p as PolygonSurface;
+});
+const rectWidth = ref<string>('');
+const rectHeight = ref<string>('');
+const rectCornerIdx = ref<number>(0);
+const rectSwapAxes = ref<boolean>(false);
+
+const lengthMetersBetween = (a: Point, b: Point): number => {
+  const img = imageRef.value;
+  const mpp = meterPerPixel.value || storedMeterPerPixel.value || 0;
+  if (!img || !(mpp > 0)) return 0;
+  const dx = (b.x - a.x) * img.naturalWidth;
+  const dy = (b.y - a.y) * img.naturalHeight;
+  const px = Math.hypot(dx, dy);
+  return px * mpp;
+};
+
+const getRectTriplet = (poly: PolygonSurface) => {
+  const i = ((rectCornerIdx.value % 4) + 4) % 4;
+  const p0 = poly.points[i]!;
+  const p1 = poly.points[(i + 1) % 4]!;
+  const p2 = poly.points[(i + 2) % 4]!;
+  return { p0, p1, p2 };
+};
+
+const refreshRectInputs = () => {
+  const poly = selectedRectangle.value;
+  if (!poly) return;
+  const { p0, p1, p2 } = getRectTriplet(poly);
+  let a = lengthMetersBetween(p0, p1);
+  let b = lengthMetersBetween(p1, p2);
+  if (rectSwapAxes.value) [a, b] = [b, a];
+  rectWidth.value = a > 0 ? a.toFixed(2) : '';
+  rectHeight.value = b > 0 ? b.toFixed(2) : '';
+};
+
+ 
+
+const rotateRectCorner = () => { rectCornerIdx.value = (rectCornerIdx.value + 1) % 4; refreshRectInputs(); updateEdgeNotesRect(); };
+const swapRectAxes = () => { rectSwapAxes.value = !rectSwapAxes.value; refreshRectInputs(); updateEdgeNotesRect(); };
+
+let rectApplyTimer: number | null = null;
+const onRectInputChange = () => {
+  if (rectApplyTimer) window.clearTimeout(rectApplyTimer);
+  rectApplyTimer = window.setTimeout(() => applyRectInputs(), 250) as unknown as number;
+};
+
+const rectEdges = computed(() => {
+  const poly = selectedRectangle.value;
+  const img = imageRef.value;
+  const wrapper = zoomWrapperRef.value;
+  const canvasEl = canvasRef.value;
+  const _zs = zoomScale.value;
+  if (!poly || !img || !wrapper || !canvasEl) return null as null | { a: { x: number; y: number }; b: { x: number; y: number } };
+  const points = poly.points;
+  if (points.length !== 4) return null as any;
+  const d = points.map((pt) => denormalizePoint(pt));
+  // Edge midpoints
+  const mids = [
+    { x: (d[0].x + d[1].x) / 2, y: (d[0].y + d[1].y) / 2, i: 0, j: 1 },
+    { x: (d[1].x + d[2].x) / 2, y: (d[1].y + d[2].y) / 2, i: 1, j: 2 },
+    { x: (d[2].x + d[3].x) / 2, y: (d[2].y + d[3].y) / 2, i: 2, j: 3 },
+    { x: (d[3].x + d[0].x) / 2, y: (d[3].y + d[0].y) / 2, i: 3, j: 0 },
+  ];
+  // Determine A/B edge pairs based on rectCornerIdx and swap
+  const c = ((rectCornerIdx.value % 4) + 4) % 4;
+  const norm = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  let aPairs = [norm(c, (c + 1) % 4), norm((c + 2) % 4, (c + 3) % 4)];
+  let bPairs = [norm((c + 1) % 4, (c + 2) % 4), norm((c + 3) % 4, c)];
+  if (rectSwapAxes.value) {
+    const t = aPairs; aPairs = bPairs; bPairs = t;
+  }
+  // Read canvas CSS offsets directly (set in drawAllPolygons)
+  const offX = Number((canvasEl.style.left || '0').replace('px','')) || 0;
+  const offY = Number((canvasEl.style.top || '0').replace('px','')) || 0;
+  // Pick topmost from A, leftmost from B
+  const isPair = (m: any, pair: string) => pair === norm(m.i, m.j);
+  const aCandidates = mids.filter((m) => aPairs.some((p) => isPair(m, p)));
+  const bCandidates = mids.filter((m) => bPairs.some((p) => isPair(m, p)));
+  const aMid = aCandidates.reduce((best, m) => (best && best.y < m.y ? best : m), aCandidates[0]);
+  const bMid = bCandidates.reduce((best, m) => (best && best.x > m.x ? best : m), bCandidates[0]);
+  return {
+    a: { x: offX + (aMid?.x ?? 0), y: offY + (aMid?.y ?? 0) },
+    b: { x: offX + (bMid?.x ?? 0), y: offY + (bMid?.y ?? 0) },
+  };
+});
+
+const applyRectInputs = () => {
+  const poly = selectedRectangle.value;
+  const img = imageRef.value;
+  const mpp = meterPerPixel.value || storedMeterPerPixel.value || 0;
+  if (!poly || !img || !(mpp > 0) || poly.points.length !== 4) return;
+  const w = Number((rectWidth.value || '').replace(',', '.'));
+  const h = Number((rectHeight.value || '').replace(',', '.'));
+  if (!Number.isFinite(w) || !(w > 0) || !Number.isFinite(h) || !(h > 0)) return;
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  const { p0, p1, p2 } = getRectTriplet(poly);
+  let wIn = w, hIn = h;
+  if (rectSwapAxes.value) [wIn, hIn] = [hIn, wIn];
+  const uPx = { x: (p1.x - p0.x) * natW, y: (p1.y - p0.y) * natH };
+  const vPx = { x: (p2.x - p1.x) * natW, y: (p2.y - p1.y) * natH };
+  const uLen = Math.hypot(uPx.x, uPx.y) || 1;
+  const vLen = Math.hypot(vPx.x, vPx.y) || 1;
+  const ux = uPx.x / uLen;
+  const uy = uPx.y / uLen;
+  const vx = vPx.x / vLen;
+  const vy = vPx.y / vLen;
+  const wPx = wIn / mpp;
+  const hPx = hIn / mpp;
+  const du = { x: (ux * wPx) / natW, y: (uy * wPx) / natH };
+  const dv = { x: (vx * hPx) / natW, y: (vy * hPx) / natH };
+  const q0 = { x: p0.x, y: p0.y };
+  const q1 = { x: clamp01(p0.x + du.x), y: clamp01(p0.y + du.y) };
+  const q2 = { x: clamp01(q1.x + dv.x), y: clamp01(q1.y + dv.y) };
+  const q3 = { x: clamp01(p0.x + dv.x), y: clamp01(p0.y + dv.y) };
+  poly.points[0] = q0;
+  poly.points[1] = q1;
+  poly.points[2] = q2;
+  poly.points[3] = q3;
+  drawAllPolygons();
+};
+
+const showEdgeInput = ref<{ a: boolean; b: boolean }>({ a: false, b: false });
+const edgeInputA = ref<string>('');
+const edgeInputB = ref<string>('');
+const { updatePolygonEdgeNotes } = useMeasure();
+
+const hasRectNoteA = computed(() => {
+  const v = selectedRectangle.value?.edgeNotesCm?.a as unknown as number | null | undefined;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0;
+});
+const hasRectNoteB = computed(() => {
+  const v = selectedRectangle.value?.edgeNotesCm?.b as unknown as number | null | undefined;
+  return typeof v === 'number' && Number.isFinite(v) && v > 0;
+});
+
+const selectedPolygonObj = computed<PolygonSurface | null>(() => {
+  const list = polygons.value as PolygonSurface[];
+  return list.find((p) => p.id === (selectedPolygonId.value || '')) ?? null;
+});
+
+const manualAreaLabel = computed(() => {
+  if (!manualActive.value) return '';
+  const p = selectedPolygonObj.value as any;
+  if (!p) return '';
+  let area: number | null | undefined = p.areaOverrideM2;
+  if (!(typeof area === 'number' && isFinite(area) && area > 0)) {
+    const a = p?.edgeNotesCm?.a as number | null | undefined;
+    const b = p?.edgeNotesCm?.b as number | null | undefined;
+    if (p?.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
+      area = (a * b) / 10000;
+    }
+  }
+  return typeof area === 'number' && isFinite(area) && area > 0 ? `${area.toFixed(2)} m²` : '';
+});
+
+const selectedPolygonCenter = computed(() => {
+  if (!manualActive.value) return null as null | { x: number; y: number };
+  const poly = selectedPolygonObj.value;
+  const wrapper = zoomWrapperRef.value;
+  const canvasEl = canvasRef.value;
+  const _zs = zoomScale.value;
+  if (!poly || !wrapper || !canvasEl) return null as null | { x: number; y: number };
+  const den = poly.points.map((pt) => denormalizePoint(pt));
+  if (!den.length) return null as null | { x: number; y: number };
+  const center = getPolygonCenter(den);
+  const canvasRect = canvasEl.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const offX = canvasRect.left - wrapperRect.left;
+  const offY = canvasRect.top - wrapperRect.top;
+  return { x: offX + center.x, y: offY + center.y };
+});
+
+// Manual per-edge input overlays for all non-rectangle polygons
+const edgeInputsBuf = ref<Record<string, string>>({});
+const edgeEditActive = ref<Record<string, boolean>>({});
+type EdgeOverlay = { key: string; x: number; y: number; value: string; hasValue: boolean };
+const allEdgeOverlays = computed<EdgeOverlay[]>(() => {
+  if (!manualActive.value) return [];
+  const canvasEl = canvasRef.value;
+  const wrapper = zoomWrapperRef.value;
+  if (!canvasEl || !wrapper) return [];
+  const _zs = zoomScale.value;
+  const offX = Number((canvasEl.style.left || '0').replace('px', '')) || 0;
+  const offY = Number((canvasEl.style.top || '0').replace('px', '')) || 0;
+  const result: EdgeOverlay[] = [];
+  const all: PolygonSurface[] = [...(polygons.value as PolygonSurface[])];
+  if (currentPolygon.value) all.push(currentPolygon.value as PolygonSurface);
+  for (const poly of all) {
+    if (!poly || poly.visible === false || !poly.closed || !poly.points || poly.points.length < 2) continue;
+    // Skip rectangles (handled by dedicated A/B inputs)
+    if (poly.points.length === 4) continue;
+    const den = poly.points.map((pt) => denormalizePoint(pt));
+    const notes = ((poly as any).edgeNotesCm?.edges ?? []) as (number | null | undefined)[];
+    for (let i = 0; i < den.length; i++) {
+      const j = (i + 1) % den.length;
+      const midX = (den[i]!.x + den[j]!.x) / 2;
+      const midY = (den[i]!.y + den[j]!.y) / 2;
+      const key = `${poly.id}:${i}`;
+      const stored = notes?.[i];
+      const hasVal = (typeof stored === 'number' && isFinite(stored) && stored > 0);
+      const val = hasVal
+        ? String(Math.round(stored as number))
+        : (edgeInputsBuf.value[key] ?? '');
+      result.push({ key, x: offX + midX, y: offY + midY, value: val, hasValue: hasVal });
+    }
+  }
+  return result;
+});
+
+const onEdgeInputBuffer = (key: string, e: Event) => {
+  const v = (e.target as HTMLInputElement)?.value ?? '';
+  edgeInputsBuf.value[key] = v;
+};
+const saveEdgeInput = (key: string) => {
+  const raw = edgeInputsBuf.value[key] ?? '';
+  const num = Number(String(raw).replace(',', '.'));
+  const parts = key.split(':');
+  if (parts.length !== 2) return;
+  const pid = parts[0]!;
+  const idx = Number(parts[1]);
+  const poly = (polygons.value as PolygonSurface[]).find((p) => p.id === pid);
+  if (!poly || Number.isNaN(idx)) return;
+  if (!poly.edgeNotesCm) poly.edgeNotesCm = {} as any;
+  const n = poly.points.length;
+  let arr = ((poly.edgeNotesCm as any).edges as (number | null)[] | undefined) ?? undefined;
+  if (!arr || arr.length !== n) arr = Array(n).fill(null);
+  if (Number.isFinite(num) && num > 0) arr[idx] = Math.round(num); else arr[idx] = null;
+  (poly.edgeNotesCm as any).edges = arr;
+  // Persist
+  void (async () => {
+    try {
+      await updatePolygonEdgeNotes(poly.id, poly.edgeNotesCm ?? null, poly.edgeNotesRect ?? null, poly.edgeNotesNorm ?? null, (poly as any).areaOverrideM2 ?? null);
+    } catch {}
+  })();
+  delete edgeInputsBuf.value[key];
+  if (edgeEditActive.value[key]) edgeEditActive.value[key] = false;
+  drawAllPolygons();
+};
+
+const startEdgeEdit = (key: string) => {
+  edgeEditActive.value[key] = true;
+};
+
+const manualAreaInput = ref<string>('');
+watch(selectedPolygonObj, (p) => {
+  const v = (p as any)?.areaOverrideM2 as number | null | undefined;
+  manualAreaInput.value = typeof v === 'number' && isFinite(v) && v > 0 ? v.toFixed(2) : '';
+});
+
+const onRemovePoligon = (id: string) => {
+  const list = polygons.value as PolygonSurface[];
+  polygons.value = list.filter((p) => p.id !== id) as any;
+  if (selectedPolygonId.value === id) selectedPolygonId.value = null;
+  drawAllPolygons();
+};
+const onRemoveAllPoligon = () => {
+  polygons.value = [] as any;
+  selectedPolygonId.value = null;
+  drawAllPolygons();
+};
+ 
+
+const saveManualArea = () => {
+  const poly = selectedPolygonObj.value as any;
+  if (!poly) return;
+  const v = Number(String(manualAreaInput.value || '').replace(',', '.'));
+  const area = Number.isFinite(v) && v > 0 ? v : null;
+  poly.areaOverrideM2 = area;
+  void (async () => {
+    try {
+      await updatePolygonEdgeNotes(poly.id, poly.edgeNotesCm ?? null, poly.edgeNotesRect ?? null, poly.edgeNotesNorm ?? null, area);
+    } catch {}
+  })();
+  drawAllPolygons();
+};
+
+onMounted(() => {
+  refreshRectInputs();
+  showEdgeInput.value = { a: false, b: false };
+  nextTick(() => { updateEdgeNotesRect(); });
+  // If manual mode requested via query, enter Edit mode directly
+  const manual = String((route.query as any)?.manual ?? '');
+  if (manual && ['1','true','yes'].includes(manual.toLowerCase())) {
+    setMode('edit');
+  }
+});
+
+watch(() => selectedRectangle.value?.id, () => {
+  rectCornerIdx.value = 0;
+  rectSwapAxes.value = false;
+  refreshRectInputs();
+  showEdgeInput.value = { a: false, b: false };
+  nextTick(() => { updateEdgeNotesRect(); });
+  // Prefill visible overlay inputs from existing notes
+  const poly = selectedRectangle.value;
+  if (poly) {
+    const a = poly.edgeNotesCm?.a as unknown as number | null | undefined;
+    const b = poly.edgeNotesCm?.b as unknown as number | null | undefined;
+    edgeInputA.value = (typeof a === 'number' && isFinite(a) && a > 0) ? String(a) : '';
+    edgeInputB.value = (typeof b === 'number' && isFinite(b) && b > 0) ? String(b) : '';
+  } else {
+    edgeInputA.value = '';
+    edgeInputB.value = '';
+  }
+});
+
+const openEdgeInput = (which: 'a' | 'b') => {
+  showEdgeInput.value = { a: false, b: false };
+  if (which === 'a') {
+    const v = selectedRectangle.value?.edgeNotesCm?.a ?? null;
+    edgeInputA.value = v !== null && v !== undefined ? String(v) : '';
+    showEdgeInput.value.a = true;
+  } else {
+    const v = selectedRectangle.value?.edgeNotesCm?.b ?? null;
+    edgeInputB.value = v !== null && v !== undefined ? String(v) : '';
+    showEdgeInput.value.b = true;
+  }
+};
+
+const saveEdgeNote = (which: 'a' | 'b') => {
+  const poly = selectedRectangle.value;
+  if (!poly) { showEdgeInput.value = { a: false, b: false }; return; }
+  const raw = which === 'a' ? edgeInputA.value : edgeInputB.value;
+  const num = Number(String(raw || '').replace(',', '.'));
+  if (!poly.edgeNotesCm) poly.edgeNotesCm = {};
+  if (Number.isFinite(num)) {
+    poly.edgeNotesCm[which] = Math.round(num);
+  } else {
+    poly.edgeNotesCm[which] = null;
+  }
+  if (which === 'a') showEdgeInput.value.a = false; else showEdgeInput.value.b = false;
+  updateEdgeNotesRect();
+  drawAllPolygons();
+  const a = poly.edgeNotesCm?.a as unknown as number | undefined;
+  const b = poly.edgeNotesCm?.b as unknown as number | undefined;
+  const areaOverride = (poly.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0)
+    ? (a * b) / 10000
+    : null;
+  (poly as any).areaOverrideM2 = areaOverride;
+  void (async () => {
+    try {
+      await updatePolygonEdgeNotes(poly.id, poly.edgeNotesCm ?? null, poly.edgeNotesRect ?? null, poly.edgeNotesNorm ?? null, areaOverride);
+    } catch {}
+  })();
+};
+
+const updateEdgeNotesRect = () => {
+  const poly = selectedRectangle.value;
+  const img = imageRef.value;
+  if (!poly || !img || poly.points.length !== 4) { if (poly) poly.edgeNotesRect = undefined; return; }
+  const aCm = poly.edgeNotesCm?.a;
+  const bCm = poly.edgeNotesCm?.b;
+  if (!Number.isFinite(aCm as number) || !Number.isFinite(bCm as number)) { poly.edgeNotesRect = undefined; return; }
+
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  const { p0, p1, p2 } = getRectTriplet(poly);
+  const uPx = { x: (p1.x - p0.x) * natW, y: (p1.y - p0.y) * natH };
+  const vPx = { x: (p2.x - p1.x) * natW, y: (p2.y - p1.y) * natH };
+  const lenU = Math.hypot(uPx.x, uPx.y) || 1;
+  const lenV = Math.hypot(vPx.x, vPx.y) || 1;
+  const uHat = { x: uPx.x / lenU, y: uPx.y / lenU };
+  const vHat = { x: vPx.x / lenV, y: vPx.y / lenV };
+
+  let a_m = (aCm as number) / 100;
+  let b_m = (bCm as number) / 100;
+  if (rectSwapAxes.value) { const t = a_m; a_m = b_m; b_m = t; }
+  const mpp = meterPerPixel.value || storedMeterPerPixel.value || 0;
+
+  let targetU_px: number;
+  let targetV_px: number;
+  if (mpp > 0) {
+    targetU_px = a_m / mpp;
+    targetV_px = b_m / mpp;
+  } else {
+    targetU_px = lenU;
+    const ratio = a_m > 0 ? b_m / a_m : 1;
+    targetV_px = Math.max(1, targetU_px * ratio);
+  }
+
+  const du = { x: (uHat.x * targetU_px) / natW, y: (uHat.y * targetU_px) / natH };
+  const dv = { x: (vHat.x * targetV_px) / natW, y: (vHat.y * targetV_px) / natH };
+  const q0 = { x: clamp01(p0.x), y: clamp01(p0.y) };
+  const q1 = { x: clamp01(q0.x + du.x), y: clamp01(q0.y + du.y) };
+  const q2 = { x: clamp01(q1.x + dv.x), y: clamp01(q1.y + dv.y) };
+  const q3 = { x: clamp01(q0.x + dv.x), y: clamp01(q0.y + dv.y) };
+  poly.edgeNotesRect = [q0, q1, q2, q3];
+  const trip = getRectTriplet(poly);
+  const d = deriveShape('rectangle', Number(aCm), Number(bCm), { natW, natH, p0: trip.p0, p1: trip.p1, p2: trip.p2, swapAxes: rectSwapAxes.value, meterPerPixel: meterPerPixel.value || storedMeterPerPixel.value || null });
+  poly.edgeNotesNorm = d.normalized;
+  if ((!meterPerPixel.value || meterPerPixel.value <= 0) && d.estimatedMeterPerPixel && d.estimatedMeterPerPixel > 0) {
+    meterPerPixel.value = d.estimatedMeterPerPixel;
+  }
+};
 
 // Computed property to check if we're in view mode (not editing)
 const isViewMode = computed(() => !editingMode.value && !editPointsMode.value && !calibrationMode.value);
@@ -800,11 +1303,26 @@ const calculatePolygonArea = (
 };
 
 const getPolygonCenter = (points: Point[]): Point => {
-  const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
-  return {
-    x: sum.x / points.length,
-    y: sum.y / points.length,
-  };
+  if (points.length === 0) return { x: 0, y: 0 };
+  if (points.length === 1) return { x: points[0].x, y: points[0].y };
+  if (points.length === 2) return { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+  let twiceArea = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    const cross = points[i].x * points[j].y - points[j].x * points[i].y;
+    twiceArea += cross;
+    cx += (points[i].x + points[j].x) * cross;
+    cy += (points[i].y + points[j].y) * cross;
+  }
+  if (Math.abs(twiceArea) < 1e-8) {
+    const sx = points.reduce((acc, p) => acc + p.x, 0);
+    const sy = points.reduce((acc, p) => acc + p.y, 0);
+    return { x: sx / points.length, y: sy / points.length };
+  }
+  const area = twiceArea / 2;
+  return { x: cx / (6 * area), y: cy / (6 * area) };
 };
 
 const drawText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number) => {
@@ -979,7 +1497,6 @@ const drawAllPolygons = () => {
     for (let i = 1; i < denormPoints.length; i++) {
       ctx.lineTo(denormPoints[i].x, denormPoints[i].y);
     }
-    // Provisional dashed segment to cursor while drawing
     if (!poly.closed && currentPolygon.value && mousePos.value && denormPoints.length > 0) {
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = 2;
@@ -988,12 +1505,32 @@ const drawAllPolygons = () => {
       const lastIndex = denormPoints.length - 1;
       if (lastIndex >= 0) {
         const last: Point = denormPoints[lastIndex]!;
-        const mouse = denormalizePoint(mousePos.value);
+        let provisionalNorm = mousePos.value;
+        const lastNorm = currentPolygon.value.points[lastIndex]!;
+        const buf = edgeInputBuffer.value.trim();
+        const num = Number((buf || '').replace(',', '.'));
+        if (Number.isFinite(num) && num > 0) {
+          const dir = { x: provisionalNorm.x - lastNorm.x, y: provisionalNorm.y - lastNorm.y };
+          const target = computePointByLength(lastNorm, dir, num);
+          if (target) provisionalNorm = target;
+        }
+        const mouse = denormalizePoint(provisionalNorm);
         ctx.beginPath();
         ctx.setLineDash([6, 6]);
         ctx.moveTo(last.x, last.y);
         ctx.lineTo(mouse.x, mouse.y);
         ctx.stroke();
+
+        if (!manualActive.value) {
+          const dx = mouse.x - last.x;
+          const dy = mouse.y - last.y;
+          const pxDistDom = Math.sqrt(dx * dx + dy * dy);
+          const pxDistImg = (pxDistDom / rect.width) * img.naturalWidth;
+          const length = pxDistImg * pixelSize;
+          const midX = (last.x + mouse.x) / 2;
+          const midY = (last.y + mouse.y) / 2;
+          drawLabel(ctx, `${length.toFixed(2)} m`, midX - 22, midY - 8);
+        }
       }
     }
     if (poly.closed) {
@@ -1027,24 +1564,76 @@ const drawAllPolygons = () => {
     }
 
     if (poly.closed && denormPoints.length >= 3) {
+      let aSet: Set<string> | null = null;
+      let bSet: Set<string> | null = null;
+      const overlayActive = isSelectedPoly && manualActive.value && editPointsMode.value && poly.points.length === 4;
+      if (isSelectedPoly && poly.points.length === 4) {
+        const c = rectCornerIdx.value % 4;
+        const i0 = c;
+        const i1 = (c + 1) % 4;
+        const i2 = (c + 2) % 4;
+        const i3 = (c + 3) % 4;
+        const norm = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+        const aPairs = [norm(i0, i1), norm(i2, i3)];
+        const bPairs = [norm(i1, i2), norm(i3, i0)];
+        if (rectSwapAxes.value) {
+          aSet = new Set(bPairs);
+          bSet = new Set(aPairs);
+        } else {
+          aSet = new Set(aPairs);
+          bSet = new Set(bPairs);
+        }
+      }
+
       for (let i = 0; i < denormPoints.length; i++) {
         const j = (i + 1) % denormPoints.length;
         const p1 = denormPoints[i];
         const p2 = denormPoints[j];
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+
+        const key = `${Math.min(i, j)}-${Math.max(i, j)}`;
+        // In manual mode, we do not draw computed edge lengths at all
+        if (manualActive.value) continue;
+        // Otherwise, draw computed length
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         const pxDist = Math.sqrt(dx * dx + dy * dy);
         const length = (pxDist / rect.width) * img.naturalWidth * pixelSize;
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
         drawLabel(ctx, `${length.toFixed(2)} m`, midX - 22, midY - 8);
       }
-      const area = calculatePolygonArea(poly.points, pixelSize, img);
-      const center = getPolygonCenter(denormPoints);
-      drawLabel(ctx, `${area.toFixed(2)} m²`, center.x - 18, center.y - 8);
+
+      
+
+      let areaText: string | null = null;
+      if (manualActive.value) {
+        const ov = (poly as any).areaOverrideM2 as number | null | undefined;
+        if (typeof ov === 'number' && isFinite(ov) && ov > 0) {
+          areaText = `${ov.toFixed(2)} m²`;
+        } else if (poly.points.length === 4 && Number.isFinite(poly.edgeNotesCm?.a as number) && Number.isFinite(poly.edgeNotesCm?.b as number)) {
+          const aCm = Number(poly.edgeNotesCm!.a);
+          const bCm = Number(poly.edgeNotesCm!.b);
+          const areaM2 = (aCm * bCm) / 10000;
+          areaText = `${areaM2.toFixed(2)} m²`;
+        } else {
+          areaText = null;
+        }
+      } else {
+        const area = calculatePolygonArea(poly.points, pixelSize, img);
+        areaText = `${area.toFixed(2)} m²`;
+      }
+      if (areaText) {
+        const skipCanvasArea = manualActive.value && editPointsMode.value && isSelectedPoly && Boolean(manualAreaLabel.value);
+        if (!skipCanvasArea) {
+          const center = poly.edgeNotesRect && poly.edgeNotesRect.length === 4
+            ? getPolygonCenter(poly.edgeNotesRect.map(denormalizePoint))
+            : getPolygonCenter(denormPoints);
+          drawLabel(ctx, areaText, center.x - 18, center.y - 8);
+        }
+      }
     }
   }
-  if (calibrationMode.value && calibrationStart.value) {
+  if (calibrationMode.value && !manualActive.value && calibrationStart.value) {
     const ctx = canvasRef.value!.getContext('2d')!;
     const p1 = denormalizePoint(calibrationStart.value);
     const p2 = calibrationEnd.value
@@ -1072,7 +1661,7 @@ const drawAllPolygons = () => {
   }
 
   // Draw stored reference if present (always visible). Highlight may adjust style.
-  if (firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
+  if (!manualActive.value && firstImage.value?.referenceStart && firstImage.value?.referenceEnd && img) {
     const ctx = canvasRef.value!.getContext('2d')!;
     const p1 = denormalizePoint(firstImage.value.referenceStart);
     const p2 = denormalizePoint(firstImage.value.referenceEnd);
@@ -1170,6 +1759,7 @@ const gotoZoom = (targetScale: number) => {
 
 type Mode = 'view' | 'draw' | 'edit' | 'calibrate';
 const setMode = (mode: Mode) => {
+  if (manualActive.value && mode === 'calibrate') return;
   // Finish/cleanup current operations
   // Stop dragging
   draggingPoint.value = null;
@@ -1195,6 +1785,17 @@ const setMode = (mode: Mode) => {
   // Apply saved reference-derived meterPerPixel if available
   recalcMeterPerPixelFromReference();
 
+  if (mode === 'edit') {
+    if (!selectedPolygonId.value) {
+      const list = polygons.value as PolygonSurface[];
+      for (let i = list.length - 1; i >= 0; i--) {
+        const p = list[i];
+        if (p && p.closed && p.points?.length >= 3) { selectedPolygonId.value = p.id; break; }
+      }
+    }
+    refreshRectInputs();
+  }
+
   void nextTick(() => {
     // Recalculate optimal zoom for the new mode
     calculateOptimalZoom();
@@ -1203,6 +1804,7 @@ const setMode = (mode: Mode) => {
 };
 
 const toggleCalibration = () => {
+  if (manualActive.value) return;
   if (calibrationMode.value) setMode('view');
   else setMode('calibrate');
 };
@@ -1213,10 +1815,10 @@ const togglePolygonEditing = () => {
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
-  const clickPoint = normalizePoint(getCanvasCoords(event));
+  let clickPoint = normalizePoint(getCanvasCoords(event));
 
   // 1) Calibration mode: allow cloning an existing polygon edge as reference
-  if (calibrationMode.value) {
+  if (calibrationMode.value && !manualActive.value) {
     if (referenceSet.value && !allowRefOverride.value) return;
     const hit = findEdgeUnderPoint(clickPoint);
     if (hit) {
@@ -1283,7 +1885,25 @@ const handleCanvasClick = (event: MouseEvent) => {
     currentPolygon.value = { id: crypto.randomUUID(), points: [], closed: false } as PolygonSurface;
   }
   const existingPoints = currentPolygon.value.points;
+  if (existingPoints.length > 0) {
+    const buf = edgeInputBuffer.value.trim();
+    const num = Number((buf || '').replace(',', '.'));
+    if (Number.isFinite(num) && num > 0) {
+      const lastNorm = existingPoints[existingPoints.length - 1]!;
+      const dir = { x: clickPoint.x - lastNorm.x, y: clickPoint.y - lastNorm.y };
+      const target = computePointByLength(lastNorm, dir, num);
+      if (target) {
+        clickPoint = target;
+        edgeInputBuffer.value = '';
+      }
+    }
+  }
   if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
+    currentPolygon.value.closed = true;
+    polygons.value.push(currentPolygon.value as PolygonSurface);
+    currentPolygon.value = null;
+  } else if (existingPoints.length >= 4) {
+    existingPoints.push(clickPoint);
     currentPolygon.value.closed = true;
     polygons.value.push(currentPolygon.value as PolygonSurface);
     currentPolygon.value = null;
@@ -1314,6 +1934,22 @@ const getCanvasCoordsFromEvent = (event: MouseEvent | TouchEvent): Point => {
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+const computePointByLength = (last: Point, dirToMouse: Point, lengthMeters: number): Point | null => {
+  const img = imageRef.value;
+  const mpp = meterPerPixel.value || storedMeterPerPixel.value || 0;
+  if (!img || !(mpp > 0)) return null;
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  const dx = dirToMouse.x * natW;
+  const dy = dirToMouse.y * natH;
+  const mag = Math.hypot(dx, dy);
+  if (!(mag > 0)) return null;
+  const scale = (lengthMeters / mpp) / mag;
+  const nx = clamp01(last.x + dirToMouse.x * scale);
+  const ny = clamp01(last.y + dirToMouse.y * scale);
+  return { x: nx, y: ny };
+};
 
 type DragSnapshot = {
   start: Point; // normalized
@@ -1508,7 +2144,7 @@ const onChangeReferenceLength = () => {
   if (pixelDist <= 0) return;
   meterPerPixel.value = (lengthCm / 100) / pixelDist;
   imgMeta.referenceLengthCm = lengthCm;
-  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  store.setWall(surveyId.value, wall.value.id, { ...wall.value, images: [...wall.value.images] });
   highlightStoredReference();
 };
 
@@ -1519,7 +2155,7 @@ const onClearReference = () => {
   imgMeta.referenceEnd = null;
   imgMeta.referenceLengthCm = null;
   showSavedReference.value = false;
-  store.setWall(wall.value.id, { ...wall.value, images: [...wall.value.images] });
+  store.setWall(surveyId.value, wall.value.id, { ...wall.value, images: [...wall.value.images] });
   drawAllPolygons();
 };
 
@@ -1703,6 +2339,56 @@ const onKeydown = (e: KeyboardEvent) => {
     e.preventDefault();
     isSpacePressed.value = true;
     return;
+  }
+
+  if (editingMode.value && !isTyping) {
+    if ((e.key >= '0' && e.key <= '9') || e.key === '.' || e.key === ',') {
+      edgeInputBuffer.value += e.key;
+      drawAllPolygons();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Backspace') {
+      edgeInputBuffer.value = edgeInputBuffer.value.slice(0, -1);
+      drawAllPolygons();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Escape') {
+      edgeInputBuffer.value = '';
+      drawAllPolygons();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Enter') {
+      const buf = edgeInputBuffer.value.trim();
+      const len = Number((buf || '').replace(',', '.'));
+      const cp = currentPolygon.value;
+      if (Number.isFinite(len) && len > 0 && cp) {
+        const lastIdx = cp.points.length - 1;
+        if (lastIdx >= 0 && mousePos.value) {
+          pushHistory();
+          const last = cp.points[lastIdx]!;
+          const dir = { x: mousePos.value.x - last.x, y: mousePos.value.y - last.y };
+          const target = computePointByLength(last, dir, len);
+          if (target) {
+            const pts = cp.points;
+            if (pts.length >= 4) {
+              pts.push(target);
+              cp.closed = true;
+              polygons.value.push(cp as PolygonSurface);
+              currentPolygon.value = null;
+            } else {
+              pts.push(target);
+            }
+            edgeInputBuffer.value = '';
+            drawAllPolygons();
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+    }
   }
 
   if (!editPointsMode.value) return;

@@ -136,20 +136,47 @@ export const useMeasure = () => {
     referenceStart?: Point | null,
     referenceEnd?: Point | null,
     referenceLengthCm?: number | null,
+    manual?: boolean | null,
+    manualShapes?: any[] | null,
   }) => {
+    const updates: Record<string, any> = {}
+    if ('processedUrl' in payload) updates.processed_url = payload.processedUrl
+    if ('meterPerPixel' in payload) updates.meter_per_pixel = payload.meterPerPixel
+    if ('processedImageWidth' in payload) updates.processed_image_width = payload.processedImageWidth
+    if ('processedImageHeight' in payload) updates.processed_image_height = payload.processedImageHeight
+    if ('referenceStart' in payload) updates.reference_start = payload.referenceStart
+    if ('referenceEnd' in payload) updates.reference_end = payload.referenceEnd
+    if ('referenceLengthCm' in payload) updates.reference_length_cm = payload.referenceLengthCm
+    if ('manual' in payload) updates.manual = payload.manual
+    if ('manualShapes' in payload) updates.manual_shapes = payload.manualShapes
+
     const { error } = await supabase
       .from('measure_wall_images')
-      .update({
-        processed_url: payload.processedUrl ?? null,
-        meter_per_pixel: payload.meterPerPixel ?? null,
-        processed_image_width: payload.processedImageWidth ?? null,
-        processed_image_height: payload.processedImageHeight ?? null,
-        reference_start: payload.referenceStart ?? null,
-        reference_end: payload.referenceEnd ?? null,
-        reference_length_cm: payload.referenceLengthCm ?? null,
-      })
+      .update(updates)
       .eq('id', imageId)
     if (error) throw error
+    return true
+  }
+
+  const getManualShapes = async (imageId: string): Promise<any[]> => {
+    const { data, error } = await supabase
+      .from('measure_wall_images')
+      .select('manual_shapes')
+      .eq('id', imageId)
+      .single()
+    if (error) throw error
+    return ((data as any)?.manual_shapes ?? []) as any[]
+  }
+
+  const setManualShapes = async (imageId: string, shapes: any[]) => {
+    await updateWallImage(imageId, { manualShapes: shapes })
+    return true
+  }
+
+  const appendManualShape = async (imageId: string, shape: any) => {
+    const current = await getManualShapes(imageId)
+    const next = [...current, shape]
+    await updateWallImage(imageId, { manualShapes: next })
     return true
   }
 
@@ -228,9 +255,33 @@ export const useMeasure = () => {
       visible: p.visible !== false,
       closed: p.closed === true,
       points: p.points,
+      edge_notes_cm: (p as any).edgeNotesCm ?? null,
+      edge_notes_rect: (p as any).edgeNotesRect ?? null,
+      edge_notes_norm: (p as any).edgeNotesNorm ?? null,
+      area_override_m2: (p as any).areaOverrideM2 ?? null,
     }))
     const { error: insErr } = await supabase.from('measure_polygons').insert(rows)
     if (insErr) throw insErr
+    return true
+  }
+
+  const updatePolygonEdgeNotes = async (
+    polygonId: string,
+    notesCm: { a?: number | null; b?: number | null } | null,
+    rect: Point[] | null,
+    norm?: Point[] | null,
+    areaOverrideM2?: number | null,
+  ) => {
+    const updates: Record<string, any> = {}
+    updates.edge_notes_cm = notesCm ?? null
+    updates.edge_notes_rect = rect ?? null
+    if (typeof norm !== 'undefined') updates.edge_notes_norm = norm
+    if (typeof areaOverrideM2 !== 'undefined') updates.area_override_m2 = areaOverrideM2
+    const { error } = await supabase
+      .from('measure_polygons')
+      .update(updates)
+      .eq('id', polygonId)
+    if (error) throw error
     return true
   }
 
@@ -338,6 +389,9 @@ export const useMeasure = () => {
     createWall,
     insertWallImage,
     updateWallImage,
+    getManualShapes,
+    setManualShapes,
+    appendManualShape,
     deleteWallImage,
     setOriginalImageBlob,
     setProcessedImageBlob,
@@ -345,6 +399,7 @@ export const useMeasure = () => {
     listWallImagesByWallId,
     deleteWallDeep,
     replaceWallPolygons,
+    updatePolygonEdgeNotes,
     fetchWallsBySurvey,
     deleteWall,
 
