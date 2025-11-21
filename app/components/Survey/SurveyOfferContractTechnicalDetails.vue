@@ -21,6 +21,9 @@
           <SurveyOfferContractCategories
             :scenario-id="scenarioId"
             :investment-id="scenarioInvestments[index].id"
+            :read-only="readOnly"
+            :is-ofp-survey="isOfpSurvey"
+            :investment-persist-name="investmentPersistNames[scenarioInvestments[index].id]"
           />
         </div>
       </template>
@@ -45,12 +48,26 @@ const { t } = useI18n()
 interface Props {
   surveyId: string
   scenarioId: string
+  readOnly?: boolean
+  isOfpSurvey?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  readOnly: true,
+  isOfpSurvey: false
+})
 
 const scenariosStore = useScenariosStore()
 const investmentsStore = useSurveyInvestmentsStore()
+
+// Get investment persist names mapping
+const investmentPersistNames = computed(() => {
+  const mapping: Record<string, string> = {}
+  investmentsStore.availableInvestments.forEach(inv => {
+    mapping[inv.id] = inv.persist_name
+  })
+  return mapping
+})
 
 // Get investment IDs for this scenario
 const scenarioInvestmentIds = computed(() => {

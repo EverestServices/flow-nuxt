@@ -69,6 +69,8 @@
                 v-if="selectedScenarioId"
                 :survey-id="surveyId"
                 :scenario-id="selectedScenarioId"
+                :read-only="!isOfpSurvey"
+                :is-ofp-survey="isOfpSurvey"
               />
             </div>
           </div>
@@ -263,6 +265,38 @@
           </div>
         </div>
 
+        <!-- Heat Pump Extra Costs Accordion -->
+        <div v-if="selectedScenarioId && hasHeatPumpInvestment" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
+            @click="heatPumpExtraCostsOpen = !heatPumpExtraCostsOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-coins" class="w-5 h-5" />
+              <span>Hőszivattyú járulékos költségei</span>
+            </div>
+            <UIcon
+              :name="heatPumpExtraCostsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="heatPumpExtraCostsOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- Heat Pump Extra Costs Content -->
+              <SurveyOfferContractInvestmentExtraCosts
+                v-if="selectedScenarioId"
+                :survey-id="surveyId"
+                :scenario-id="selectedScenarioId"
+                investment-persist-name="heatPump"
+              />
+            </div>
+          </div>
+        </div>
+
         <!-- General Extra Costs Accordion -->
         <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
           <button
@@ -434,7 +468,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, inject, watch } from 'vue'
+import { ref, computed, provide, inject, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
@@ -456,6 +490,26 @@ const props = defineProps<Props>()
 const scenariosStore = useScenariosStore()
 const investmentsStore = useSurveyInvestmentsStore()
 const contractsStore = useContractsStore()
+const supabase = useSupabaseClient()
+
+// Check if this is an OFP survey
+const isOfpSurvey = ref(false)
+
+// Load survey data to check OFP status
+const loadSurveyData = async () => {
+  const { data: survey } = await supabase
+    .from('surveys')
+    .select('ofp_survey_id')
+    .eq('id', props.surveyId)
+    .single()
+
+  isOfpSurvey.value = !!(survey?.ofp_survey_id)
+}
+
+// Load on component mount
+onMounted(() => {
+  loadSurveyData()
+})
 
 // Selected scenario state
 const selectedScenarioId = ref<string | null>(null)
@@ -468,6 +522,7 @@ const extraCostsOpen = ref(true)
 const facadeInsulationExtraCostsOpen = ref(true)
 const atticFloorInsulationExtraCostsOpen = ref(true)
 const windowsExtraCostsOpen = ref(true)
+const heatPumpExtraCostsOpen = ref(true)
 const generalExtraCostsOpen = ref(true)
 const discountsOpen = ref(true)
 const contractDetailsOpen = ref(true)
@@ -557,6 +612,24 @@ const currentOfpCalculation = computed(() => {
   const scenario = scenarios.value.find(s => s.id === selectedScenarioId.value)
   return scenario?.ofp_calculation || null
 })
+
+// Auto-trigger OFP calculation for OFP surveys when scenario is selected
+watch([selectedScenarioId, isOfpSurvey], async ([newScenarioId, isOfp]) => {
+  if (!newScenarioId || !isOfp) return
+  if (currentOfpCalculation.value) return // Already calculated
+  if (!hasOfpInvestments.value) return // No OFP investments
+
+  // Check if API key is available
+  const hasApiKey = await hasOfpApiKey()
+  if (!hasApiKey) {
+    console.log('[OFP Auto-Calc] Skipping: No API key configured')
+    return
+  }
+
+  // Automatically trigger calculation
+  console.log('[OFP Auto-Calc] Automatically calculating OFP for scenario:', newScenarioId)
+  await handleOfpCalculate()
+}, { immediate: true })
 
 // Handle OFP calculation
 const handleOfpCalculate = async () => {
@@ -671,19 +744,18 @@ provide('updateTotalPriceData', (total: number) => {
 // Extra costs totals (for investment-specific components)
 provide('updateSolarExtraCostsTotal', (total: number) => {
   // Can be used for validation or display purposes in the future
-  console.log('Solar extra costs total:', total)
 })
 
 provide('updateFacadeInsulationExtraCostsTotal', (total: number) => {
-  console.log('Facade insulation extra costs total:', total)
+  // Can be used for validation or display purposes in the future
 })
 
 provide('updateRoofInsulationExtraCostsTotal', (total: number) => {
-  console.log('Roof insulation extra costs total:', total)
+  // Can be used for validation or display purposes in the future
 })
 
 provide('updateWindowsExtraCostsTotal', (total: number) => {
-  console.log('Windows extra costs total:', total)
+  // Can be used for validation or display purposes in the future
 })
 
 // ===================================================================

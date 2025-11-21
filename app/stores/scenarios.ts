@@ -61,6 +61,10 @@ export interface MainComponent {
   cop?: number
   energy_class?: string
   sequence: number
+  visibility?: {
+    ofp_survey?: boolean
+    [key: string]: any
+  } | null
 }
 
 export interface MainComponentCategory {
@@ -68,6 +72,10 @@ export interface MainComponentCategory {
   persist_name: string
   name_translations: Record<string, string>
   sequence: number
+  visibility?: {
+    ofp_survey?: Record<string, boolean>
+    [key: string]: any
+  } | null
 }
 
 export const useScenariosStore = defineStore('scenarios', {
@@ -205,19 +213,19 @@ export const useScenariosStore = defineStore('scenarios', {
     async loadMainComponentsData() {
       const supabase = useSupabaseClient()
 
-      // Load main component categories
+      // Load main component categories (with visibility field)
       const { data: categories, error: catError } = await supabase
         .from('main_component_categories')
-        .select('*')
+        .select('*, visibility')
         .order('sequence')
 
       if (catError) throw catError
       this.mainComponentCategories = categories || []
 
-      // Load main components
+      // Load main components (with visibility field)
       const { data: components, error: compError } = await supabase
         .from('main_components')
-        .select('*')
+        .select('*, visibility')
         .order('sequence')
 
       if (compError) throw compError
