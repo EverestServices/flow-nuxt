@@ -16,6 +16,8 @@ export type WallImage = {
   referenceStart?: Point | null;
   referenceEnd?: Point | null;
   referenceLengthCm?: number | null;
+  manual?: boolean;
+  manualShapes?: ManualShape[];
 };
 
 export type Wall = {
@@ -97,4 +99,36 @@ export interface PolygonSurface {
   subType?: WindowSubType;
   externalShading?: ExternalShadingType;
   name?: string;
+  edgeNotesCm?: { a?: number | null; b?: number | null };
+  edgeNotesRect?: Point[];
+  edgeNotesNorm?: Point[];
 }
+
+export type ManualShapeType = 'triangle' | 'rectangle' | 'pentagon';
+
+export type ManualTriangleParams =
+  | { kind: 'base_height'; base_m: number; height_m: number }
+  | { kind: 'sides'; a_m: number; b_m: number; c_m: number };
+
+export type ManualRectangleParams = { width_m: number; height_m: number };
+
+export type ManualPentagonParams = {
+  bottom_segments_m: [number, number, number];
+  rect_height_m: number;
+  roof_sides_m: [number, number];
+};
+
+export type ManualShapeParams =
+  | { type: 'triangle'; params: ManualTriangleParams }
+  | { type: 'rectangle'; params: ManualRectangleParams }
+  | { type: 'pentagon'; params: ManualPentagonParams };
+
+export type ManualShape = {
+  id: string;
+  type: ManualShapeType;
+  params: ManualTriangleParams | ManualRectangleParams | ManualPentagonParams;
+  polygons: Array<{ points: Point[] }>;
+  areaM2: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
