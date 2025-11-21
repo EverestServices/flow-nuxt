@@ -21,6 +21,8 @@
           <SurveyScenarioCategories
             :scenario-id="scenarioId"
             :investment-id="scenarioInvestments[index].id"
+            :is-ofp-survey="isOfpSurvey"
+            :investment-persist-name="investmentPersistNames[scenarioInvestments[index].id]"
           />
         </div>
       </template>
@@ -46,12 +48,24 @@ const { translate } = useTranslatableField()
 interface Props {
   surveyId: string
   scenarioId: string
+  isOfpSurvey?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isOfpSurvey: false
+})
 
 const scenariosStore = useScenariosStore()
 const investmentsStore = useSurveyInvestmentsStore()
+
+// Get investment persist names mapping
+const investmentPersistNames = computed(() => {
+  const mapping: Record<string, string> = {}
+  investmentsStore.availableInvestments.forEach(inv => {
+    mapping[inv.id] = inv.persist_name
+  })
+  return mapping
+})
 
 // Get investment IDs for this scenario
 const scenarioInvestmentIds = computed(() => {

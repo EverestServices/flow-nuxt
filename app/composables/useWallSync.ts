@@ -63,15 +63,48 @@ export const useWallSync = () => {
     }
 
     const pageInstancesData = surveyStore.pageInstances[surveyId][facadeInvestment.id][wallsPage.id]
-    const existingInstances = pageInstancesData.instances
+
+    // FIX: Clean up existing instances before syncing to prevent duplicates
+    // Only keep instances that have a valid _markerWallId that exists in current wallsArray
+    const initialWallIds = wallsArray.map(w => w.id)
+    let existingInstances = pageInstancesData.instances.filter(inst => {
+      // Keep the instance if it has a _markerWallId that still exists in wallsArray
+      // OR if it doesn't have a _markerWallId (manual instance not from marker mode)
+      return !inst._markerWallId || initialWallIds.includes(inst._markerWallId)
+    })
+
+    // Update the page instances with cleaned data
+    pageInstancesData.instances = existingInstances
+
+    // STEP 0: Clean up orphaned marker walls that don't have matching instances
+    // This prevents accumulation of marker walls when _markerWallId doesn't persist
+    const instanceMarkerIds = existingInstances
+      .map(inst => inst._markerWallId)
+      .filter(Boolean)
+
+    const orphanedWallIds: string[] = []
+    for (const wall of wallsArray) {
+      if (!instanceMarkerIds.includes(wall.id)) {
+        orphanedWallIds.push(wall.id)
+      }
+    }
+
+    // Remove orphaned walls from WallStore
+    for (const wallId of orphanedWallIds) {
+      wallStore.removeWall(surveyId, wallId)
+    }
+
+    // Refresh wallsArray after cleanup
+    const cleanedWalls = wallStore.getWallsForSurvey(surveyId)
+    const cleanedWallsArray = Object.values(cleanedWalls) as Wall[]
 
     // STEP 1: Sync marker mode walls -> survey instances
-    for (const wall of wallsArray) {
+    for (const wall of cleanedWallsArray) {
       await syncSingleWall(surveyId, wall, facadeInvestment.id, wallsPage, existingInstances)
     }
 
     // STEP 2: Sync survey instances -> marker mode walls (create missing walls)
-    const existingWallIds = wallsArray.map(w => w.id)
+    const cleanedWallIds = cleanedWallsArray.map(w => w.id)
     const instancesToRemove: number[] = []
 
     for (let index = 0; index < existingInstances.length; index++) {
@@ -93,11 +126,9 @@ export const useWallSync = () => {
         // Link the instance to the new wall
         instance._markerWallId = newWallId
         instance.wall_name = wallName
-
-        console.log(`Created marker wall for survey instance: ${wallName}`)
       }
       // If instance has a marker wall ID but the wall doesn't exist, remove the instance
-      else if (!existingWallIds.includes(instance._markerWallId)) {
+      else if (!cleanedWallIds.includes(instance._markerWallId)) {
         instancesToRemove.push(index)
       }
     }
@@ -107,10 +138,8 @@ export const useWallSync = () => {
       existingInstances.splice(instancesToRemove[i], 1)
     }
 
-    console.log(`Bidirectional sync complete: ${wallsArray.length} marker walls, ${existingInstances.length} survey instances`)
-
     // STEP 3: Sync windows/doors (openings) for each wall
-    await syncOpeningsToSurvey(surveyId, facadeInvestment.id, wallsPage, existingInstances, wallsArray)
+    await syncOpeningsToSurvey(surveyId, facadeInvestment.id, wallsPage, existingInstances, cleanedWallsArray)
   }
 
   /**
@@ -129,11 +158,8 @@ export const useWallSync = () => {
     )
 
     if (!openingsPage) {
-      console.warn('Openings subpage not found')
       return
     }
-
-    console.log('🔄 Starting opening sync for', wallInstances.length, 'walls')
 
     // Initialize subpage instances if needed - use openingsPage.id, not wallsPage.id
     if (!surveyStore.pageInstances[surveyId]) {
@@ -155,13 +181,11 @@ export const useWallSync = () => {
     wallInstances.forEach((wallInstance, parentItemGroup) => {
       const markerWallId = wallInstance._markerWallId
       if (!markerWallId) {
-        console.log(`Wall instance ${parentItemGroup} has no marker wall ID, skipping`)
         return
       }
 
       const wall = walls.find(w => w.id === markerWallId)
       if (!wall) {
-        console.log(`Marker wall ${markerWallId} not found, skipping`)
         return
       }
 
@@ -169,8 +193,6 @@ export const useWallSync = () => {
       const openingPolygons = wall.polygons.filter(
         p => p.type === SurfaceType.WINDOW_DOOR && p.closed
       )
-
-      console.log(`Wall "${wall.name}" (${parentItemGroup}): Found ${openingPolygons.length} opening polygons`)
 
       // Initialize subpage instances array for this wall if not exists
       if (!openingsPageData.subpageInstances![parentItemGroup]) {
@@ -198,11 +220,7 @@ export const useWallSync = () => {
       for (let i = instancesToRemove.length - 1; i >= 0; i--) {
         existingOpeningInstances.splice(instancesToRemove[i], 1)
       }
-
-      console.log(`Wall "${wall.name}" (${parentItemGroup}): Synced ${existingOpeningInstances.length} opening instances`)
     })
-
-    console.log('✅ Synced openings for all walls')
   }
 
   /**
