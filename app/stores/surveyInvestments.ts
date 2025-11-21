@@ -999,15 +999,18 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       try {
         const supabase = useSupabaseClient()
 
-        // Update local state
-        if (!this.pageInstances[this.activeInvestmentId]) {
-          this.pageInstances[this.activeInvestmentId] = {}
+        // Update local state - FIX: Use surveyId as primary key, not investmentId
+        if (!this.pageInstances[this.currentSurveyId]) {
+          this.pageInstances[this.currentSurveyId] = {}
         }
-        if (!this.pageInstances[this.activeInvestmentId][pageId]) {
-          this.pageInstances[this.activeInvestmentId][pageId] = { instances: [{}] }
+        if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+          this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+        }
+        if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId]) {
+          this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId] = { instances: [{}] }
         }
 
-        const instances = this.pageInstances[this.activeInvestmentId][pageId].instances
+        const instances = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][pageId].instances
 
         // Ensure instance exists
         while (instances.length <= instanceIndex) {
@@ -1071,9 +1074,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
     // Get response for a question in a specific instance
     getInstanceResponse(pageId: string, instanceIndex: number, questionName: string): any {
-      if (!this.activeInvestmentId) return null
+      if (!this.activeInvestmentId || !this.currentSurveyId) return null
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[pageId]?.instances
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[pageId]?.instances
       if (!instances || instanceIndex >= instances.length) return null
 
       return instances[instanceIndex]?.[questionName]
@@ -1416,15 +1419,18 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       try {
         const supabase = useSupabaseClient()
 
-        // Update local state
-        if (!this.pageInstances[this.activeInvestmentId]) {
-          this.pageInstances[this.activeInvestmentId] = {}
+        // Update local state - FIX: Use surveyId as primary key, not investmentId
+        if (!this.pageInstances[this.currentSurveyId]) {
+          this.pageInstances[this.currentSurveyId] = {}
         }
-        if (!this.pageInstances[this.activeInvestmentId][subpageId]) {
-          this.pageInstances[this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
+        if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId]) {
+          this.pageInstances[this.currentSurveyId][this.activeInvestmentId] = {}
+        }
+        if (!this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]) {
+          this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId] = { instances: [], subpageInstances: {} }
         }
 
-        const pageData = this.pageInstances[this.activeInvestmentId][subpageId]
+        const pageData = this.pageInstances[this.currentSurveyId][this.activeInvestmentId][subpageId]
         if (!pageData.subpageInstances) {
           pageData.subpageInstances = {}
         }
@@ -1504,9 +1510,9 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
       instanceIndex: number,
       questionName: string
     ): any {
-      if (!this.activeInvestmentId) return null
+      if (!this.activeInvestmentId || !this.currentSurveyId) return null
 
-      const instances = this.pageInstances[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
+      const instances = this.pageInstances[this.currentSurveyId]?.[this.activeInvestmentId]?.[subpageId]?.subpageInstances?.[parentItemGroup]
       if (!instances || instanceIndex >= instances.length) return null
 
       return instances[instanceIndex]?.[questionName]
