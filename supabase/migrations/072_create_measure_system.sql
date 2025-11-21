@@ -51,14 +51,26 @@ CREATE TABLE IF NOT EXISTS public.measure_polygons (
 );
 
 -- 3) TRIGGERS
+-- Ensure helper function exists
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS update_measure_walls_updated_at ON public.measure_walls;
 CREATE TRIGGER update_measure_walls_updated_at
   BEFORE UPDATE ON public.measure_walls
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_measure_wall_images_updated_at ON public.measure_wall_images;
 CREATE TRIGGER update_measure_wall_images_updated_at
   BEFORE UPDATE ON public.measure_wall_images
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_measure_polygons_updated_at ON public.measure_polygons;
 CREATE TRIGGER update_measure_polygons_updated_at
   BEFORE UPDATE ON public.measure_polygons
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -162,48 +174,67 @@ GRANT ALL ON public.measure_walls TO authenticated;
 GRANT ALL ON public.measure_wall_images TO authenticated;
 GRANT ALL ON public.measure_polygons TO authenticated;
 
--- 7) STORAGE BUCKET for measure images
--- Drop policies & bucket if previously existed (idempotent)
-DROP POLICY IF EXISTS "Measure: authenticated upload" ON storage.objects;
-DROP POLICY IF EXISTS "Measure: public read" ON storage.objects;
-DROP POLICY IF EXISTS "Measure: manage company images" ON storage.objects;
-DELETE FROM storage.buckets WHERE id = 'measure-images';
-
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'measure-images',
-  'measure-images',
-  true,
-  52428800, -- 50MB
-  ARRAY['image/jpeg','image/png','image/webp']::text[]
-);
+-- 7) STORAGE BUCKET for measure images (idempotent, non-destructive)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'measure-images') THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'measure-images',
+      'measure-images',
+      true,
+      52428800, -- 50MB
+      ARRAY['image/jpeg','image/png','image/webp']::text[]
+    );
+  END IF;
+END $$;
 
 -- Upload policy: users upload under /<companyId>/<surveyId>/**
-CREATE POLICY "Measure: authenticated upload"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'measure-images'
-  AND auth.uid() IS NOT NULL
-  AND EXISTS (
-    SELECT 1 FROM public.user_profiles up
-    WHERE up.user_id = auth.uid()
-      AND (storage.foldername(name))[1] = up.company_id::text
-  )
-);
+DO $policy$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Measure: authenticated upload'
+  ) THEN
+    CREATE POLICY "Measure: authenticated upload"
+    ON storage.objects FOR INSERT
+    WITH CHECK (
+      bucket_id = 'measure-images'
+      AND auth.uid() IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM public.user_profiles up
+        WHERE up.user_id = auth.uid()
+          AND (storage.foldername(name))[1] = up.company_id::text
+      )
+    );
+  END IF;
+END $policy$;
 
 -- Read policy: public read
-CREATE POLICY "Measure: public read"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'measure-images');
+DO $policy$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Measure: public read'
+  ) THEN
+    CREATE POLICY "Measure: public read"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'measure-images');
+  END IF;
+END $policy$;
 
 -- Manage policy: users can manage their company folder
-CREATE POLICY "Measure: manage company images"
-ON storage.objects FOR ALL
-USING (
-  bucket_id = 'measure-images'
-  AND EXISTS (
-    SELECT 1 FROM public.user_profiles up
-    WHERE up.user_id = auth.uid()
-      AND (storage.foldername(name))[1] = up.company_id::text
-  )
-);
+DO $policy$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Measure: manage company images'
+  ) THEN
+    CREATE POLICY "Measure: manage company images"
+    ON storage.objects FOR ALL
+    USING (
+      bucket_id = 'measure-images'
+      AND EXISTS (
+        SELECT 1 FROM public.user_profiles up
+        WHERE up.user_id = auth.uid()
+          AND (storage.foldername(name))[1] = up.company_id::text
+      )
+    );
+  END IF;
+END $policy$;
