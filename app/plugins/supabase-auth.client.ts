@@ -1,8 +1,22 @@
 // plugins/supabase-auth.client.ts
 export default defineNuxtPlugin(async (nuxtApp) => {
-    // Use the useSupabaseClient composable to get the client
     const client = useSupabaseClient()
     const user = useSupabaseUser()
+    const router = useRouter()
+
+    // Check if URL has auth hash parameters (password reset, invite, etc)
+    // If so, redirect to /confirm to handle them properly
+    if (typeof window !== 'undefined') {
+        const hash = window.location.hash
+        if (hash && (hash.includes('access_token') || hash.includes('type=recovery') || hash.includes('type=invite'))) {
+            const currentPath = window.location.pathname
+            // Only redirect if not already on confirm or reset-password page
+            if (currentPath !== '/confirm' && currentPath !== '/reset-password') {
+                await router.push('/confirm' + hash)
+                return
+            }
+        }
+    }
 
     // Add a flag to track when initial auth check is complete
     const authInitialized = useState('auth-initialized', () => false)
