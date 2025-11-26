@@ -2,7 +2,6 @@
   <svg
     :width="size"
     :height="size"
-    :class="className"
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
@@ -19,15 +18,10 @@
 interface Props {
   size?: string | number
   strokeWidth?: string | number
-  class?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 24,
-  strokeWidth: 1.5,
-  class: ''
+  strokeWidth: 1.5
 })
-
-// Rename class prop to avoid conflicts
-const className = props.class
 </script>

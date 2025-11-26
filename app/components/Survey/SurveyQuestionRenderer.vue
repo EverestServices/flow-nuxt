@@ -163,6 +163,32 @@
       </div>
     </div>
 
+    <!-- Range (similar to slider but with decimal step) -->
+    <div v-else-if="question.type === 'range'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <div class="flex items-center space-x-4">
+        <input
+          :value="modelValue || question.default_value || question.min || 0"
+          type="range"
+          :min="question.min || 0"
+          :max="question.max || 100"
+          :step="question.step || 0.1"
+          :disabled="isEffectivelyReadonly"
+          class="flex-1"
+          @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        />
+        <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[60px] text-right">
+          {{ modelValue || question.default_value || question.min || 0 }}{{ questionUnit || '' }}
+        </span>
+      </div>
+    </div>
+
     <!-- Dual Toggle (Two options) -->
     <div v-else-if="question.type === 'dual_toggle'">
       <div class="flex items-center gap-2 mb-2">
