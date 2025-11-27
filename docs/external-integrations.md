@@ -77,6 +77,23 @@ ADD COLUMN ekr_survey_id UUID;
 - Ha `ekr_survey_id` != NULL → Survey EKR-ből érkezett
 - Ha mindkettő NULL → Natív Flow survey
 
+**Kapcsolat Modell (2025-11-26 frissítés)**:
+
+A kapcsolat **OFP Survey ↔ Flow Survey** (one-to-one):
+- **Régi implementáció**: OFP Client (1) ↔ Flow Survey (1) - `Client.flowSurveyId`
+- **Új implementáció**: OFP Survey (1) ↔ Flow Survey (1) - `GlobalClientSurvey.flowSurveyId`
+
+**Előnyök**:
+- Egy OFP Client-nek több Survey-je is lehet, mindegyiknek saját Flow Survey-je
+- Tisztább adatintegritás és kapcsolatok
+- Survey-specifikus adatok követése Client-specifikus helyett
+
+**Integration Flow**:
+1. OFP küldi az `externalSurveyId`-t (GlobalClientSurvey.id) az `/integrations-client-sync` endpoint-ra
+2. Flow létrehoz egy survey rekordot: `ofp_survey_id = externalSurveyId`
+3. Flow visszaadja a `flowSurveyId`-t az OFP-nek
+4. OFP tárolja a `flowSurveyId`-t a `GlobalClientSurvey.flow_survey_id` mezőben
+
 #### 3. User External API Keys Tábla
 
 ```sql
@@ -125,20 +142,44 @@ CREATE TABLE public.external_sync_logs (
 
 ```sql
 ALTER TABLE clients
-ADD COLUMN flow_client_id CHAR(36) NULL,
-ADD COLUMN flow_survey_id CHAR(36) NULL;
+ADD COLUMN flow_client_id CHAR(36) NULL;
 ```
 
 **PHP Entity** (`src/Clients/Entity/Client.php`):
 ```php
 #[ORM\Column(type: 'guid', nullable: true)]
 private ?string $flowClientId = null;
-
-#[ORM\Column(type: 'guid', nullable: true)]
-private ?string $flowSurveyId = null;
 ```
 
-#### 2. Users Tábla Bővítése (API Key)
+**Megjegyzés**: A `flow_survey_id` mező **el lett távolítva** a Client táblából (2025-11-26), mivel a kapcsolat áthelyezésre került a GlobalClientSurvey szintre.
+
+#### 2. GlobalClientSurvey Tábla Bővítése
+
+```sql
+ALTER TABLE global_client_survey
+ADD COLUMN flow_survey_id VARCHAR(36) NULL;
+```
+
+**PHP Entity** (`src/Clients/Entity/GlobalClientSurvey.php`):
+```php
+#[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
+private ?string $flowSurveyId = null;
+
+public function getFlowSurveyId(): ?string
+{
+    return $this->flowSurveyId;
+}
+
+public function setFlowSurveyId(?string $flowSurveyId): self
+{
+    $this->flowSurveyId = $flowSurveyId;
+    return $this;
+}
+```
+
+**Cél**: OFP Survey (1) ↔ Flow Survey (1) kapcsolat tárolása. Egy OFP Survey-hoz pontosan egy Flow Survey tartozik.
+
+#### 3. Users Tábla Bővítése (API Key)
 
 ```sql
 ALTER TABLE users
@@ -1164,7 +1205,10 @@ LIMIT 50;
 
 ---
 
-**Verzió**: 1.0
-**Utolsó frissítés**: 2025-11-06
+**Verzió**: 1.1
+**Utolsó frissítés**: 2025-11-27
 **Szerző**: Claude (Anthropic)
-**Státusz**: Draft - Implementálás előtt
+**Státusz**: Production - OFP integráció aktív
+**Változtatások**:
+- 1.1 (2025-11-27): OFP Survey ↔ Flow Survey one-to-one kapcsolat dokumentálása
+- 1.0 (2025-11-06): Kezdeti verzió
