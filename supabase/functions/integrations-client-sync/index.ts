@@ -1,5 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import {
+  INVESTMENT_MAPPING,
+  PLANNED_INVESTMENT_MAPPING,
+  DEBUG_FLOOR_AREA,
+  FLOOR_AREA_QUESTION_IDS,
+} from './mappings.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +26,13 @@ interface ClientSyncRequest {
     contact_person?: string
     notes?: string
   }
+  prefillData?: {
+    basicData?: Record<string, any>
+    facadeInsulation?: Record<string, any>
+    heatPump?: Record<string, any>
+    [key: string]: Record<string, any> | undefined
+  }
+  plannedInvestments?: string[]  // OFP planned investment names
 }
 
 serve(async (req) => {
@@ -192,8 +205,35 @@ serve(async (req) => {
     const flowSurveyId = newSurvey.id
     console.log('Created new survey:', flowSurveyId)
 
+    // 8.5. Process prefill data if provided
+    if (body.prefillData) {
+      console.log('Processing prefill data for survey:', flowSurveyId)
+      await processPrefillData(supabaseAdmin, flowSurveyId, body.prefillData)
+    }
+
+    // 8.6. Set planned investments if provided
+    console.log('DEBUG plannedInvestments received:', body.plannedInvestments, 'type:', typeof body.plannedInvestments, 'isArray:', Array.isArray(body.plannedInvestments))
+
+    if (body.plannedInvestments) {
+      // Convert object to array if needed (PHP sends {"0":"value","3":"value"} instead of array)
+      let plannedInvestmentsArray: string[]
+      if (Array.isArray(body.plannedInvestments)) {
+        plannedInvestmentsArray = body.plannedInvestments
+      } else if (typeof body.plannedInvestments === 'object') {
+        // Convert object to array of values
+        plannedInvestmentsArray = Object.values(body.plannedInvestments)
+      } else {
+        plannedInvestmentsArray = []
+      }
+
+      if (plannedInvestmentsArray.length > 0) {
+        console.log('Setting planned investments for survey:', flowSurveyId, plannedInvestmentsArray)
+        await setPlannedInvestments(supabaseAdmin, flowSurveyId, plannedInvestmentsArray)
+      }
+    }
+
     // 9. Build survey URL
-    const baseUrl = Deno.env.get('FLOW_BASE_URL') || 'localhost:3000'
+    const baseUrl = Deno.env.get('FLOW_FRONTEND_URL') || 'http://localhost:3000'
     const surveyUrl = `${baseUrl}/survey/${flowSurveyId}`
 
     // 10. Log sync
@@ -243,4 +283,216 @@ async function hashApiKey(apiKey: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
   return hashHex
+}
+
+/**
+ * Processes prefill data and inserts survey answers
+ */
+async function processPrefillData(
+  supabaseAdmin: any,
+  surveyId: string,
+  prefillData: Record<string, Record<string, any>>
+): Promise<void> {
+  try {
+    const answersToInsert: any[] = []
+
+    // Process each investment type in prefillData
+    for (const [investmentKey, fieldData] of Object.entries(prefillData)) {
+      if (!fieldData || typeof fieldData !== 'object') {
+        continue
+      }
+
+      const persistName = INVESTMENT_MAPPING[investmentKey]
+      if (!persistName) {
+        console.warn(`Unknown investment key: ${investmentKey}`)
+        continue
+      }
+
+      // Get investment ID and survey pages
+      const { data: investment } = await supabaseAdmin
+        .from('investments')
+        .select('id, persist_name')
+        .eq('persist_name', persistName)
+        .single()
+
+      if (!investment) {
+        console.warn(`Investment not found for persist_name: ${persistName}`)
+        continue
+      }
+
+      // Get all survey questions for this investment
+      const { data: surveyPages } = await supabaseAdmin
+        .from('survey_pages')
+        .select(`
+          id,
+          type,
+          survey_questions (
+            id,
+            name,
+            type
+          )
+        `)
+        .eq('investment_id', investment.id)
+
+      if (!surveyPages || surveyPages.length === 0) {
+        console.warn(`No survey pages found for investment: ${persistName}`)
+        continue
+      }
+
+      // Build a map of question names to question IDs
+      const questionMap = new Map<string, string>()
+      for (const page of surveyPages) {
+        if (page.survey_questions) {
+          for (const question of page.survey_questions) {
+            questionMap.set(question.name, question.id)
+          }
+        }
+      }
+
+      // Create survey answers for each prefilled field
+      for (const [fieldName, value] of Object.entries(fieldData)) {
+        const questionId = questionMap.get(fieldName)
+
+        if (!questionId) {
+          console.warn(`Question not found for field: ${fieldName} in investment: ${persistName}`)
+          continue
+        }
+
+        // Debug log for floor area fields (configurable)
+        if (DEBUG_FLOOR_AREA && fieldName.includes('floor_area')) {
+          console.log(`DEBUG floor_area field: ${fieldName} = ${value} (type: ${typeof value})`)
+        }
+
+        // Convert value to appropriate format
+        let answerValue: any = value
+
+        // Handle boolean values
+        if (typeof value === 'boolean') {
+          answerValue = value.toString()
+        }
+        // Handle array values (multiselect)
+        else if (Array.isArray(value)) {
+          answerValue = JSON.stringify(value)
+        }
+        // Handle number values
+        else if (typeof value === 'number') {
+          answerValue = value.toString()
+        }
+        // String values stay as is
+
+        answersToInsert.push({
+          survey_id: surveyId,
+          survey_question_id: questionId,
+          answer: answerValue,
+        })
+      }
+    }
+
+    if (answersToInsert.length > 0) {
+      console.log(`Inserting ${answersToInsert.length} prefilled answers`)
+
+      // Debug: log floor_area answers before insert (configurable)
+      if (DEBUG_FLOOR_AREA) {
+        const floorAreaAnswers = answersToInsert.filter(a =>
+          a.survey_question_id === FLOOR_AREA_QUESTION_IDS.building_useful_floor_area ||
+          a.survey_question_id === FLOOR_AREA_QUESTION_IDS.heated_floor_area
+        )
+        console.log('DEBUG floor_area answers to insert:', JSON.stringify(floorAreaAnswers))
+      }
+
+      const { data: insertedData, error: insertError } = await supabaseAdmin
+        .from('survey_answers')
+        .insert(answersToInsert)
+        .select('survey_question_id')
+
+      if (insertError) {
+        console.error('Failed to insert prefilled answers:', insertError)
+        // Don't throw - continue with survey creation even if prefill fails
+      } else {
+        console.log('Successfully inserted prefilled answers')
+        if (DEBUG_FLOOR_AREA) {
+          console.log('DEBUG inserted count:', insertedData?.length)
+        }
+      }
+    } else {
+      console.log('No valid prefill answers to insert')
+    }
+  } catch (error) {
+    console.error('Error processing prefill data:', error)
+    // Don't throw - continue with survey creation even if prefill fails
+  }
+}
+
+/**
+ * Sets planned investments for a survey by inserting records into survey_investments table
+ */
+async function setPlannedInvestments(
+  supabaseAdmin: any,
+  surveyId: string,
+  plannedInvestments: string[]
+): Promise<void> {
+  try {
+    const investmentsToInsert: any[] = []
+
+    // Map OFP investment names to Flow persist_names and get investment IDs
+    for (const ofpInvestmentName of plannedInvestments) {
+      const persistName = PLANNED_INVESTMENT_MAPPING[ofpInvestmentName]
+
+      if (!persistName) {
+        console.warn(`Unknown OFP investment: ${ofpInvestmentName}`)
+        continue
+      }
+
+      // Get investment ID by persist_name
+      const { data: investment } = await supabaseAdmin
+        .from('investments')
+        .select('id')
+        .eq('persist_name', persistName)
+        .single()
+
+      if (!investment) {
+        console.warn(`Investment not found for persist_name: ${persistName}`)
+        continue
+      }
+
+      investmentsToInsert.push({
+        survey_id: surveyId,
+        investment_id: investment.id,
+      })
+    }
+
+    // Always include basicData investment
+    const { data: basicDataInvestment } = await supabaseAdmin
+      .from('investments')
+      .select('id')
+      .eq('persist_name', 'basicData')
+      .single()
+
+    if (basicDataInvestment) {
+      investmentsToInsert.push({
+        survey_id: surveyId,
+        investment_id: basicDataInvestment.id,
+      })
+    }
+
+    if (investmentsToInsert.length > 0) {
+      console.log(`Inserting ${investmentsToInsert.length} survey investments`)
+
+      const { error: insertError } = await supabaseAdmin
+        .from('survey_investments')
+        .insert(investmentsToInsert)
+
+      if (insertError) {
+        console.error('Failed to insert survey investments:', insertError)
+        // Don't throw - continue with survey creation even if this fails
+      } else {
+        console.log('Successfully set planned investments')
+      }
+    } else {
+      console.log('No valid investments to insert')
+    }
+  } catch (error) {
+    console.error('Error setting planned investments:', error)
+    // Don't throw - continue with survey creation even if this fails
+  }
 }
