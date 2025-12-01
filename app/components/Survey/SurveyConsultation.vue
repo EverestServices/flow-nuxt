@@ -186,11 +186,33 @@
     <div class="w-full flex flex-col">
       <div class="flex-1 p-4 flex items-center justify-center overflow-auto">
         <div class="w-full h-full flex items-center justify-center">
-          <img
-            src="/images/houseVisualization.png"
-            alt="House Visualization"
-            class="max-w-2xl max-h-full object-contain"
-          />
+          <div class="relative max-w-2xl max-h-full">
+            <!-- Background House Image -->
+            <img
+              src="/images/houseVisualization.png"
+              alt="House Visualization"
+              class="w-full h-auto object-contain"
+            />
+
+            <!-- Animation Overlay Container -->
+            <div class="absolute inset-0 pointer-events-none">
+              <!-- Heat Pump Animation -->
+              <img
+                v-if="hasHeatPumpInvestment"
+                src="/images/heatpump_anim.gif"
+                alt="Heat Pump Animation"
+                class="absolute inset-0 w-full h-full object-contain z-20"
+              />
+
+              <!-- Solar Panel Animation -->
+              <img
+                v-if="hasSolarPanelInvestment"
+                src="/images/solarpanel_anim.gif"
+                alt="Solar Panel Animation"
+                class="absolute inset-0 w-full h-full object-contain z-10"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -610,6 +632,18 @@ const hasHeatPumpInvestment = computed(() => {
   return investmentIds.some(id => {
     const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
     return investment && investment.persist_name === 'heatPump'
+  })
+})
+
+// Check if active scenario has Solar Panel investment (with or without battery)
+const hasSolarPanelInvestment = computed(() => {
+  if (!activeScenario.value) return false
+
+  const investmentIds = scenarioInvestments.value[activeScenario.value.id] || []
+
+  return investmentIds.some(id => {
+    const investment = investmentsStore.availableInvestments.find(inv => inv.id === id)
+    return investment && (investment.persist_name === 'solarPanel' || investment.persist_name === 'solarPanelBattery')
   })
 })
 
