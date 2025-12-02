@@ -120,6 +120,17 @@ serve(async (req) => {
       `)
       .eq('scenario_id', body.scenarioId)
 
+    // 8. Get scenario extra costs (OFP-specific only)
+    const { data: scenarioExtraCosts } = await supabaseAdmin
+      .from('scenario_extra_costs')
+      .select(`
+        *,
+        extra_cost:extra_costs(
+          *
+        )
+      `)
+      .eq('scenario_id', body.scenarioId)
+
     // 8. Build investments payload for Sherpa
     const investments: Record<string, any> = {}
 
@@ -182,10 +193,29 @@ serve(async (req) => {
           sc.main_component?.category?.persist_name === 'heatpump'
         )
 
+        // Get OFP-specific extra costs for heat pump
+        const ofpExtraCosts: Record<string, boolean> = {}
+
+        if (scenarioExtraCosts) {
+          for (const sec of scenarioExtraCosts) {
+            const extraCost = sec.extra_cost
+
+            // Check if this is an OFP-specific extra cost
+            if (extraCost?.metadata?.is_ofp_specific === true) {
+              // Use the ofp_api_key from metadata to send to Sherpa API
+              const apiKey = extraCost.metadata.ofp_api_key
+              if (apiKey) {
+                ofpExtraCosts[apiKey] = true
+              }
+            }
+          }
+        }
+
         investments.heat_pump = {
           capacity_kw: heatPumpComponent?.main_component?.power
             ? Math.round(heatPumpComponent.main_component.power / 1000)
             : 12, // Default to 12 kW
+          extra_costs: ofpExtraCosts, // e.g., { "HMW 200L": true, "Hibrid bekötés": true }
         }
       }
     }

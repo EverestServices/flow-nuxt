@@ -61,11 +61,13 @@ const BASE_QUANTITIES: Record<string, Record<string, number>> = {
   'Facade Insulation': {
     insulation: 120,  // 120 m² insulation
     adhesive: 8,      // 8 bags adhesive
-    plaster: 5        // 5 buckets plaster
+    plaster: 5,       // 5 buckets plaster
+    facade_system: 120 // 120 m² facade system (OFP simplified component)
   },
-  'Roof Insulation': {
+  'Attic Insulation': {
     insulation: 80,   // 80 m² insulation
-    vapor_barrier: 85 // 85 m² vapor barrier (5% extra)
+    vapor_barrier: 85, // 85 m² vapor barrier (5% extra)
+    roof_system: 80   // 80 m² roof system (OFP simplified component)
   },
   'Windows': {
     window: 25        // 25 m² windows

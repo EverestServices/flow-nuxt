@@ -88,9 +88,14 @@ import { useScenariosStore } from '~/stores/scenarios'
 interface Props {
   scenarioId: string
   investmentId: string
+  isOfpSurvey?: boolean
+  investmentPersistName?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isOfpSurvey: false,
+  investmentPersistName: ''
+})
 
 const scenariosStore = useScenariosStore()
 const { translate } = useTranslatableField()
@@ -98,9 +103,27 @@ const { translate } = useTranslatableField()
 // Loading states for each category
 const loadingCategories = ref<Record<string, boolean>>({})
 
-// Get categories for this investment
+// Get categories for this investment, filtered by visibility rules
 const categories = computed(() => {
-  return scenariosStore.getCategoriesForInvestment(props.investmentId)
+  const allCategories = scenariosStore.getCategoriesForInvestment(props.investmentId)
+
+  // Filter categories based on OFP visibility rules
+  if (props.isOfpSurvey && props.investmentPersistName) {
+    return allCategories.filter(category => {
+      // If no visibility rules, category is visible
+      if (!category.visibility) return true
+
+      // Check OFP survey visibility rules
+      const visibility = category.visibility as any
+      if (visibility.ofp_survey && visibility.ofp_survey[props.investmentPersistName] === false) {
+        return false
+      }
+
+      return true
+    })
+  }
+
+  return allCategories
 })
 
 // Get scenario components for a category (filtered by investment)
@@ -132,7 +155,6 @@ const getCategoryDisplayName = (category: any): string => {
 // Show category info
 const showCategoryInfo = (category: any) => {
   // TODO: Implement info modal
-  console.log('Show info for category:', category)
 }
 
 // Add new row
