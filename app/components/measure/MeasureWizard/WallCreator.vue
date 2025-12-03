@@ -133,6 +133,9 @@ onMounted(async () => {
       console.log('Processing wall:', dbWall);
       console.log('Wall images:', dbWall.images);
 
+      // Preserve existing local polygons if present (e.g., manual mode edits not yet saved to DB)
+      const existing = store.getWallsForSurvey(sid)[dbWall.id] as Wall | undefined;
+
       const wallImages: WallImage[] = (dbWall.images || []).map((img: any) => {
         console.log('📷 Processing image:', img);
         console.log('   - Original URL:', img.original_url);
@@ -158,6 +161,31 @@ onMounted(async () => {
         };
       });
 
+      // Merge DB images with existing local meta (preserve MPP and dimensions if DB lacks them)
+      const mergedImages: WallImage[] = (() => {
+        if (existing?.images && existing.images.length) {
+          const byId = new Map(existing.images.map((im) => [im.imageId, im] as const));
+          return wallImages.map((im) => {
+            const prev = byId.get(im.imageId);
+            if (!prev) return im;
+            return {
+              ...im,
+              processedImageWidth: im.processedImageWidth ?? prev.processedImageWidth,
+              processedImageHeight: im.processedImageHeight ?? prev.processedImageHeight,
+              meterPerPixel: (typeof im.meterPerPixel === 'number' && isFinite(im.meterPerPixel) && im.meterPerPixel > 0)
+                ? im.meterPerPixel
+                : prev.meterPerPixel,
+              // Prefer non-empty URLs
+              previewUrl: im.previewUrl || prev.previewUrl,
+              processedImageUrl: im.processedImageUrl || prev.processedImageUrl,
+              // Keep manual flag if DB unset
+              manual: (typeof im.manual === 'boolean') ? im.manual : prev.manual,
+            } as WallImage;
+          });
+        }
+        return wallImages;
+      })();
+
       console.log('✅ Converted wall images count:', wallImages.length);
       console.log('✅ Wall images:', wallImages);
 
@@ -176,10 +204,8 @@ onMounted(async () => {
         areaOverrideM2: p.area_override_m2 ?? null,
       }));
 
-      // Preserve existing local polygons if present (e.g., manual mode edits not yet saved to DB)
-      const existing = store.getWallsForSurvey(sid)[dbWall.id] as Wall | undefined;
       const finalPolygons = (existing?.polygons && existing.polygons.length > 0) ? existing.polygons : wallPolygonsFromDb;
-      const finalImages = wallImages.length > 0 ? wallImages : (existing?.images && existing.images.length > 0 ? existing.images : [createEmptyImage()]);
+      const finalImages = mergedImages.length > 0 ? mergedImages : (existing?.images && existing.images.length > 0 ? existing.images : [createEmptyImage()]);
 
       const wall: Wall = {
         id: dbWall.id,
