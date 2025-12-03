@@ -1,5 +1,5 @@
-DROP FUNCTION update_user_activity(uuid);
-DROP FUNCTION set_user_offline(uuid);
+DROP FUNCTION IF EXISTS update_user_activity(uuid);
+DROP FUNCTION IF EXISTS set_user_offline(uuid);
 
 -- Add online status tracking to user_profiles
 ALTER TABLE user_profiles

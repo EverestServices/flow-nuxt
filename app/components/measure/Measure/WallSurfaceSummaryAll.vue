@@ -87,8 +87,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWallStore } from '@/stores/WallStore';
+import { useRoute } from 'vue-router';
 
 const store = useWallStore();
+const route = useRoute();
+const surveyId = computed(() => String(route.params.surveyId));
 
 const totalAreas = computed(() => {
   const result = {
@@ -98,8 +101,9 @@ const totalAreas = computed(() => {
     wallPlinthArea: 0,
     wallPlinthNetArea: 0,
   };
-  for (const wall of Object.values(store.walls)) {
-    const areas = store.getWallSurfaceAreas(wall.id);
+  const walls = Object.values(store.getWallsForSurvey(surveyId.value));
+  for (const wall of walls) {
+    const areas = store.getWallSurfaceAreas(surveyId.value, wall.id);
     if (areas) {
       result.facadeGrossArea += areas.facadeGrossArea;
       result.facadeNetArea += areas.facadeNetArea;

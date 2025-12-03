@@ -1,12 +1,31 @@
 import { defineStore } from 'pinia'
 import { useSupabaseClient } from '#imports'
 
+export interface OfpCalculationResult {
+  calculated_at: string
+  calculations: {
+    wall_insulation?: any
+    roof_insulation?: any
+    window_replacement?: any
+    heat_pump?: any
+  }
+  totals: {
+    total_investment_gross: number
+    total_investment_net: number
+    total_self_strength: number
+    total_non_refundable: number
+    total_interest_free_loan: number
+  }
+  percentage: number
+}
+
 export interface Scenario {
   id: string
   survey_id: string
   name: string
   sequence: number
   description?: string
+  ofp_calculation?: OfpCalculationResult | null
   created_at: string
   updated_at: string
 }
@@ -42,6 +61,10 @@ export interface MainComponent {
   cop?: number
   energy_class?: string
   sequence: number
+  visibility?: {
+    ofp_survey?: boolean
+    [key: string]: any
+  } | null
 }
 
 export interface MainComponentCategory {
@@ -49,6 +72,10 @@ export interface MainComponentCategory {
   persist_name: string
   name_translations: Record<string, string>
   sequence: number
+  visibility?: {
+    ofp_survey?: Record<string, boolean>
+    [key: string]: any
+  } | null
 }
 
 export const useScenariosStore = defineStore('scenarios', {
@@ -186,19 +213,19 @@ export const useScenariosStore = defineStore('scenarios', {
     async loadMainComponentsData() {
       const supabase = useSupabaseClient()
 
-      // Load main component categories
+      // Load main component categories (with visibility field)
       const { data: categories, error: catError } = await supabase
         .from('main_component_categories')
-        .select('*')
+        .select('*, visibility')
         .order('sequence')
 
       if (catError) throw catError
       this.mainComponentCategories = categories || []
 
-      // Load main components
+      // Load main components (with visibility field)
       const { data: components, error: compError } = await supabase
         .from('main_components')
-        .select('*')
+        .select('*, visibility')
         .order('sequence')
 
       if (compError) throw compError

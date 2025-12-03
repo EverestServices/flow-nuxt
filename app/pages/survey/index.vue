@@ -170,7 +170,9 @@ onMounted(async () => {
           postal_code,
           city,
           street,
-          house_number
+          house_number,
+          ofp_client_id,
+          ekr_client_id
         ),
         contracts (
           id,

@@ -4,7 +4,7 @@ ALTER TABLE public.clients DISABLE ROW LEVEL SECURITY;
 -- Update existing clients to have a default company_id for testing
 UPDATE public.clients
 SET company_id = '00000000-0000-0000-0000-000000000001'
-WHERE company_id IS NULL OR company_id = '';
+WHERE company_id IS NULL;
 
 -- Also temporarily disable RLS on tickets for easier testing
 ALTER TABLE public.tickets DISABLE ROW LEVEL SECURITY;

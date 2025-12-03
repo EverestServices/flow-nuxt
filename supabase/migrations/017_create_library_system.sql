@@ -212,11 +212,20 @@ GRANT EXECUTE ON FUNCTION get_library_stats(UUID) TO authenticated;
 DO $$
 DECLARE
     sample_company_id UUID := 'f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44';
-    sample_user_id UUID := '4fffb938-176e-45a0-8b9d-bd9419a071f6';
+    sample_user_id UUID;
     documents_folder_id UUID;
     images_folder_id UUID;
     training_folder_id UUID;
 BEGIN
+    -- Get first available user dynamically
+    SELECT id INTO sample_user_id FROM auth.users ORDER BY created_at LIMIT 1;
+
+    -- Skip if no users exist
+    IF sample_user_id IS NULL THEN
+        RAISE NOTICE 'No users found, skipping library sample data creation';
+        RETURN;
+    END IF;
+
     -- Create Documents folder
     INSERT INTO public.library_items (company_id, created_by, name, type, path, category)
     VALUES (sample_company_id, sample_user_id, 'Documents', 'folder', '/Documents', 'documents')

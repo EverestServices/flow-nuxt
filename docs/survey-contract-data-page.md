@@ -51,7 +51,7 @@ The Contract Data page serves as a centralized interface for collecting all pers
 The `contracts` table stores both technical and personal data. The following fields are managed on the Contract Data page:
 
 ```sql
--- From migration 003_create_survey_system.sql and 068_update_contracts_table.sql
+-- From migration 004_create_survey_system.sql and 068_update_contracts_table.sql
 CREATE TABLE public.contracts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -889,7 +889,7 @@ const toggleContractSelection = (contractId: string) => {
 
 - [Survey System Architecture](./survey-system-architecture.md) - Overall system design
 - [Survey Offer/Contract Page](./survey-offer-contract-page.md) - Related contract management features
-- [Migration 003](../supabase/migrations/003_create_survey_system.sql) - Initial contracts table
+- [Migration 003](../supabase/migrations/004_create_survey_system.sql) - Initial contracts table
 - [Migration 068](../supabase/migrations/068_update_contracts_table.sql) - Contract metadata fields
 - [Migration 070](../supabase/migrations/070_add_investment_id_to_pivot_tables.sql) - Investment-specific tracking
 

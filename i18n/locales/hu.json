@@ -614,6 +614,11 @@
       "failedToUpdateRetry": "Nem sikerült frissíteni a feladatot. Kérem próbálja újra."
     }
   },
+  "colorPicker": {
+    "selectedColor": "Kiválasztott szín",
+    "selectColor": "Válasszon színt",
+    "clearSelection": "Kiválasztás törlése"
+  },
   "client": {
     "header": {
       "back": "Vissza",

@@ -95,6 +95,48 @@ export const useWallStore = defineStore(
       const imgHeight = wall.images[0]?.processedImageHeight ?? 1;
       const meterPerPixel = wall.images[0]?.meterPerPixel ?? 1;
 
+      const isManual = Boolean(wall.images?.[0]?.manual);
+      if (isManual) {
+        const manualAreaOf = (p: PolygonSurface): number => {
+          const anyP = p as any;
+          const ov = anyP.areaOverrideM2 as number | null | undefined;
+          if (typeof ov === 'number' && isFinite(ov) && ov > 0) return ov;
+          const a = anyP.edgeNotesCm?.a as number | null | undefined;
+          const b = anyP.edgeNotesCm?.b as number | null | undefined;
+          if (p.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
+            return (a * b) / 10000;
+          }
+          return 0;
+        };
+
+        let facadeGrossArea = 0;
+        let windowDoorArea = 0;
+        let wallPlinthArea = 0;
+        for (const p of (wall.polygons || [])) {
+          if (!p.closed) continue;
+          const area = manualAreaOf(p);
+          if (!area) continue;
+          if (p.type === SurfaceType.FACADE) facadeGrossArea += area;
+          else if (p.type === SurfaceType.WINDOW_DOOR) windowDoorArea += area;
+          else if (p.type === SurfaceType.WALL_PLINTH) wallPlinthArea += area;
+        }
+        const facadeNetArea = Math.max(0, facadeGrossArea - windowDoorArea);
+        const wallPlinthNetArea = wallPlinthArea;
+
+        const manualArea = (wall.images || [])
+          .flatMap((img: any) => (img?.manualShapes ?? []))
+          .reduce((sum: number, s: any) => sum + (Number(s?.areaM2) || 0), 0);
+
+        return {
+          facadeGrossArea,
+          facadeNetArea,
+          windowDoorArea,
+          wallPlinthArea,
+          wallPlinthNetArea,
+          manualArea,
+        };
+      }
+
       const getPolygonByType = (type: SurfaceType) => {
         return wall.polygons.filter((p) => p.type === type && p.closed);
       };
@@ -138,12 +180,17 @@ export const useWallStore = defineStore(
         meterPerPixel,
       );
 
+      const manualArea = (wall.images || [])
+        .flatMap((img: any) => (img?.manualShapes ?? []))
+        .reduce((sum: number, s: any) => sum + (Number(s?.areaM2) || 0), 0);
+
       return {
         facadeGrossArea,
         facadeNetArea,
         windowDoorArea,
         wallPlinthArea,
         wallPlinthNetArea,
+        manualArea,
       };
     }
 

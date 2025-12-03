@@ -163,6 +163,32 @@
       </div>
     </div>
 
+    <!-- Range (similar to slider but with decimal step) -->
+    <div v-else-if="question.type === 'range'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <div class="flex items-center space-x-4">
+        <input
+          :value="modelValue || question.default_value || question.min || 0"
+          type="range"
+          :min="question.min || 0"
+          :max="question.max || 100"
+          :step="question.step || 0.1"
+          :disabled="isEffectivelyReadonly"
+          class="flex-1"
+          @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        />
+        <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[60px] text-right">
+          {{ modelValue || question.default_value || question.min || 0 }}{{ questionUnit || '' }}
+        </span>
+      </div>
+    </div>
+
     <!-- Dual Toggle (Two options) -->
     <div v-else-if="question.type === 'dual_toggle'">
       <div class="flex items-center gap-2 mb-2">
@@ -272,9 +298,64 @@
       </div>
     </div>
 
-    <!-- Calculated Field (read-only card showing computed value) -->
+    <!-- Color Picker -->
+    <div v-else-if="question.type === 'color_picker'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+      <UIColorPicker
+        :model-value="modelValue || question.default_value"
+        :disabled="isEffectivelyReadonly"
+        :colors="colorPickerOptions"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
+    </div>
+
+    <!-- Calculated Field (read-only card showing computed value OR manual input with lock) -->
     <div v-else-if="question.type === 'calculated'">
-      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+      <!-- Manual override mode: editable number input with lock button -->
+      <div v-if="allowsManualOverride">
+        <div class="flex items-center gap-2 mb-2">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {{ questionLabel }}
+            <span v-if="question.is_required" class="text-red-500">*</span>
+          </label>
+          <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+        </div>
+        <div class="relative flex items-center space-x-2">
+          <button
+            type="button"
+            class="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+            :title="isManualMode ? 'Zárás (automatikus számolás)' : 'Feloldás (kézi szerkesztés)'"
+            @click="toggleLockState"
+          >
+            <UIcon
+              :name="isManualMode ? 'i-lucide-lock-open' : 'i-lucide-lock'"
+              class="w-5 h-5"
+              :class="isManualMode ? 'text-orange-500' : 'text-gray-400'"
+            />
+          </button>
+          <UIInput
+            :model-value="isManualMode ? modelValue : calculatedValue"
+            type="number"
+            :readonly="!isManualMode"
+            :disabled="!isManualMode"
+            :class="{ 'pl-10': true, 'bg-gray-100 dark:bg-gray-900': !isManualMode }"
+            class="flex-1"
+            @update:model-value="$emit('update:modelValue', $event)"
+          />
+          <span v-if="questionUnit" class="text-sm text-gray-500 dark:text-gray-400">
+            {{ questionUnit }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Standard calculated field: readonly card -->
+      <div v-else class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -292,6 +373,182 @@
       </div>
     </div>
 
+    <!-- Repeatable Field (dynamic list of inputs) -->
+    <div v-else-if="question.type === 'repeatable_field'">
+      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+        <!-- Items list -->
+        <div v-if="repeatableItems.length > 0" class="space-y-2 mb-3">
+          <div
+            v-for="(item, index) in repeatableItems"
+            :key="index"
+            class="flex items-center gap-2"
+          >
+            <UIInput
+              :model-value="item"
+              type="number"
+              :placeholder="repeatableFieldLabel"
+              class="flex-1"
+              @update:model-value="updateRepeatableItem(index, $event)"
+            />
+            <span v-if="repeatableFieldUnit" class="text-sm text-gray-500 dark:text-gray-400">
+              {{ repeatableFieldUnit }}
+            </span>
+            <button
+              type="button"
+              class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+              @click="removeRepeatableItem(index)"
+            >
+              <UIcon name="i-lucide-x" class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Add button -->
+        <button
+          type="button"
+          class="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          @click="addRepeatableItem"
+        >
+          <UIcon name="i-lucide-plus" class="w-5 h-5" />
+          {{ repeatableAddButtonText }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Multiselect with Distribution (dynamic fields based on DB config) -->
+    <div v-else-if="question.type === 'multiselect_with_distribution'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+
+      <!-- Distribution rows -->
+      <div v-if="distributionOptions.length > 0" class="space-y-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+        <div
+          v-for="option in distributionOptions"
+          :key="option.value"
+          class="grid gap-3 items-center"
+          :style="{ gridTemplateColumns: distributionGridColumns }"
+        >
+          <!-- Option label -->
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {{ option.label }}
+          </span>
+
+          <!-- Dynamic fields from DB config -->
+          <template v-for="(field, fieldIndex) in distributionFields" :key="fieldIndex">
+            <!-- Slider field -->
+            <div v-if="field.type === 'slider'" class="flex items-center gap-2">
+              <input
+                :value="getDistributionFieldValue(option.value, field.name)"
+                type="range"
+                :min="field.min || 0"
+                :max="field.max || 100"
+                :step="field.step || 1"
+                class="flex-1"
+                @input="updateDistributionFieldValue(option.value, field.name, ($event.target as HTMLInputElement).value)"
+              />
+              <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[50px] text-right">
+                {{ getDistributionFieldValue(option.value, field.name) }}{{ getFieldUnit(field) }}
+              </span>
+            </div>
+
+            <!-- Number input field -->
+            <div v-else-if="field.type === 'number'" class="flex items-center gap-2">
+              <UIInput
+                :model-value="getDistributionFieldValue(option.value, field.name)"
+                type="number"
+                :min="field.min"
+                :max="field.max"
+                :placeholder="getFieldLabel(field)"
+                class="flex-1"
+                @update:model-value="updateDistributionFieldValue(option.value, field.name, $event)"
+              />
+              <span v-if="getFieldUnit(field)" class="text-sm text-gray-500 dark:text-gray-400">
+                {{ getFieldUnit(field) }}
+              </span>
+            </div>
+
+            <!-- Text input field -->
+            <div v-else-if="field.type === 'text'" class="flex items-center gap-2">
+              <UIInput
+                :model-value="getDistributionFieldValue(option.value, field.name)"
+                type="text"
+                :placeholder="getFieldLabel(field)"
+                class="flex-1"
+                @update:model-value="updateDistributionFieldValue(option.value, field.name, $event)"
+              />
+              <span v-if="getFieldUnit(field)" class="text-sm text-gray-500 dark:text-gray-400">
+                {{ getFieldUnit(field) }}
+              </span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Validation warning (e.g., total percentage > 100%) -->
+        <div v-if="distributionValidationMessage" class="text-sm text-red-500 dark:text-red-400">
+          {{ distributionValidationMessage }}
+        </div>
+      </div>
+
+      <!-- No options selected message -->
+      <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">
+        {{ distributionEmptyMessage }}
+      </div>
+    </div>
+
+    <!-- Drawing Area (button that opens modal with canvas) -->
+    <div v-else-if="question.type === 'drawing_area'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+
+      <div class="flex items-start gap-3">
+        <!-- Open drawing button -->
+        <button
+          type="button"
+          class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center gap-2"
+          @click="openDrawingModal"
+        >
+          <UIcon name="i-lucide-pencil" class="w-5 h-5" />
+          {{ drawingButtonText }}
+        </button>
+
+        <!-- Preview thumbnail if drawing exists -->
+        <div
+          v-if="modelValue"
+          class="relative border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden cursor-pointer hover:border-primary-500 transition-colors"
+          @click="openDrawingModal"
+        >
+          <img
+            :src="modelValue"
+            alt="Drawing preview"
+            class="w-24 h-24 object-cover"
+          />
+          <div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+            <UIcon name="i-lucide-pencil" class="w-6 h-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Drawing Modal -->
+      <DrawingModal
+        v-model="isDrawingModalOpen"
+        :title="questionLabel"
+        :canvas-width="question.options?.canvas_width || 800"
+        :canvas-height="question.options?.canvas_height || 600"
+        :initial-image="modelValue"
+        @save="handleDrawingSave"
+      />
+    </div>
+
     <!-- Fallback for unknown types -->
     <div v-else class="text-sm text-gray-500 dark:text-gray-400">
       Unsupported question type: {{ question.type }}
@@ -300,10 +557,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { SurveyQuestion } from '~/stores/surveyInvestments'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import OrientationSelector from '@/components/shared/OrientationSelector.vue'
+import DrawingModal from '@/components/Survey/DrawingModal.vue'
 
 interface Props {
   question: SurveyQuestion
@@ -555,6 +813,23 @@ const translatedOptionsWithIcons = computed(() => {
   }))
 })
 
+// Get color options for color_picker type
+const colorPickerOptions = computed(() => {
+  if (props.question.type !== 'color_picker' || !props.question.options) {
+    return undefined
+  }
+
+  // If options is an object with color codes and RGB values
+  if (typeof props.question.options === 'object' && !Array.isArray(props.question.options)) {
+    return Object.entries(props.question.options).map(([code, rgb]) => ({
+      code,
+      rgb: rgb as string
+    }))
+  }
+
+  return undefined
+})
+
 // Get options with empty option for non-required dropdowns
 const dropdownOptions = computed(() => {
   const options = [...translatedOptions.value]
@@ -588,7 +863,69 @@ const parseBoolean = (value: any): boolean => {
 // Only readonly if:
 // 1. is_readonly is true AND
 // 2. If has default_value_source, only readonly if the SOURCE field has a value
+// 3. If this field is affected by a calculated field in manual override mode
+// 4. If this field is controlled by a value copy rule whose condition is met
 const isEffectivelyReadonly = computed(() => {
+  // Check if this field is affected by any calculated field in manual mode
+  // Search current page for calculated fields with manual override
+  const currentPageId = Object.entries(store.surveyQuestions).find(([_, questions]) =>
+    questions.some(q => q.id === props.question.id)
+  )?.[0]
+
+  if (currentPageId) {
+    const pageQuestions = store.surveyQuestions[currentPageId] || []
+    for (const q of pageQuestions) {
+      if (q.type === 'calculated' &&
+          q.options?.allowManualOverride &&
+          q.options?.lockStateField &&
+          q.options?.affectedFields) {
+        // Check if this calculated field is in manual mode
+        const lockState = store.getResponse(q.options.lockStateField as string)
+        const isInManualMode = lockState === 'true' || lockState === true
+
+        // If in manual mode and current field is in affectedFields, make it readonly
+        if (isInManualMode &&
+            Array.isArray(q.options.affectedFields) &&
+            (q.options.affectedFields as string[]).includes(props.question.name)) {
+          return true
+        }
+      }
+    }
+  }
+
+  // Check if this field is controlled by a value copy rule
+  const valueCopyRules = store.getValueCopyRulesForTarget(props.question.id)
+  if (valueCopyRules.length > 0) {
+    // Check if any rule's condition is met
+    for (const rule of valueCopyRules) {
+      // Find the condition question by ID
+      let conditionQuestion: SurveyQuestion | null = null
+
+      for (const investmentId in store.surveyPages) {
+        const pages = store.surveyPages[investmentId]
+        for (const page of pages) {
+          const questions = store.surveyQuestions[page.id] || []
+          const found = questions.find(q => q.id === rule.condition_question_id)
+          if (found) {
+            conditionQuestion = found
+            break
+          }
+        }
+        if (conditionQuestion) break
+      }
+
+      if (conditionQuestion) {
+        // Get the condition question's value
+        const conditionValue = store.getResponse(conditionQuestion.name)
+
+        // If the condition is met, make this field readonly
+        if (String(conditionValue) === rule.condition_value) {
+          return true
+        }
+      }
+    }
+  }
+
   if (!props.question.is_readonly) return false
 
   // If has default_value_source, check if the source field has a value
@@ -827,4 +1164,243 @@ const activeConditionalMessage = computed<{ type: 'info' | 'warning' | 'danger';
 
   return null
 })
+
+// Check if this calculated field allows manual override
+const allowsManualOverride = computed(() => {
+  return props.question.type === 'calculated' &&
+         props.question.options?.allowManualOverride === true
+})
+
+// Check current lock state (false = locked/auto, true = unlocked/manual)
+const isManualMode = computed(() => {
+  if (!allowsManualOverride.value || !props.question.options?.lockStateField) {
+    return false
+  }
+  const lockState = store.getResponse(props.question.options.lockStateField as string)
+  return lockState === 'true' || lockState === true
+})
+
+// Toggle lock state and recalculate if needed
+async function toggleLockState() {
+  if (!props.question.options?.lockStateField) return
+
+  const newState = !isManualMode.value
+  // Update the hidden lock state question
+  await store.saveResponse(props.question.options.lockStateField as string, String(newState))
+
+  // If switching back to auto mode, recalculate the value
+  if (!newState && calculatedValue.value !== '—') {
+    emit('update:modelValue', calculatedValue.value)
+  }
+}
+
+// ========================================================================
+// REPEATABLE FIELD LOGIC
+// ========================================================================
+
+// Parse repeatable items from modelValue
+const repeatableItems = computed(() => {
+  if (props.question.type !== 'repeatable_field') return []
+  return Array.isArray(props.modelValue) ? props.modelValue : []
+})
+
+// Get translated "Add" button text
+const repeatableAddButtonText = computed(() => {
+  if (props.question.type !== 'repeatable_field') return ''
+  return translate(props.question.options?.add_button_text, 'Add Item')
+})
+
+// Get translated field label for each item
+const repeatableFieldLabel = computed(() => {
+  if (props.question.type !== 'repeatable_field') return ''
+  return translate(props.question.options?.item_field?.label, '')
+})
+
+// Get translated unit for each item
+const repeatableFieldUnit = computed(() => {
+  if (props.question.type !== 'repeatable_field') return ''
+  return translate(props.question.options?.item_field?.unit, '')
+})
+
+// Add a new item to the repeatable field
+function addRepeatableItem() {
+  const items = [...repeatableItems.value, '']
+  emit('update:modelValue', items)
+}
+
+// Update an item at a specific index
+function updateRepeatableItem(index: number, value: any) {
+  const items = [...repeatableItems.value]
+  items[index] = value
+  emit('update:modelValue', items)
+}
+
+// Remove an item at a specific index
+function removeRepeatableItem(index: number) {
+  const items = repeatableItems.value.filter((_, i) => i !== index)
+  emit('update:modelValue', items)
+}
+
+// ========================================================================
+// MULTISELECT WITH DISTRIBUTION LOGIC
+// ========================================================================
+
+// Get options from the source field
+const distributionOptions = computed(() => {
+  if (props.question.type !== 'multiselect_with_distribution') return []
+
+  const sourceField = props.question.options?.source_field as string
+  if (!sourceField) return []
+
+  // Get the selected values from the source field
+  let selectedValues = store.getResponse(sourceField)
+
+  // Parse JSON string if needed
+  if (typeof selectedValues === 'string') {
+    try {
+      selectedValues = JSON.parse(selectedValues)
+    } catch (e) {
+      console.error('Failed to parse multiselect values:', e)
+      return []
+    }
+  }
+
+  if (!selectedValues || !Array.isArray(selectedValues) || selectedValues.length === 0) {
+    return []
+  }
+
+  // Find the source question to get its options
+  let sourceQuestion: SurveyQuestion | null = null
+  for (const investmentId in store.surveyPages) {
+    const pages = store.surveyPages[investmentId]
+    for (const page of pages) {
+      const questions = store.surveyQuestions[page.id] || []
+      const found = questions.find(q => q.name === sourceField)
+      if (found) {
+        sourceQuestion = found
+        break
+      }
+    }
+    if (sourceQuestion) break
+  }
+
+  if (!sourceQuestion) return []
+
+  // Get translated options from the source question
+  const sourceOptions = sourceQuestion.options_translations && sourceQuestion.options_translations.length > 0
+    ? translateOptions(sourceQuestion.options_translations)
+    : sourceQuestion.options && sourceQuestion.options.length > 0
+    ? sourceQuestion.options.map(opt => ({ value: opt, label: opt }))
+    : []
+
+  // Filter to only show selected options
+  return sourceOptions.filter(opt => selectedValues.includes(opt.value))
+})
+
+// Get fields configuration from DB for multiselect_with_distribution
+const distributionFields = computed(() => {
+  if (props.question.type !== 'multiselect_with_distribution') return []
+  return (props.question.options?.fields as any[]) || []
+})
+
+// Build grid template columns string from fields config
+const distributionGridColumns = computed(() => {
+  if (props.question.type !== 'multiselect_with_distribution') return ''
+
+  const labelWidth = props.question.options?.label_grid_width || '150px'
+  const fieldWidths = distributionFields.value.map(field => field.grid_width || '1fr')
+
+  return [labelWidth, ...fieldWidths].join(' ')
+})
+
+// Get translated empty message
+const distributionEmptyMessage = computed(() => {
+  if (props.question.type !== 'multiselect_with_distribution') return ''
+  return translate(props.question.options?.empty_message, 'Please select options first')
+})
+
+// Get validation message with dynamic values
+const distributionValidationMessage = computed(() => {
+  if (props.question.type !== 'multiselect_with_distribution') return null
+
+  const maxTotalPercentage = props.question.options?.max_total_percentage as number
+  if (!maxTotalPercentage) return null
+
+  // Calculate total from all slider fields
+  const data = props.modelValue || {}
+  let total = 0
+
+  for (const option of distributionOptions.value) {
+    for (const field of distributionFields.value) {
+      if (field.type === 'slider') {
+        const value = data[option.value]?.[field.name] || 0
+        total += parseFloat(String(value)) || 0
+      }
+    }
+  }
+
+  if (total > maxTotalPercentage) {
+    const messageTemplate = translate(props.question.options?.validation_message, 'Total cannot exceed {max}% (currently: {total}%)')
+    return messageTemplate.replace('{total}', String(Math.round(total))).replace('{max}', String(maxTotalPercentage))
+  }
+
+  return null
+})
+
+// Get translated label for a field
+function getFieldLabel(field: any): string {
+  return translate(field.label, field.name)
+}
+
+// Get translated unit for a field
+function getFieldUnit(field: any): string {
+  return translate(field.unit, '')
+}
+
+// Get field value for a specific option and field name
+function getDistributionFieldValue(optionValue: string, fieldName: string): any {
+  if (props.question.type !== 'multiselect_with_distribution') return ''
+
+  const data = props.modelValue || {}
+  return data[optionValue]?.[fieldName] || (fieldName === 'distribution' ? 0 : '')
+}
+
+// Update field value for a specific option and field name
+function updateDistributionFieldValue(optionValue: string, fieldName: string, value: any) {
+  const data = props.modelValue || {}
+
+  // Create or update the entry for this option
+  const updatedData = {
+    ...data,
+    [optionValue]: {
+      ...(data[optionValue] || {}),
+      [fieldName]: value
+    }
+  }
+
+  emit('update:modelValue', updatedData)
+}
+
+// ========================================================================
+// DRAWING AREA LOGIC
+// ========================================================================
+
+// Modal state for drawing area
+const isDrawingModalOpen = ref(false)
+
+// Get translated button text for drawing area
+const drawingButtonText = computed(() => {
+  if (props.question.type !== 'drawing_area') return ''
+  return translate(props.question.options?.button_text, 'Open Drawing')
+})
+
+// Open drawing modal
+function openDrawingModal() {
+  isDrawingModalOpen.value = true
+}
+
+// Handle drawing save
+function handleDrawingSave(imageData: string) {
+  emit('update:modelValue', imageData)
+}
 </script>

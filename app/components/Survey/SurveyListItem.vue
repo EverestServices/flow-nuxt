@@ -71,6 +71,19 @@
 
         <!-- Center: Status Badges -->
         <div class="flex flex-wrap items-center gap-2 lg:flex-shrink-0">
+          <!-- External System Badge (OFP/EKR) -->
+          <div v-if="externalSystem"
+               class="inline-flex items-center gap-2 px-4 py-2.5
+                      bg-gradient-to-br from-purple-100 to-pink-100
+                      dark:from-purple-900/40 dark:to-pink-900/40
+                      rounded-xl shadow-sm border border-purple-200/50 dark:border-purple-700/50
+                      group-hover:shadow-md transition-all duration-200">
+            <Icon name="i-lucide-link" class="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span class="text-sm font-semibold text-purple-700 dark:text-purple-400 whitespace-nowrap">
+              {{ externalSystem }}
+            </span>
+          </div>
+
           <!-- Event Date Badge -->
           <div class="inline-flex items-center gap-2 px-4 py-2.5
                       bg-gradient-to-br from-orange-100 to-amber-100
@@ -162,8 +175,17 @@ const props = defineProps<{
       house_number: string | null
     } | null
     contracts?: Pick<Contract, 'id' | 'first_sent_at' | 'first_signed_at'>[]
+    ofp_survey_id?: string | null
+    ekr_survey_id?: string | null
   }
 }>()
+
+// Determine external system
+const externalSystem = computed(() => {
+  if (props.survey.ofp_survey_id) return 'OFP'
+  if (props.survey.ekr_survey_id) return 'EKR'
+  return null
+})
 
 // Shorter date format for compact view
 const formattedDateShort = computed(() => {

@@ -1,15 +1,17 @@
 -- Seed news data with sample articles
--- Using your account details:
--- user_id: 4fffb938-176e-45a0-8b9d-bd9419a071f6
--- company_id: f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44
+-- Create user profiles for all existing users in auth.users
 
--- Ensure user profile exists
-INSERT INTO public.user_profiles (user_id, company_id, first_name, last_name) VALUES
-('4fffb938-176e-45a0-8b9d-bd9419a071f6', 'f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44', 'James', 'Admin')
-ON CONFLICT (user_id) DO UPDATE SET
-    company_id = EXCLUDED.company_id,
-    first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name;
+-- Ensure user profiles exist for all auth users
+INSERT INTO public.user_profiles (user_id, company_id, first_name, last_name)
+SELECT
+    id as user_id,
+    '550e8400-e29b-41d4-a716-446655440000'::uuid as company_id,  -- Default demo company
+    COALESCE(raw_user_meta_data->>'first_name', 'User') as first_name,
+    COALESCE(raw_user_meta_data->>'last_name', SPLIT_PART(email, '@', 1)) as last_name
+FROM auth.users
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.user_profiles WHERE user_profiles.user_id = users.id
+);
 
 -- Seed sample news articles
 INSERT INTO public.news_articles (
@@ -28,7 +30,7 @@ INSERT INTO public.news_articles (
     TRUE,
     TRUE,
     NOW() - INTERVAL '2 hours',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['platform', 'launch', 'features', 'ai', 'mobile'],
     'https://images.unsplash.com/photo-1518709268805-4e9042af2176?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -44,7 +46,7 @@ INSERT INTO public.news_articles (
     TRUE,
     TRUE,
     NOW() - INTERVAL '1 day',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['results', 'growth', 'clean-energy', 'installations', 'success'],
     'https://images.unsplash.com/photo-1466611653911-95081537e5b7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -60,7 +62,7 @@ INSERT INTO public.news_articles (
     TRUE,
     TRUE,
     NOW() - INTERVAL '3 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['industry', 'market-analysis', 'renewable-energy', 'global', 'trillion'],
     'https://images.unsplash.com/photo-1509391366360-2e959784a276?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -77,7 +79,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '1 day',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['training', 'solar', 'certification', 'education'],
     'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -94,7 +96,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '2 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['smart-grid', 'technology', 'distribution', 'infrastructure'],
     'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -110,7 +112,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '3 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['employee', 'award', 'innovation', 'solar', 'recognition'],
     'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -126,7 +128,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '4 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['wind-energy', 'costs', 'report', 'industry', 'analysis'],
     'https://images.unsplash.com/photo-1532601224476-15c79f2f7a51?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -142,7 +144,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '5 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['mobile-app', 'monitoring', 'real-time', 'features'],
     'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -158,7 +160,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '6 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['energy-storage', 'batteries', 'lithium-ion', 'costs', 'technology'],
     'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -174,7 +176,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '7 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['safety', 'training', 'certification', 'schedule'],
     'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -190,7 +192,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '8 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['partnership', 'collaboration', 'greentech', 'expansion'],
     'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -206,7 +208,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '9 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['tax-incentives', 'federal', 'policy', 'renewable-energy'],
     'https://images.unsplash.com/photo-1589549720811-ac4ba4bdc7a6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -222,7 +224,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '10 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['customer-success', 'manufacturing', 'cost-reduction', 'solar'],
     'https://images.unsplash.com/photo-1581092160607-ee22621dd758?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -238,7 +240,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '11 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['webinar', 'education', 'energy-management', 'training'],
     'https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 ),
@@ -254,7 +256,7 @@ INSERT INTO public.news_articles (
     FALSE,
     TRUE,
     NOW() - INTERVAL '12 days',
-    '4fffb938-176e-45a0-8b9d-bd9419a071f6',
+    (SELECT id FROM auth.users ORDER BY created_at LIMIT 1),
     ARRAY['electric-vehicles', 'charging', 'infrastructure', 'market'],
     'https://images.unsplash.com/photo-1593941707882-a5bac6861d75?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80'
 );

@@ -1,0 +1,25 @@
+# Supabase Configuration
+
+[functions.integrations-auth-login]
+verify_jwt = false
+
+[functions.integrations-client-sync]
+verify_jwt = false
+
+[functions.integrations-ofp-calculate]
+verify_jwt = false
+
+[functions.integrations-register-api-key]
+verify_jwt = false
+
+[functions.integrations-revoke-api-key]
+verify_jwt = false
+
+[functions.integrations-survey-export]
+verify_jwt = false
+
+[functions.update-profile]
+verify_jwt = false
+
+[functions.upload-avatar]
+verify_jwt = false

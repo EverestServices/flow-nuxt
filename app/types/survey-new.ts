@@ -23,6 +23,7 @@ export type SurveyQuestionType =
   | 'orientation_selector'
   | 'warning'
   | 'calculated'
+  | 'color_picker'
 
 // ============================================================================
 // DATABASE TYPES

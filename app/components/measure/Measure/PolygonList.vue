@@ -155,6 +155,7 @@ const props = defineProps<{
   imageNaturalHeight: number;
   wallId: string;
   selectedId?: string;
+  manualActive?: boolean;
 }>();
 const emit = defineEmits<{
   (e: 'removePoligon', id: string): void;
@@ -202,45 +203,75 @@ function onTypeOrSubChange(polygon: PolygonSurface, value: string) {
 }
 
 const recalculate = () => {
-  const getPolygonByType = (type: SurfaceType): PolygonSurface[] =>
-    filteredPolygons.value.filter((p) => p.type === type);
+  const isManual = !!props.manualActive;
+  if (!isManual) {
+    const getPolygonByType = (type: SurfaceType): PolygonSurface[] =>
+      filteredPolygons.value.filter((p) => p.type === type);
 
-  facadeGrossArea.value = unionPolygonsArea(
-    clonePolygonData(getPolygonByType(SurfaceType.FACADE)),
-    props.imageNaturalWidth,
-    props.imageNaturalHeight,
-    props.meterPerPixel,
-  );
+    facadeGrossArea.value = unionPolygonsArea(
+      clonePolygonData(getPolygonByType(SurfaceType.FACADE)),
+      props.imageNaturalWidth,
+      props.imageNaturalHeight,
+      props.meterPerPixel,
+    );
 
-  windowDoorArea.value = unionPolygonsArea(
-    clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
-    props.imageNaturalWidth,
-    props.imageNaturalHeight,
-    props.meterPerPixel,
-  );
+    windowDoorArea.value = unionPolygonsArea(
+      clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
+      props.imageNaturalWidth,
+      props.imageNaturalHeight,
+      props.meterPerPixel,
+    );
 
-  wallPlinthArea.value = unionPolygonsArea(
-    clonePolygonData(getPolygonByType(SurfaceType.WALL_PLINTH)),
-    props.imageNaturalWidth,
-    props.imageNaturalHeight,
-    props.meterPerPixel,
-  );
+    wallPlinthArea.value = unionPolygonsArea(
+      clonePolygonData(getPolygonByType(SurfaceType.WALL_PLINTH)),
+      props.imageNaturalWidth,
+      props.imageNaturalHeight,
+      props.meterPerPixel,
+    );
 
-  facadeNetArea.value = subtractPolygonGroupsArea(
-    clonePolygonData(getPolygonByType(SurfaceType.FACADE)),
-    clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
-    props.imageNaturalWidth,
-    props.imageNaturalHeight,
-    props.meterPerPixel,
-  );
+    facadeNetArea.value = subtractPolygonGroupsArea(
+      clonePolygonData(getPolygonByType(SurfaceType.FACADE)),
+      clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
+      props.imageNaturalWidth,
+      props.imageNaturalHeight,
+      props.meterPerPixel,
+    );
 
-  wallPlinthNetArea.value = subtractPolygonGroupsArea(
-    clonePolygonData(getPolygonByType(SurfaceType.WALL_PLINTH)),
-    clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
-    props.imageNaturalWidth,
-    props.imageNaturalHeight,
-    props.meterPerPixel,
-  );
+    wallPlinthNetArea.value = subtractPolygonGroupsArea(
+      clonePolygonData(getPolygonByType(SurfaceType.WALL_PLINTH)),
+      clonePolygonData(getPolygonByType(SurfaceType.WINDOW_DOOR)),
+      props.imageNaturalWidth,
+      props.imageNaturalHeight,
+      props.meterPerPixel,
+    );
+    return;
+  }
+
+  let facadeGross = 0;
+  let windowGross = 0;
+  let plinthGross = 0;
+  const manualAreaOf = (p: PolygonSurface): number => {
+    const v = (p as any).areaOverrideM2 as number | null | undefined;
+    if (typeof v === 'number' && isFinite(v) && v > 0) return v;
+    const a = (p as any).edgeNotesCm?.a as number | null | undefined;
+    const b = (p as any).edgeNotesCm?.b as number | null | undefined;
+    if (p.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
+      return (a * b) / 10000;
+    }
+    return 0;
+  };
+  for (const p of filteredPolygons.value) {
+    const area = manualAreaOf(p);
+    if (!area) continue;
+    if (p.type === SurfaceType.FACADE) facadeGross += area;
+    else if (p.type === SurfaceType.WINDOW_DOOR) windowGross += area;
+    else if (p.type === SurfaceType.WALL_PLINTH) plinthGross += area;
+  }
+  facadeGrossArea.value = facadeGross;
+  windowDoorArea.value = windowGross;
+  wallPlinthArea.value = plinthGross;
+  facadeNetArea.value = Math.max(0, facadeGross - windowGross);
+  wallPlinthNetArea.value = plinthGross; // itt nincs kivonás
 };
 
 watch(
@@ -264,13 +295,25 @@ const calculatePolygonArea = (points: Point[]): number => {
   const n = denormPoints.length;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    area += denormPoints[i].x * denormPoints[j].y - denormPoints[j].x * denormPoints[i].y;
+    const pi = denormPoints[i]!;
+    const pj = denormPoints[j]!;
+    area += pi.x * pj.y - pj.x * pi.y;
   }
   return Math.abs(area / 2) * props.meterPerPixel * props.meterPerPixel;
 };
 
 const formatArea = (polygon: PolygonSurface): string => {
   if (!polygon.closed || polygon.points.length < 3) return '—';
+  if (props.manualActive) {
+    const v = (polygon as any).areaOverrideM2 as number | null | undefined;
+    if (typeof v === 'number' && isFinite(v) && v > 0) return v.toFixed(2);
+    const a = (polygon as any).edgeNotesCm?.a as number | null | undefined;
+    const b = (polygon as any).edgeNotesCm?.b as number | null | undefined;
+    if (polygon.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
+      return ((a * b) / 10000).toFixed(2);
+    }
+    return '—';
+  }
   return calculatePolygonArea(polygon.points).toFixed(2);
 };
 

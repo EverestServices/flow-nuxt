@@ -607,6 +607,11 @@
       "failedToUpdateRetry": "Failed to update task. Please try again."
     }
   },
+  "colorPicker": {
+    "selectedColor": "Selected color",
+    "selectColor": "Select color",
+    "clearSelection": "Clear selection"
+  },
   "client": {
     "header": {
       "back": "Back",
