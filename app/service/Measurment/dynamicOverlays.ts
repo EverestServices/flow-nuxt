@@ -40,7 +40,7 @@ export function drawDynamicOverlays(
   const img = imageEl
   if (!img) return
 
-  // Manual drawing: show segment lengths and provisional segment
+  // Manual drawing/provisional preview
   const pixelSize = meterPerPixel || storedMeterPerPixel || 0
   if (currentPolygon && !currentPolygon.closed && pixelSize > 0) {
     const natW = img.naturalWidth
@@ -49,18 +49,20 @@ export function drawDynamicOverlays(
     const n = ptsN.length
     const ptsD = ptsN.map((p) => denormalizePoint(p, img))
 
-    // Labels for existing segments
-    for (let i = 0; i < n - 1; i++) {
-      const aN = ptsN[i]!
-      const bN = ptsN[i + 1]!
-      const aD = ptsD[i]!
-      const bD = ptsD[i + 1]!
-      const dxN = (bN.x - aN.x) * natW
-      const dyN = (bN.y - aN.y) * natH
-      const lengthM = Math.sqrt(dxN * dxN + dyN * dyN) * pixelSize
-      const midX = (aD.x + bD.x) / 2
-      const midY = (aD.y + bD.y) / 2
-      drawLabel(ctx, `${lengthM.toFixed(2)} m`, midX - 22, midY - 8)
+    // Labels for existing segments (hidden in manual mode)
+    if (!manualActive) {
+      for (let i = 0; i < n - 1; i++) {
+        const aN = ptsN[i]!
+        const bN = ptsN[i + 1]!
+        const aD = ptsD[i]!
+        const bD = ptsD[i + 1]!
+        const dxN = (bN.x - aN.x) * natW
+        const dyN = (bN.y - aN.y) * natH
+        const lengthM = Math.sqrt(dxN * dxN + dyN * dyN) * pixelSize
+        const midX = (aD.x + bD.x) / 2
+        const midY = (aD.y + bD.y) / 2
+        drawLabel(ctx, `${lengthM.toFixed(2)} m`, midX - 22, midY - 8)
+      }
     }
 
     // Provisional segment to cursor or typed length
@@ -95,12 +97,14 @@ export function drawDynamicOverlays(
         ctx.lineWidth = 2
         ctx.stroke()
         ctx.restore()
-        const dxN = (provisional.x - lastN.x) * natW
-        const dyN = (provisional.y - lastN.y) * natH
-        const lengthM = Math.sqrt(dxN * dxN + dyN * dyN) * pixelSize
-        const midX = (lastD.x + curD.x) / 2
-        const midY = (lastD.y + curD.y) / 2
-        drawLabel(ctx, `${lengthM.toFixed(2)} m`, midX - 22, midY - 8)
+        if (!manualActive) {
+          const dxN = (provisional.x - lastN.x) * natW
+          const dyN = (provisional.y - lastN.y) * natH
+          const lengthM = Math.sqrt(dxN * dxN + dyN * dyN) * pixelSize
+          const midX = (lastD.x + curD.x) / 2
+          const midY = (lastD.y + curD.y) / 2
+          drawLabel(ctx, `${lengthM.toFixed(2)} m`, midX - 22, midY - 8)
+        }
       }
     }
   }

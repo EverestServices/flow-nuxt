@@ -132,6 +132,27 @@ export const useWallStore = defineStore(
           if (p.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
             return (a * b) / 10000;
           }
+          if (p.points?.length === 3) {
+            const edges = (anyP.edgeNotesCm?.edges || []) as Array<number | null | undefined>;
+            if (edges.length === 3 && edges.every(v => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)) {
+              const aM = (edges[0] as number) / 100;
+              const bM = (edges[1] as number) / 100;
+              const cM = (edges[2] as number) / 100;
+              const s = (aM + bM + cM) / 2;
+              const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+              if (tri > 0) return tri;
+            }
+            const mg = anyP.manualGeom;
+            if (mg && mg.type === 'triangle') {
+              const aCm = Number(mg.aCm), bCm = Number(mg.bCm), cCm = Number(mg.cCm);
+              if (aCm > 0 && bCm > 0 && cCm > 0) {
+                const aM = aCm / 100, bM = bCm / 100, cM = cCm / 100;
+                const s = (aM + bM + cM) / 2;
+                const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+                if (tri > 0) return tri;
+              }
+            }
+          }
           return 0;
         };
 

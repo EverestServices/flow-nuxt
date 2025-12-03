@@ -189,20 +189,40 @@ onMounted(async () => {
       console.log('✅ Converted wall images count:', wallImages.length);
       console.log('✅ Wall images:', wallImages);
 
-      const wallPolygonsFromDb: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => ({
-        id: p.id,
-        type: p.type,
-        subType: p.sub_type,
-        externalShading: p.external_shading,
-        name: p.name,
-        visible: p.visible,
-        closed: p.closed,
-        points: p.points,
-        edgeNotesCm: p.edge_notes_cm ?? null,
-        edgeNotesRect: p.edge_notes_rect ?? null,
-        edgeNotesNorm: p.edge_notes_norm ?? null,
-        areaOverrideM2: p.area_override_m2 ?? null,
-      }));
+      const wallPolygonsFromDb: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => {
+        const edgeNotes = p.edge_notes_cm ?? null
+        let manualGeom: any = null
+        try {
+          const pts = Array.isArray(p.points) ? p.points : []
+          const len = pts.length || 0
+          const a = edgeNotes?.a as number | null | undefined
+          const b = edgeNotes?.b as number | null | undefined
+          const edgesArr = (edgeNotes?.edges as Array<number | null | undefined> | undefined) ?? undefined
+          const isPos = (v: any) => typeof v === 'number' && isFinite(v) && v > 0
+          if (len === 4 && isPos(a) && isPos(b)) {
+            manualGeom = { type: 'rectangle', aCm: Math.round(a as number), bCm: Math.round(b as number) }
+          } else if (len === 3 && Array.isArray(edgesArr) && edgesArr.length >= 3 && edgesArr.slice(0,3).every(isPos)) {
+            manualGeom = { type: 'triangle', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number) }
+          } else if (len === 5 && Array.isArray(edgesArr) && edgesArr.length >= 5 && edgesArr.slice(0,5).every(isPos)) {
+            manualGeom = { type: 'pentagon', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number), dCm: Math.round(edgesArr[3] as number), eCm: Math.round(edgesArr[4] as number) }
+          }
+        } catch {}
+        return {
+          id: p.id,
+          type: p.type,
+          subType: p.sub_type,
+          externalShading: p.external_shading,
+          name: p.name,
+          visible: p.visible,
+          closed: p.closed,
+          points: p.points,
+          edgeNotesCm: edgeNotes,
+          edgeNotesRect: p.edge_notes_rect ?? null,
+          edgeNotesNorm: p.edge_notes_norm ?? null,
+          areaOverrideM2: p.area_override_m2 ?? null,
+          manualGeom: manualGeom,
+        } as any
+      });
 
       const finalPolygons = (existing?.polygons && existing.polygons.length > 0) ? existing.polygons : wallPolygonsFromDb;
       const finalImages = mergedImages.length > 0 ? mergedImages : (existing?.images && existing.images.length > 0 ? existing.images : [createEmptyImage()]);

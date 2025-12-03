@@ -337,101 +337,23 @@
               @mouseup="ihHandleMouseUp"
               @touchstart="ihHandleCanvasTouch"
             ></canvas>
-            <div
-              v-if="manualActive && selectedRectangle && rectEdges"
-              class="absolute z-30"
-              :style="{ left: (rectEdges.a.x - 22) + 'px', top: (rectEdges.a.y - 8) + 'px' }"
-            >
-              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
-                <input
-                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
-                  type="number"
-                  inputmode="numeric"
-                  step="1"
-                  v-model="edgeInputA"
-                  placeholder="cm"
-                  @keyup.enter="saveEdgeNote('a')"
-                  @blur="saveEdgeNote('a')"
-                />
-                <span class="text-[10px] opacity-80">cm</span>
-              </div>
-            </div>
-            <!-- Generic per-edge inputs for all non-rectangle polygons in manual mode -->
-            <div
-              v-for="ov in allEdgeOverlays"
-              :key="ov.key"
-              v-if="manualActive"
-              class="absolute z-30"
-              :style="{ left: (ov.x - 22) + 'px', top: (ov.y - 8) + 'px' }"
-            >
-              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
-                <input
-                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
-                  type="number"
-                  inputmode="numeric"
-                  step="1"
-                  :value="ov.value"
-                  placeholder="cm"
-                  @input="onEdgeInputBuffer(ov.key, $event)"
-                  @keyup.enter="saveEdgeInput(ov.key)"
-                  @blur="saveEdgeInput(ov.key)"
-                />
-                <span class="text-[10px] opacity-80">cm</span>
-              </div>
-            </div>
-            <div
-              v-if="manualActive && selectedRectangle && rectEdges"
-              class="absolute z-30"
-              :style="{ left: (rectEdges.b.x - 22) + 'px', top: (rectEdges.b.y - 8) + 'px' }"
-            >
-              <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
-                <input
-                  class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
-                  type="number"
-                  inputmode="numeric"
-                  step="1"
-                  v-model="edgeInputB"
-                  placeholder="cm"
-                  @keyup.enter="saveEdgeNote('b')"
-                  @blur="saveEdgeNote('b')"
-                />
-                <span class="text-[10px] opacity-80">cm</span>
-              </div>
-            </div>
-            <!-- Per-rectangle edge inputs for ALL rectangles (excluding selected one) in manual mode -->
-            <template v-if="manualActive">
-              <div
-                v-for="rov in rectOverlaysAll"
-                :key="rov.key"
-                class="absolute z-30"
-                :style="{ left: (rov.x - 22) + 'px', top: (rov.y - 8) + 'px' }"
-              >
-                <div class="flex items-center gap-1 bg-black/70 text-white rounded-full px-2 py-1 shadow backdrop-blur-sm border border-white/10">
-                  <input
-                    class="w-16 h-6 bg-transparent text-xs px-1 outline-none border-0"
-                    type="number"
-                    inputmode="numeric"
-                    step="1"
-                    :value="rov.value"
-                    placeholder="cm"
-                    @input="onRectInputBuffer(rov.polyId, rov.which, $event)"
-                    @keyup.enter="saveRectInput(rov.polyId, rov.which)"
-                    @blur="saveRectInput(rov.polyId, rov.which)"
-                  />
-                  <span class="text-[10px] opacity-80">cm</span>
-                </div>
-              </div>
-            </template>
-            <!-- Manual area display at polygon center (manual mode, read-only) -->
-            <div
-              v-if="manualActive && selectedPolygonCenter && manualAreaLabel"
-              class="absolute z-30"
-              :style="{ left: selectedPolygonCenter.x + 'px', top: selectedPolygonCenter.y + 'px', transform: 'translate(-50%, -50%)' }"
-            >
-              <div class="flex items-center gap-1 bg-neutral-900/85 text-white rounded-full px-2 py-1 shadow select-none">
-                <span class="text-xs font-semibold">{{ manualAreaLabel }}</span>
-              </div>
-            </div>
+            <ManualOverlays
+              :manual-active="manualActive"
+              :rect-edges="selectedRectangle ? rectEdges : null"
+              :all-edge-overlays="allEdgeOverlays as any"
+              :rect-overlays-all="rectOverlaysAll as any"
+              :selected-rect-id="selectedRectangle ? selectedRectangle.id : null"
+              :manual-area-label="manualAreaLabel"
+              :selected-polygon-center="selectedPolygonCenter as any"
+              v-model:edgeInputA="edgeInputA"
+              v-model:edgeInputB="edgeInputB"
+              :on-edge-input-buffer="onEdgeInputBuffer as any"
+              :save-edge-input="saveEdgeInput as any"
+              :on-rect-input-buffer="onRectInputBuffer as any"
+              :save-rect-input="saveRectInput as any"
+              :save-edge-note="saveEdgeNote as any"
+              @inputFocus="(v)=>{ isOverlayInputFocused = v }"
+            />
             <!-- Inline calibration input overlay near the segment midpoint -->
             <div
               v-if="!manualActive && calibrationMode && calibrationStart && (calibrationEnd || mousePos) && calibrationMidOverlay"
@@ -535,6 +457,7 @@ import { createManualInputControls } from '@/service/Measurment/manualInputContr
 import { useWallSync } from '@/composables/useWallSync';
 import { createHistory } from '@/service/Measurment/history';
 import { useMeasure } from '@/composables/useMeasure';
+import ManualOverlays from './ManualOverlays.vue';
 const store = useWallStore();
 const route = useRoute();
 const router = useRouter();
@@ -546,6 +469,8 @@ const wall = computed<Wall>(() => {
   const w = surveyWalls[wallId.value] as Wall | undefined;
   return w ?? ({ id: wallId.value, name: '', images: [], polygons: [] } as Wall);
 });
+
+// (moved watchers below after manualActive/polygons declarations)
 
 // Ensure a reactive wall entry exists in the store so deep mutations (polygons, images) persist to localStorage
 const ensureWallInStore = () => {
@@ -586,6 +511,21 @@ const handleBackToMeasureList = async () => {
         img0.processedImageWidth = imageWidth.value || img0.processedImageWidth;
         img0.processedImageHeight = imageHeight.value || img0.processedImageHeight;
         if (meterPerPixel.value > 0) img0.meterPerPixel = meterPerPixel.value;
+        // Mark manual flag; polygon-based geometry is persisted inside wall.polygons
+        img0.manual = Boolean(manualActive.value);
+        // Persist image meta to DB if imageId is available
+        try {
+          if ((img0 as any)?.imageId) {
+            await updateWallImage((img0 as any).imageId, {
+              meterPerPixel: img0.meterPerPixel ?? null,
+              processedImageWidth: img0.processedImageWidth ?? null,
+              processedImageHeight: img0.processedImageHeight ?? null,
+              manual: img0.manual ?? null,
+            } as any);
+          }
+        } catch (e) {
+          console.warn('updateWallImage failed (non-fatal):', e);
+        }
       }
       store.setWall(surveyId.value, wall.value.id, {
         ...wall.value,
@@ -686,6 +626,7 @@ const zoomContainerRef = ref<HTMLDivElement | null>(null);
 const zoomWrapperRef = ref<HTMLDivElement | null>(null);
 const imageWidth = ref(0);
 const imageHeight = ref(0);
+const isOverlayInputFocused = ref(false);
 
 // Drag to pan in view mode or draw mode with spacebar
 const isDragging = ref(false);
@@ -704,10 +645,27 @@ const polygons = computed({
   },
 });
 
+
+
 const currentPolygon = ref<PolygonSurface | null>(null);
 const editingMode = ref<boolean>(false);
 const editPointsMode = ref<boolean>(false);
 const selectedPolygonId = ref<string | null>(null);
+// Ensure we always have a selection in manual mode (run immediately)
+watch(polygons, (list) => {
+  if (!manualActive.value) return;
+  if (selectedPolygonId.value) return;
+  const arr = list as PolygonSurface[];
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const p = arr[i];
+    if (p && p.closed && p.points?.length >= 3) { selectedPolygonId.value = p.id; break; }
+  }
+}, { immediate: true });
+
+// Keep edit mode and selection consistent in manual mode (handles reloads)
+watch(manualActive, (v) => {
+  if (v) setMode('edit');
+});
 const draggingPoint = ref<{
   polygonId?: string;
   index: number;
@@ -729,6 +687,11 @@ const toggleSelection = (polyId: string, idx: number) => {
 const selectOnly = (polyId: string, idx: number) => {
   selectedPoints.value = new Set([keyOf(polyId, idx)]);
 };
+// Ensure overlays update immediately when selection changes
+watch(selectedPolygonId, async () => {
+  await nextTick();
+  scrollTick.value++;
+});
 const mousePos = ref<Point | null>(null);
 const calibrationStart = ref<Point | null>(null);
 const calibrationEnd = ref<Point | null>(null);
@@ -769,8 +732,8 @@ const refreshRectInputs = () => {
 
  
 
-// Bring updatePolygonEdgeNotes into scope before using manualInputControls
-const { updatePolygonEdgeNotes } = useMeasure();
+// Bring Supabase update helpers into scope
+const { updatePolygonEdgeNotes, updateWallImage } = useMeasure();
 
 // Manual input controls (edge/rect inputs) moved to service
 const {
@@ -798,6 +761,15 @@ const {
   storedMeterPerPixel: storedMeterPerPixel as any,
   drawAllPolygons,
   updatePolygonEdgeNotes,
+});
+
+// Prefill selected-rect A/B buffers only when no input is focused to avoid accidental clearing
+watch(selectedRectangle, (p) => {
+  if (isOverlayInputFocused.value) return;
+  const a = (p as any)?.edgeNotesCm?.a as number | null | undefined;
+  const b = (p as any)?.edgeNotesCm?.b as number | null | undefined;
+  edgeInputA.value = (typeof a === 'number' && isFinite(a) && a > 0) ? String(Math.round(a)) : '';
+  edgeInputB.value = (typeof b === 'number' && isFinite(b) && b > 0) ? String(Math.round(b)) : '';
 });
 
 const rotateRectCorner = () => { rectCornerIdx.value = (rectCornerIdx.value + 1) % 4; refreshRectInputs(); updateEdgeNotesRect(); };
@@ -865,14 +837,31 @@ const selectedPolygonObj = computed<PolygonSurface | null>(() => {
 
 const manualAreaLabel = computed(() => {
   if (!manualActive.value) return '';
-  const p = selectedPolygonObj.value as any;
+  const p = (selectedPolygonObj.value as any) ?? (currentPolygon.value as any);
   if (!p) return '';
   let area: number | null | undefined = p.areaOverrideM2;
   if (!(typeof area === 'number' && isFinite(area) && area > 0)) {
+    // Rectangle fallback from A/B
     const a = p?.edgeNotesCm?.a as number | null | undefined;
     const b = p?.edgeNotesCm?.b as number | null | undefined;
     if (p?.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
       area = (a * b) / 10000;
+    }
+  }
+  if (!(typeof area === 'number' && isFinite(area) && area > 0)) {
+    // Triangle fallback from per-edge inputs (Heron)
+    if (p?.points?.length === 3) {
+      const edges = (p?.edgeNotesCm?.edges || []) as Array<number | null | undefined>;
+      if (edges.length === 3 && edges.every((v) => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)) {
+        const aM = (edges[0] as number) / 100;
+        const bM = (edges[1] as number) / 100;
+        const cM = (edges[2] as number) / 100;
+        const valid = aM + bM > cM && aM + cM > bM && bM + cM > aM;
+        if (!valid) return 'Érvénytelen háromszög';
+        const s = (aM + bM + cM) / 2;
+        const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+        area = tri;
+      }
     }
   }
   return typeof area === 'number' && isFinite(area) && area > 0 ? `${area.toFixed(2)} m²` : '';
@@ -880,13 +869,15 @@ const manualAreaLabel = computed(() => {
 
 const selectedPolygonCenter = computed(() => {
   if (!manualActive.value) return null as null | { x: number; y: number };
-  const poly = selectedPolygonObj.value;
+  const poly = selectedPolygonObj.value ?? currentPolygon.value;
   const wrapper = zoomWrapperRef.value;
   const canvasEl = canvasRef.value;
   const _zs = zoomScale.value; // depend on zoom
   const _st = scrollTick.value; // depend on scroll
   if (!poly || !wrapper || !canvasEl) return null as null | { x: number; y: number };
-  const den = poly.points.map((pt) => denormalizePoint(pt));
+  const img = imageRef.value;
+  if (!img) return null as any;
+  const den = poly.points.map((pt) => gDenormalizePoint(pt, img));
   if (!den.length) return null as null | { x: number; y: number };
   const center = getPolygonCenter(den);
   const { offX, offY } = canvasOffset(wrapper, canvasEl);
@@ -902,7 +893,7 @@ const allEdgeOverlays = computed(() => {
   const _zs = zoomScale.value; // depend on zoom
   const _st = scrollTick.value; // depend on scroll
   if (!img || !wrapper || !canvas) return [] as any[];
-  return computeAllEdgeOverlays({
+  const base = computeAllEdgeOverlays({
     polygons: polygons.value as PolygonSurface[],
     currentPolygon: currentPolygon.value as PolygonSurface | null,
     imageEl: img,
@@ -910,6 +901,11 @@ const allEdgeOverlays = computed(() => {
     canvasEl: canvas,
     edgeInputsBuf: edgeInputsBuf.value,
   });
+  const sel = selectedPolygonId.value;
+  if (sel) return base.filter((o: any) => o.key.startsWith(sel + ':'));
+  const cur = currentPolygon.value?.id || null;
+  if (cur) return base.filter((o: any) => o.key.startsWith(cur + ':'));
+  return [] as any[];
 });
 
 // onEdgeInputBuffer/saveEdgeInput provided by service
@@ -924,13 +920,13 @@ const rectOverlaysAll = computed(() => {
   const _st = scrollTick.value; // depend on scroll
   if (!img || !wrapper || !canvas) return [] as any[];
   return computeRectOverlays({
-    polygons: (polygons.value as PolygonSurface[]),
+    polygons: polygons.value as PolygonSurface[],
     selectedRectId: selectedRectangle.value?.id ?? null,
     imageEl: img,
     wrapperEl: wrapper,
     canvasEl: canvas,
     rectInputsBuf: rectInputsBuf.value,
-  });
+  }) as any[];
 });
 
 // rect input handlers and startEdgeEdit provided by service
@@ -973,9 +969,9 @@ onMounted(() => {
   showEdgeInput.value = { a: false, b: false };
   nextTick(() => { updateEdgeNotesRect(); });
   const manual = String((route.query as any)?.manual ?? '');
-  if (manual && ['1','true','yes'].includes(manual.toLowerCase())) {
-    setMode('edit');
-  }
+  if (manual && ['1','true','yes'].includes(manual.toLowerCase())) setMode('edit');
+  // If image meta already marks manual, ensure we enter edit mode and have a selection
+  if (manualActive.value) setMode('edit');
 });
 
 watch(() => selectedRectangle.value?.id, () => {
@@ -1031,6 +1027,10 @@ const { calculateOptimalZoom, gotoZoom, zoomBy } = createZoomControls({
 const sidebarVisible = ref(true);
 // Tick to recompute overlay positions on scroll/pan/zoom
 const scrollTick = ref(0);
+// When overlay inputs lose focus, force a recompute to ensure positions refresh
+watch(isOverlayInputFocused, (v) => { if (!v) scrollTick.value++; });
+// Always nudge overlays when polygon geometry changes (drag/move), even if input is focused
+watch(polygons, async () => { await nextTick(); scrollTick.value++; }, { deep: true });
 
 const referenceSet = computed(() => Boolean(firstImage.value?.referenceStart && firstImage.value?.referenceEnd));
 
@@ -1220,6 +1220,7 @@ function drawAllPolygons() {
     selectedPolygonId: selectedPolygonId.value,
     pixelSize: meterPerPixel.value || storedMeterPerPixel.value || 0,
     getColors: getPolygonColors,
+    showComputedLabels: !manualActive.value,
   });
   // Acquire context once for overlays drawn after base pass
   const ctx = canvas.getContext('2d');
@@ -1238,6 +1239,8 @@ function drawAllPolygons() {
     firstImageMeta: firstImage.value,
     highlightRef: highlightRef.value,
   });
+  // Nudge overlay recomputations (HTML overlays depend on scrollTick)
+  if (!isOverlayInputFocused.value) scrollTick.value++;
 }
 
 

@@ -49,32 +49,18 @@ export function computeSelectedRectEdges(params: {
 }): { a: { x: number; y: number }; b: { x: number; y: number } } | null {
   const { poly, imageEl, wrapperEl, canvasEl } = params
   if (!poly || poly.points.length !== 4) return null
-  const d = (poly as any).edgeNotesRect && (poly as any).edgeNotesRect.length === 4
-    ? (poly as any).edgeNotesRect.map((pt: Point) => denormalizePoint(pt, imageEl))
-    : poly.points.map((pt) => denormalizePoint(pt, imageEl))
-  const [d0, d1, d2, d3] = d as [Point, Point, Point, Point]
-  const mids = [
-    { x: (d0.x + d1.x) / 2, y: (d0.y + d1.y) / 2, i: 0, j: 1 },
-    { x: (d1.x + d2.x) / 2, y: (d1.y + d2.y) / 2, i: 1, j: 2 },
-    { x: (d2.x + d3.x) / 2, y: (d2.y + d3.y) / 2, i: 2, j: 3 },
-    { x: (d3.x + d0.x) / 2, y: (d3.y + d0.y) / 2, i: 3, j: 0 },
-  ]
-  const c = ((params.rectCornerIdx % 4) + 4) % 4
-  const norm = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`)
-  let aPairs = [norm(c, (c + 1) % 4), norm((c + 2) % 4, (c + 3) % 4)]
-  let bPairs = [norm((c + 1) % 4, (c + 2) % 4), norm((c + 3) % 4, c)]
-  if (params.swapAxes) { const t = aPairs; aPairs = bPairs; bPairs = t }
+  // Always use the polygon's live points so the inputs stay anchored to the actual geometry while editing.
+  const src = poly.points
+  const den = src.map((pt: Point) => denormalizePoint(pt, imageEl))
+  const i = ((params.rectCornerIdx % 4) + 4) % 4
+  const d0 = den[i]!
+  const d1 = den[(i + 1) % 4]!
+  const d2 = den[(i + 2) % 4]!
+  let midA = { x: (d0.x + d1.x) / 2, y: (d0.y + d1.y) / 2 } // edge 0-1 from selected corner
+  let midB = { x: (d1.x + d2.x) / 2, y: (d1.y + d2.y) / 2 } // edge 1-2 from selected corner
+  if (params.swapAxes) [midA, midB] = [midB, midA]
   const { offX, offY } = canvasOffset(wrapperEl, canvasEl)
-  const isPair = (m: any, pair: string) => pair === norm(m.i, m.j)
-  const aCandidates = mids.filter((m) => aPairs.some((p) => isPair(m, p)))
-  const bCandidates = mids.filter((m) => bPairs.some((p) => isPair(m, p)))
-  if (aCandidates.length === 0 || bCandidates.length === 0) return null
-  const aMid = aCandidates.reduce((best, m) => (best && best.y < m.y ? best : m), aCandidates[0])
-  const bMid = bCandidates.reduce((best, m) => (best && best.x > m.x ? best : m), bCandidates[0])
-  return {
-    a: { x: offX + (aMid?.x ?? 0), y: offY + (aMid?.y ?? 0) },
-    b: { x: offX + (bMid?.x ?? 0), y: offY + (bMid?.y ?? 0) },
-  }
+  return { a: { x: offX + midA.x, y: offY + midA.y }, b: { x: offX + midB.x, y: offY + midB.y } }
 }
 
 export function getRectTriplet0(poly: PolygonSurface) {
@@ -143,6 +129,7 @@ export function computeRectOverlays(params: {
   for (const poly of polygons) {
     if (!poly || poly.visible === false || !poly.closed || !poly.points || poly.points.length !== 4) continue
     if (selectedRectId && poly.id === selectedRectId) continue
+    // Always follow the live geometry so overlays track point drags
     const den = poly.points.map((pt) => denormalizePoint(pt, imageEl))
     const mA = { x: (den[0]!.x + den[1]!.x) / 2, y: (den[0]!.y + den[1]!.y) / 2 }
     const mB = { x: (den[1]!.x + den[2]!.x) / 2, y: (den[1]!.y + den[2]!.y) / 2 }

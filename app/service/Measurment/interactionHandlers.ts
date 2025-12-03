@@ -250,12 +250,18 @@ export function createInteractionHandlers(deps: {
     }
     if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
       currentPolygon.value.closed = true
+      const closedId = currentPolygon.value.id
       polygons.value.push(currentPolygon.value as PolygonSurface)
+      // Auto-select the newly closed polygon so overlay inputs target it
+      try { selectedPolygonId.value = closedId } catch {}
       currentPolygon.value = null
     } else if (existingPoints.length >= 4) {
       existingPoints.push(clickPoint)
       currentPolygon.value.closed = true
+      const closedId = currentPolygon.value.id
       polygons.value.push(currentPolygon.value as PolygonSurface)
+      // Auto-select the newly closed polygon so overlay inputs target it
+      try { selectedPolygonId.value = closedId } catch {}
       currentPolygon.value = null
     } else {
       existingPoints.push(clickPoint)
@@ -292,6 +298,8 @@ export function createInteractionHandlers(deps: {
       for (let i = 0; i < polygon.points.length; i++) {
         const pi = polygon.points[i]
         if (pi && isNearPoint(click, pi)) {
+          // Ensure overlays and rect inputs target the actively edited polygon
+          try { selectedPolygonId.value = polygon.id } catch {}
           if (event instanceof MouseEvent && event.shiftKey) toggleSelection(polygon.id, i)
           else selectOnly(polygon.id, i)
 

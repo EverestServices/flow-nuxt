@@ -12,8 +12,9 @@ export function drawPolygonsOnCtx(params: {
   selectedPolygonId?: string | null
   pixelSize: number
   getColors: (poly: PolygonSurface) => DrawColors
+  showComputedLabels?: boolean
 }) {
-  const { ctx, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors } = params
+  const { ctx, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors, showComputedLabels = true } = params
   const rect = img.getBoundingClientRect()
   const allPolygons = [...polygons]
   if (currentPolygon) allPolygons.push(currentPolygon)
@@ -38,7 +39,7 @@ export function drawPolygonsOnCtx(params: {
 
     denormPoints.forEach((p) => drawCircle(ctx, p.x, p.y, 6, pointColor))
 
-    if (poly.closed && denormPoints.length >= 3 && pixelSize > 0) {
+    if (showComputedLabels && poly.closed && denormPoints.length >= 3 && pixelSize > 0) {
       for (let i = 0; i < denormPoints.length; i++) {
         const j = (i + 1) % denormPoints.length
         const p1 = denormPoints[i]!
@@ -66,8 +67,9 @@ export function drawOnMainCanvas(params: {
   selectedPolygonId?: string | null
   pixelSize: number
   getColors: (poly: PolygonSurface) => DrawColors
+  showComputedLabels?: boolean
 }) {
-  const { canvas, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors } = params
+  const { canvas, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors, showComputedLabels = true } = params
   const rect = img.getBoundingClientRect()
   canvas.width = rect.width
   canvas.height = rect.height
@@ -77,7 +79,7 @@ export function drawOnMainCanvas(params: {
   canvas.style.top = img.offsetTop + 'px'
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  drawPolygonsOnCtx({ ctx, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors })
+  drawPolygonsOnCtx({ ctx, img, polygons, currentPolygon, selectedPolygonId, pixelSize, getColors, showComputedLabels })
 }
 
 export async function exportPng(params: {

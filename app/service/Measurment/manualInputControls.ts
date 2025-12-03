@@ -42,6 +42,8 @@ export function createManualInputControls(params: {
   }
 
   const saveEdgeInput = (key: string) => {
+    const hasBuf = Object.prototype.hasOwnProperty.call(edgeInputsBuf.value, key)
+    if (!hasBuf) return // no-op: avoid clearing stored value on blur when user didn't type
     const raw = edgeInputsBuf.value[key] ?? ''
     const num = Number(String(raw).replace(',', '.'))
     const parts = key.split(':')
@@ -60,6 +62,24 @@ export function createManualInputControls(params: {
       arr[idx] = null
     }
     ;(poly.edgeNotesCm as any).edges = arr
+    // If polygon is triangle/pentagon, build expressive manualGeom from edges (cm)
+    const allPos = (xs: Array<number | null>) => xs.every((v) => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)
+    if (n === 3) {
+      const vals = [arr[0] ?? null, arr[1] ?? null, arr[2] ?? null]
+      if (allPos(vals)) {
+        const a = (vals[0] as number) / 100
+        const b = (vals[1] as number) / 100
+        const c = (vals[2] as number) / 100
+        const valid = a + b > c && a + c > b && b + c > a
+        const s = (a + b + c) / 2
+        const area = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)))
+        ;(poly as any).manualGeom = { type: 'triangle', aCm: Math.round(vals[0] as number), bCm: Math.round(vals[1] as number), cCm: Math.round(vals[2] as number) }
+        ;(poly as any).areaOverrideM2 = (valid && isFinite(area) && area > 0) ? area : null
+      }
+    } else if (n === 5) {
+      const vals = [arr[0] ?? null, arr[1] ?? null, arr[2] ?? null, arr[3] ?? null, arr[4] ?? null]
+      if (allPos(vals)) (poly as any).manualGeom = { type: 'pentagon', aCm: Math.round(vals[0] as number), bCm: Math.round(vals[1] as number), cCm: Math.round(vals[2] as number), dCm: Math.round(vals[3] as number), eCm: Math.round(vals[4] as number) }
+    }
     void (async () => {
       try {
         await updatePolygonEdgeNotes(poly.id, poly.edgeNotesCm ?? null, poly.edgeNotesRect ?? null, poly.edgeNotesNorm ?? null, (poly as any).areaOverrideM2 ?? null)
@@ -67,6 +87,8 @@ export function createManualInputControls(params: {
     })()
     delete edgeInputsBuf.value[key]
     if (edgeEditActive.value[key]) edgeEditActive.value[key] = false
+    // Force setter so WallStore persists mutated polygon data
+    try { (polygons as any).value = [ ...(polygons as any).value ] } catch {}
     drawAllPolygons()
   }
 
@@ -84,6 +106,8 @@ export function createManualInputControls(params: {
 
   const saveRectInput = (polyId: string, which: 'a' | 'b') => {
     const key = `${polyId}:${which}`
+    const hasBuf = Object.prototype.hasOwnProperty.call(rectInputsBuf.value, key)
+    if (!hasBuf) return // no-op if user didn't type anything
     const raw = rectInputsBuf.value[key] ?? ''
     const num = Number(String(raw).replace(',', '.'))
     const poly = (polygons.value as PolygonSurface[]).find((p) => p.id === polyId)
@@ -104,6 +128,10 @@ export function createManualInputControls(params: {
       ;(poly as any).areaOverrideM2 = (typeof a === 'number' && isFinite(a) && a > 0 && typeof b === 'number' && isFinite(b) && b > 0)
         ? ((a * b) / 10000)
         : null
+      // Keep expressive manualGeom in sync for rectangles
+      ;(poly as any).manualGeom = (typeof a === 'number' && isFinite(a) && a > 0 && typeof b === 'number' && isFinite(b) && b > 0)
+        ? { type: 'rectangle', aCm: Math.round(a), bCm: Math.round(b) }
+        : null
       if (res.estimatedMeterPerPixel && res.estimatedMeterPerPixel > 0 && (!meterPerPixel.value || meterPerPixel.value <= 0)) {
         meterPerPixel.value = res.estimatedMeterPerPixel
       }
@@ -114,6 +142,8 @@ export function createManualInputControls(params: {
       } catch {}
     })()
     delete rectInputsBuf.value[key]
+    // Force setter so WallStore persists mutated polygon data
+    try { (polygons as any).value = [ ...(polygons as any).value ] } catch {}
     drawAllPolygons()
   }
 
@@ -174,11 +204,17 @@ export function createManualInputControls(params: {
       ? (a * b) / 10000
       : null
     ;(poly as any).areaOverrideM2 = areaOverride
+    // Keep expressive manualGeom in sync for rectangles
+    ;(poly as any).manualGeom = (poly.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0)
+      ? { type: 'rectangle', aCm: Math.round(a), bCm: Math.round(b) }
+      : null
     void (async () => {
       try {
         await updatePolygonEdgeNotes(poly.id, poly.edgeNotesCm ?? null, poly.edgeNotesRect ?? null, poly.edgeNotesNorm ?? null, areaOverride)
       } catch {}
     })()
+    // Force setter so WallStore persists mutated polygon data
+    try { (polygons as any).value = [ ...(polygons as any).value ] } catch {}
   }
 
   return {
