@@ -15,7 +15,7 @@
       :active-contract-id="activeContract?.id"
       :contract-investments="contractInvestments"
       :summary-view-mode="summaryViewMode"
-      :hide-investment-controls="isMeasureRoute"
+      :hide-investment-controls="isMeasureRoute || isConsultantModeActive"
       @back="handleBack"
       @toggle-investment="handleToggleInvestment"
       @edit-client="handleEditClient"
@@ -27,20 +27,6 @@
       @select-contract="handleSelectContract"
       @change-summary-view-mode="handleChangeSummaryViewMode"
     />
-
-    <!-- External Sync Retry Button -->
-    <div v-if="isExternalSurvey && !isMeasureRoute" class="fixed top-20 right-4 z-40">
-      <UIButtonEnhanced
-        size="sm"
-        variant="outline"
-        @click="handleRetrySync"
-        :loading="syncingToExternal"
-        class="shadow-lg"
-      >
-        <Icon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
-        Retry Sync
-      </UIButtonEnhanced>
-    </div>
 
     <!-- Navigation Tabs (hidden when in marker mode/measure route) -->
     <SurveyNavigation
@@ -64,6 +50,7 @@
           :investment-filter="investmentFilter"
           :show-visualization="showVisualization"
           :page-display-mode="pageDisplayMode"
+          :is-consultant-mode-active="isConsultantModeActive"
           v-model:show-investment-modal="showInvestmentModal"
           @toggle-list-view="handleToggleListView"
           @set-display-mode="handleSetDisplayMode"
@@ -260,7 +247,7 @@
           <button
             @click="selectMode('graphic')"
             class="px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
-            :class="displayMode === 'graphic'
+            :class="displayMode === 'graphic' && !isConsultantModeActive
               ? 'bg-primary-500 text-white'
               : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
           >
@@ -270,12 +257,22 @@
           <button
             @click="selectMode('marker')"
             class="px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
-            :class="displayMode === 'marker'
+            :class="displayMode === 'marker' && !isConsultantModeActive
               ? 'bg-primary-500 text-white'
               : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
           >
             <Icon name="i-lucide-pencil-ruler" class="w-4 h-4" />
             <span class="text-sm font-medium">{{ t('survey.header.markerMode') }}</span>
+          </button>
+          <button
+            @click="selectConsultantMode"
+            class="px-4 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+            :class="isConsultantModeActive
+              ? 'bg-primary-500 text-white'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+          >
+            <Icon name="i-lucide-clipboard-list" class="w-4 h-4" />
+            <span class="text-sm font-medium">{{ t('survey.header.consultantMode') }}</span>
           </button>
         </div>
       </Transition>
@@ -288,7 +285,7 @@
           class="w-12 h-12 rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
         >
           <Icon
-            :name="displayMode === 'graphic' ? 'i-lucide-image' : 'i-lucide-pencil-ruler'"
+            :name="isConsultantModeActive ? 'i-lucide-clipboard-list' : (displayMode === 'graphic' ? 'i-lucide-image' : 'i-lucide-pencil-ruler')"
             class="w-6 h-6"
           />
         </button>
@@ -506,10 +503,6 @@ const tabs = computed(() => {
 const clientName = ref(t('survey.page.loading'))
 const clientData = ref<any>(null)
 
-// External sync state
-const isExternalSurvey = ref(false)
-const syncingToExternal = ref(false)
-
 // Can proceed logic per tab
 const canProceed = computed(() => {
   switch (activeTab.value) {
@@ -573,6 +566,9 @@ const displayMode = ref<'graphic' | 'marker'>('graphic')
 
 // Mode options popup state
 const showModeOptions = ref(false)
+
+// Store previous graphic mode investments when switching to consultant mode
+const savedGraphicModeInvestments = ref<string[]>([])
 
 // Close mode options when clicking outside
 const handleClickOutside = (event: MouseEvent) => {
@@ -659,6 +655,22 @@ onMounted(async () => {
   await loadSurveyData()
   // Load all survey-related data with a single optimized query
   await loadSurveyWithRelations(surveyId.value)
+
+  // Check if consultant mode is already selected on page load
+  const consultantInvestment = investmentsStore.availableInvestments
+    .find(inv => inv.persist_name === 'consultantMode')
+
+  if (consultantInvestment) {
+    const isSelected = investmentsStore.selectedInvestments.some(inv => inv.id === consultantInvestment.id)
+    if (isSelected) {
+      // Consultant mode is selected - ensure it's active
+      investmentsStore.setActiveInvestment(consultantInvestment.id)
+      // Make sure displayMode is graphic
+      if (displayMode.value !== 'graphic') {
+        displayMode.value = 'graphic'
+      }
+    }
+  }
 })
 
 // Cleanup event listeners
@@ -693,9 +705,6 @@ const loadSurveyData = async () => {
     if (survey && survey.client) {
       clientName.value = survey.client.name
       clientData.value = survey.client
-
-      // Check if this is an external survey
-      isExternalSurvey.value = !!(survey.ofp_survey_id || survey.ekr_survey_id)
 
       // Load consultation panel states
       if (survey.consultation_system_design_open !== null && survey.consultation_system_design_open !== undefined) {
@@ -749,52 +758,6 @@ const handleBack = () => {
   }
 }
 
-const handleRetrySync = async () => {
-  if (!isExternalSurvey.value) return
-
-  syncingToExternal.value = true
-  const toast = useToast()
-  const { exportSurvey } = useExternalSync()
-
-  try {
-    toast.add({
-      title: 'Syncing survey...',
-      description: 'Retrying sync to external system',
-      color: 'blue',
-      timeout: 2000
-    })
-
-    const { success, error } = await exportSurvey(surveyId.value)
-
-    if (success) {
-      toast.add({
-        title: 'Success',
-        description: 'Survey synced successfully',
-        color: 'green',
-        timeout: 3000
-      })
-    } else {
-      console.error('Sync failed:', error)
-      toast.add({
-        title: 'Error',
-        description: `Sync failed: ${error || 'Unknown error'}`,
-        color: 'red',
-        timeout: 5000
-      })
-    }
-  } catch (error: any) {
-    console.error('Error in retry sync:', error)
-    toast.add({
-      title: 'Error',
-      description: 'Failed to sync survey',
-      color: 'red',
-      timeout: 3000
-    })
-  } finally {
-    syncingToExternal.value = false
-  }
-}
-
 const handleToggleInvestment = () => {
   showInvestmentModal.value = true
 }
@@ -843,67 +806,15 @@ const handleChangeSummaryViewMode = (mode: 'list' | 'card') => {
 // Footer handlers
 const handleSaveExit = async () => {
   console.log('Save and exit')
-
-  // Check if this is an external survey
-  const supabase = useSupabaseClient()
   const toast = useToast()
 
   try {
-    // Get survey data to check if it's external
-    const { data: survey, error: surveyError } = await supabase
-      .from('surveys')
-      .select('ofp_survey_id, ekr_survey_id')
-      .eq('id', surveyId.value)
-      .single()
-
-    if (surveyError) {
-      console.error('Failed to load survey:', surveyError)
-      // Continue to redirect even if check fails
-      router.push('/survey')
-      return
-    }
-
-    // Check if external survey
-    const isExternalSurvey = !!(survey.ofp_survey_id || survey.ekr_survey_id)
-
-    if (isExternalSurvey) {
-      // Trigger sync to external system
-      const { exportSurvey } = useExternalSync()
-
-      toast.add({
-        title: 'Syncing survey...',
-        description: 'Sending survey data to external system',
-        color: 'blue',
-        timeout: 2000
-      })
-
-      const { success, error } = await exportSurvey(surveyId.value)
-
-      if (success) {
-        toast.add({
-          title: 'Success',
-          description: 'Survey saved and synced successfully',
-          color: 'green',
-          timeout: 3000
-        })
-      } else {
-        console.error('Sync failed:', error)
-        toast.add({
-          title: 'Warning',
-          description: 'Survey saved, but sync failed. You can retry from survey details.',
-          color: 'amber',
-          timeout: 5000
-        })
-      }
-    } else {
-      // Normal Flow survey - just show success
-      toast.add({
-        title: 'Success',
-        description: 'Survey saved successfully',
-        color: 'green',
-        timeout: 2000
-      })
-    }
+    toast.add({
+      title: 'Success',
+      description: 'Survey saved successfully',
+      color: 'green',
+      timeout: 2000
+    })
   } catch (error) {
     console.error('Error in save and exit:', error)
     toast.add({
@@ -913,7 +824,6 @@ const handleSaveExit = async () => {
       timeout: 3000
     })
   } finally {
-    // Always redirect after sync attempt
     router.push('/survey')
   }
 }
@@ -980,8 +890,91 @@ const toggleModeOptions = () => {
   showModeOptions.value = !showModeOptions.value
 }
 
-const selectMode = (mode: 'graphic' | 'marker') => {
+const selectMode = async (mode: 'graphic' | 'marker') => {
+  // If switching to graphic mode, deactivate consultant mode if active and restore saved investments
+  if (mode === 'graphic' && isConsultantModeActive.value) {
+    const consultantInvestment = investmentsStore.availableInvestments
+      .find(inv => inv.persist_name === 'consultantMode')
+    if (consultantInvestment) {
+      await investmentsStore.deselectInvestment(consultantInvestment.id)
+
+      // Restore saved graphic mode investments
+      for (const invId of savedGraphicModeInvestments.value) {
+        await investmentsStore.selectInvestment(invId)
+      }
+
+      // Set first saved investment as active if any
+      if (savedGraphicModeInvestments.value.length > 0) {
+        investmentsStore.setActiveInvestment(savedGraphicModeInvestments.value[0])
+      }
+
+      savedGraphicModeInvestments.value = []
+    }
+  }
+
   displayMode.value = mode
+  showModeOptions.value = false
+}
+
+// Consultant mode logic
+const isConsultantModeActive = computed(() => {
+  const consultantInvestment = investmentsStore.availableInvestments
+    .find(inv => inv.persist_name === 'consultantMode')
+  return consultantInvestment
+    ? investmentsStore.selectedInvestments.some(inv => inv.id === consultantInvestment.id)
+    : false
+})
+
+const selectConsultantMode = async () => {
+  // Find consultant mode investment
+  const consultantInvestment = investmentsStore.availableInvestments
+    .find(inv => inv.persist_name === 'consultantMode')
+
+  if (!consultantInvestment) {
+    console.error('Consultant mode investment not found')
+    return
+  }
+
+  // Toggle consultant mode
+  if (isConsultantModeActive.value) {
+    // Deactivating consultant mode - restore previous investments
+    await investmentsStore.deselectInvestment(consultantInvestment.id)
+
+    // Restore saved graphic mode investments
+    for (const invId of savedGraphicModeInvestments.value) {
+      await investmentsStore.selectInvestment(invId)
+    }
+
+    // Set first saved investment as active if any
+    if (savedGraphicModeInvestments.value.length > 0) {
+      investmentsStore.setActiveInvestment(savedGraphicModeInvestments.value[0])
+    }
+
+    savedGraphicModeInvestments.value = []
+  } else {
+    // Activating consultant mode - save current investments and deactivate them
+    // Save current investments (except default ones and consultant mode)
+    savedGraphicModeInvestments.value = investmentsStore.selectedInvestments
+      .filter(inv => !inv.is_default && inv.persist_name !== 'consultantMode')
+      .map(inv => inv.id)
+
+    // Deactivate all non-default investments
+    for (const inv of investmentsStore.selectedInvestments) {
+      if (!inv.is_default && inv.id !== consultantInvestment.id) {
+        await investmentsStore.deselectInvestment(inv.id)
+      }
+    }
+
+    // Activate consultant mode
+    await investmentsStore.selectInvestment(consultantInvestment.id)
+    investmentsStore.setActiveInvestment(consultantInvestment.id)
+
+    // Ensure we're in graphic mode
+    if (displayMode.value !== 'graphic') {
+      displayMode.value = 'graphic'
+    }
+  }
+
   showModeOptions.value = false
 }
 

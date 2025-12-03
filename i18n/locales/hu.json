@@ -215,6 +215,7 @@
       "data": "Adatok",
       "graphicMode": "Grafikus mód",
       "markerMode": "Jelölő mód",
+      "consultantMode": "Tanácsadó mód",
       "selectScenario": "Forgatókönyv kiválasztása"
     },
     "unsavedChanges": {

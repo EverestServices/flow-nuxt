@@ -32,22 +32,32 @@
 
       <!-- Options list -->
       <div class="p-2">
-        <label
-          v-for="option in filteredOptions"
-          :key="option.value"
-          class="flex items-start gap-2 px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
-        >
-          <input
-            type="checkbox"
-            :checked="internalValue.includes(option.value)"
-            :disabled="disabled"
-            class="mt-0.5 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-            @change="toggleOption(option.value)"
-          />
-          <span class="text-sm text-gray-900 dark:text-gray-100 flex-1">
+        <template v-for="option in filteredOptions" :key="option.value">
+          <!-- Category label (readonly) -->
+          <div
+            v-if="option.readonly"
+            class="px-2 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded mt-2 first:mt-0"
+          >
             {{ option.label }}
-          </span>
-        </label>
+          </div>
+
+          <!-- Regular selectable option -->
+          <label
+            v-else
+            class="flex items-start gap-2 px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              :checked="internalValue.includes(option.value)"
+              :disabled="disabled"
+              class="mt-0.5 h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              @change="toggleOption(option.value)"
+            />
+            <span class="text-sm text-gray-900 dark:text-gray-100 flex-1">
+              {{ option.label }}
+            </span>
+          </label>
+        </template>
 
         <div v-if="filteredOptions.length === 0" class="px-2 py-4 text-sm text-gray-500 text-center">
           Nincs találat
@@ -66,6 +76,7 @@ import { computed, ref } from 'vue'
 interface Option {
   value: string
   label: string
+  readonly?: boolean
 }
 
 interface Props {
