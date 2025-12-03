@@ -508,13 +508,15 @@ interface Props {
   investmentFilter?: string
   showVisualization?: boolean
   pageDisplayMode?: 'single' | 'investment' | 'all'
+  isConsultantModeActive?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   viewMode: 'all',
   investmentFilter: 'all',
   showVisualization: true,
-  pageDisplayMode: 'single'
+  pageDisplayMode: 'single',
+  isConsultantModeActive: false
 })
 
 const emit = defineEmits<{
@@ -632,9 +634,9 @@ const getSubPages = (parentPageId: string) => {
   return store.getSubPages(parentPageId)
 }
 
-// Show Investment navigation arrows
+// Show Investment navigation arrows (ne jelenjen meg Tanácsadó módban)
 const showInvestmentNavigation = computed(() => {
-  return props.pageDisplayMode !== 'all' && selectedInvestments.value.length > 1
+  return props.pageDisplayMode !== 'all' && selectedInvestments.value.length > 1 && !props.isConsultantModeActive
 })
 
 // Show Page navigation arrows
@@ -729,6 +731,24 @@ const updateQuestionValue = async (questionName: string, value: any) => {
     // Copy phase_1 to phase_3 if phase_3 is empty and phase_1 has a value
     if (phase1Value && (!phase3Value || phase3Value === '' || phase3Value === null)) {
       await store.saveResponse('phase_3', phase1Value)
+    }
+  }
+
+  // Auto-fill energy carrier types based on property profile selection
+  if (questionName === 'energy_consumption_profile') {
+    const profileToCarriersMap: Record<string, string[]> = {
+      'Kádár kocka - Egyedi fűtéses': ['Villamos energia', 'Földgáz'],
+      'Pincés + beépített tetős - Központi fűtéses + HMV': ['Villamos energia', 'Földgáz'],
+      'Toldott Kádár kocka - Központi fűtéses': ['Villamos energia', 'Földgáz', 'Tűzifa, vegyes tüzelő'],
+      'Toldott Kádár kocka - Központi fűtéses + HMV': ['Villamos energia', 'Földgáz', 'Tűzifa, vegyes tüzelő']
+    }
+
+    // Get the mapped energy carriers for the selected profile
+    const energyCarriers = profileToCarriersMap[value]
+
+    if (energyCarriers) {
+      // Auto-fill the energy_consumption_select field with the appropriate carriers
+      await store.saveResponse('energy_consumption_select', energyCarriers)
     }
   }
 }
@@ -1084,6 +1104,23 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
 
   const condition = question.display_conditions
 
+  // Handle AND/OR logic
+  if (condition.operator === 'and' || condition.operator === 'or') {
+    if (!condition.conditions || condition.conditions.length === 0) {
+      return true
+    }
+
+    if (condition.operator === 'and') {
+      return condition.conditions.every((cond: any) =>
+        evaluateDisplayCondition({ display_conditions: cond }, pageId, instanceIndex)
+      )
+    } else {
+      return condition.conditions.some((cond: any) =>
+        evaluateDisplayCondition({ display_conditions: cond }, pageId, instanceIndex)
+      )
+    }
+  }
+
   // Get the value of the controlling field
   let fieldValue: any
   if (instanceIndex !== undefined) {
@@ -1149,6 +1186,12 @@ const evaluateDisplayCondition = (question: any, pageId: string, instanceIndex?:
       // Check if any of the field values match any of the condition values
       return fieldArray.some(fv => valuesToCheck.some(cv => fv === cv))
     }
+    case 'in':
+      // Check if fieldValue is in the targetValue array
+      if (!Array.isArray(condition.value)) {
+        return false
+      }
+      return condition.value.includes(fieldValue)
     default:
       return true
   }

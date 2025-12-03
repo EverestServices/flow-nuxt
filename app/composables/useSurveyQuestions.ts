@@ -9,9 +9,10 @@
 
 export interface DisplayConditions {
   field?: string
-  operator?: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains' | 'contains_any'
+  operator?: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_or_equal' | 'less_or_equal' | 'contains' | 'contains_any' | 'in' | 'and' | 'or'
   value?: any
   visible_for_sources?: ('OFP' | 'EKR')[]
+  conditions?: DisplayConditions[] // For AND/OR logic
 }
 
 export interface SurveyQuestion {
@@ -91,6 +92,20 @@ export function useSurveyQuestions() {
     conditions: DisplayConditions,
     currentAnswers: Record<string, any>
   ): boolean {
+    // Handle AND/OR logic
+    if (conditions.operator === 'and' || conditions.operator === 'or') {
+      if (!conditions.conditions || conditions.conditions.length === 0) {
+        return true
+      }
+
+      if (conditions.operator === 'and') {
+        return conditions.conditions.every(cond => evaluateFieldCondition(cond, currentAnswers))
+      } else {
+        return conditions.conditions.some(cond => evaluateFieldCondition(cond, currentAnswers))
+      }
+    }
+
+    // Handle single field condition
     if (!conditions.field || conditions.operator === undefined) {
       return true
     }
@@ -131,6 +146,13 @@ export function useSurveyQuestions() {
           return false
         }
         return targetValue.some(val => fieldValue.includes(val))
+
+      case 'in':
+        // Check if fieldValue is in the targetValue array
+        if (!Array.isArray(targetValue)) {
+          return false
+        }
+        return targetValue.includes(fieldValue)
 
       default:
         console.warn('Unknown operator:', conditions.operator)

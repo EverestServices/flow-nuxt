@@ -215,6 +215,7 @@
       "data": "Data",
       "graphicMode": "Graphic Mode",
       "markerMode": "Marker Mode",
+      "consultantMode": "Consultant Mode",
       "selectScenario": "Select Scenario"
     },
     "footer": {

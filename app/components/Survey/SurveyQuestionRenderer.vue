@@ -415,6 +415,122 @@
       </div>
     </div>
 
+    <!-- Repeatable Row (table with multiple fields per row) -->
+    <div v-else-if="question.type === 'repeatable_row'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+
+      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+        <!-- Rows list -->
+        <div v-if="repeatableRowItems.length > 0" class="space-y-4 mb-3">
+          <div
+            v-for="(row, rowIndex) in repeatableRowItems"
+            :key="rowIndex"
+            class="bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+          >
+            <!-- First row: Méret - Típus - Plus gomb -->
+            <div class="grid gap-2 items-end mb-2" style="grid-template-columns: 1fr 1fr 100px">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {{ getRepeatableFieldLabel(repeatableRowFields[0]) }}
+                </label>
+                <UISelect
+                  :model-value="row[repeatableRowFields[0].name]"
+                  :options="getRepeatableRowFieldOptions(repeatableRowFields[0], row)"
+                  :placeholder="getRepeatableFieldLabel(repeatableRowFields[0])"
+                  size="sm"
+                  @update:model-value="updateRepeatableRow(rowIndex, repeatableRowFields[0].name, $event)"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {{ getRepeatableFieldLabel(repeatableRowFields[1]) }}
+                </label>
+                <UISelect
+                  :model-value="row[repeatableRowFields[1].name]"
+                  :options="getRepeatableRowFieldOptions(repeatableRowFields[1], row)"
+                  :placeholder="getRepeatableFieldLabel(repeatableRowFields[1])"
+                  size="sm"
+                  @update:model-value="updateRepeatableRow(rowIndex, repeatableRowFields[1].name, $event)"
+                />
+              </div>
+
+              <!-- Plus button (does nothing for now) -->
+              <button
+                type="button"
+                class="p-2 text-primary-500 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30 rounded transition-colors h-[34px]"
+                @click.prevent=""
+              >
+                <UIcon name="i-lucide-plus" class="w-5 h-5 mx-auto" />
+              </button>
+            </div>
+
+            <!-- Second row: Üvegezés - Mennyiség - Kuka gomb -->
+            <div class="grid gap-2 items-end" style="grid-template-columns: 1fr 1fr 100px">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {{ getRepeatableFieldLabel(repeatableRowFields[2]) }}
+                </label>
+                <UISelect
+                  :model-value="row[repeatableRowFields[2].name]"
+                  :options="getRepeatableRowFieldOptions(repeatableRowFields[2], row)"
+                  :placeholder="getRepeatableFieldLabel(repeatableRowFields[2])"
+                  size="sm"
+                  @update:model-value="updateRepeatableRow(rowIndex, repeatableRowFields[2].name, $event)"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {{ getRepeatableFieldLabel(repeatableRowFields[3]) }}
+                </label>
+                <div class="flex items-center gap-1">
+                  <UIInput
+                    :model-value="row[repeatableRowFields[3].name]"
+                    type="number"
+                    :min="repeatableRowFields[3].min"
+                    :max="repeatableRowFields[3].max"
+                    :placeholder="getRepeatableFieldLabel(repeatableRowFields[3])"
+                    size="sm"
+                    class="flex-1"
+                    @update:model-value="updateRepeatableRow(rowIndex, repeatableRowFields[3].name, $event)"
+                  />
+                  <span v-if="getRepeatableFieldUnit(repeatableRowFields[3])" class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ getRepeatableFieldUnit(repeatableRowFields[3]) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Remove button -->
+              <button
+                type="button"
+                class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors h-[34px]"
+                @click="removeRepeatableRow(rowIndex)"
+              >
+                <UIcon name="i-lucide-trash-2" class="w-5 h-5 mx-auto" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add button -->
+        <button
+          type="button"
+          class="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          @click="addRepeatableRow"
+        >
+          <UIcon name="i-lucide-plus" class="w-5 h-5" />
+          {{ repeatableRowAddButtonText }}
+        </button>
+      </div>
+    </div>
+
     <!-- Multiselect with Distribution (dynamic fields based on DB config) -->
     <div v-else-if="question.type === 'multiselect_with_distribution'">
       <div class="flex items-center gap-2 mb-2">
@@ -497,6 +613,155 @@
       <!-- No options selected message -->
       <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">
         {{ distributionEmptyMessage }}
+      </div>
+    </div>
+
+    <!-- Dynamic Table (energy consumption, heating devices, etc.) -->
+    <div v-else-if="question.type === 'dynamic_table'">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ questionLabel }}
+          <span v-if="question.is_required" class="text-red-500">*</span>
+        </label>
+        <SurveyQuestionInfoTooltip :info-message="questionInfoMessage" />
+      </div>
+
+      <!-- Table Container -->
+      <div v-if="dynamicTableColumns.length > 0" class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+        <table class="w-full text-sm">
+          <!-- Table Header -->
+          <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+            <tr>
+              <!-- First column: Row labels -->
+              <th class="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 min-w-[200px]">
+                <!-- Empty header for row labels -->
+              </th>
+              <!-- Dynamic columns from selected options -->
+              <th
+                v-for="column in dynamicTableColumns"
+                :key="column.value"
+                class="px-3 py-2 text-center font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
+              >
+                <div class="flex flex-col gap-1">
+                  <span>{{ column.label }}</span>
+                  <span v-if="getDynamicTableColumnUnit(column.value)" class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ getDynamicTableColumnUnit(column.value) }}
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+
+          <!-- Table Body -->
+          <tbody>
+            <!-- Grouped rows (with category headers) -->
+            <template v-if="dynamicTableRowGroups.length > 0">
+              <template v-for="(group, groupIndex) in dynamicTableRowGroups" :key="groupIndex">
+                <!-- Category header -->
+                <tr v-if="dynamicTableShowCategoryHeaders" :class="getDynamicTableCategoryBgClass(group.background_color)">
+                  <td colspan="100" class="px-3 py-2 font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700">
+                    {{ translate(group.category, '') }}
+                  </td>
+                </tr>
+                <!-- Rows in this category -->
+                <tr
+                  v-for="row in group.rows"
+                  :key="row.key"
+                  :class="getDynamicTableCategoryBgClass(group.background_color)"
+                  class="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                >
+                  <!-- Row label -->
+                  <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">
+                    {{ translate(row.label, '') }}
+                  </td>
+                  <!-- Cells for each column -->
+                  <td
+                    v-for="column in dynamicTableColumns"
+                    :key="column.value"
+                    class="px-2 py-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
+                  >
+                    <!-- Check if this cell should be shown -->
+                    <div v-if="shouldShowDynamicTableCell(row, column.value)" class="flex flex-col gap-1">
+                      <!-- Single cell type: just one input -->
+                      <div v-if="dynamicTableCellType === 'single'" class="flex items-center gap-1">
+                        <UIInput
+                          :model-value="getDynamicTableCellValue(row.key, column.value, 'value')"
+                          type="number"
+                          size="sm"
+                          class="flex-1"
+                          @update:model-value="updateDynamicTableCellValue(row.key, column.value, 'value', $event)"
+                        />
+                        <span v-if="row.unit" class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          {{ typeof row.unit === 'string' ? row.unit : translate(row.unit, '') }}
+                        </span>
+                      </div>
+                      <!-- Dual cell type: value + percentage -->
+                      <div v-else-if="dynamicTableCellType === 'dual'" class="space-y-1">
+                        <UIInput
+                          :model-value="getDynamicTableCellValue(row.key, column.value, 'value')"
+                          type="number"
+                          size="sm"
+                          class="w-full"
+                          @update:model-value="updateDynamicTableCellValue(row.key, column.value, 'value', $event)"
+                        />
+                        <div class="flex items-center gap-1">
+                          <UIInput
+                            :model-value="getDynamicTableCellValue(row.key, column.value, 'percentage')"
+                            type="number"
+                            size="sm"
+                            class="w-full"
+                            @update:model-value="updateDynamicTableCellValue(row.key, column.value, 'percentage', $event)"
+                          />
+                          <span class="text-xs text-gray-500 dark:text-gray-400">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </template>
+
+            <!-- Simple rows (no grouping) -->
+            <template v-else>
+              <tr
+                v-for="row in dynamicTableRows"
+                :key="row.key"
+                :class="dynamicTableBackgroundColor"
+                class="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+              >
+                <!-- Row label -->
+                <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">
+                  {{ translate(row.label, '') }}
+                </td>
+                <!-- Cells for each column -->
+                <td
+                  v-for="column in dynamicTableColumns"
+                  :key="column.value"
+                  class="px-2 py-2 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
+                >
+                  <!-- Check if this cell should be shown -->
+                  <div v-if="shouldShowDynamicTableCell(row, column.value)" class="flex items-center gap-1">
+                    <UIInput
+                      :model-value="getDynamicTableCellValue(row.key, column.value, 'value')"
+                      type="number"
+                      size="sm"
+                      class="flex-1"
+                      @update:model-value="updateDynamicTableCellValue(row.key, column.value, 'value', $event)"
+                    />
+                    <span v-if="row.unit" class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {{ typeof row.unit === 'string' ? row.unit : translate(row.unit, '') }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- No columns selected message -->
+      <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+        {{ dynamicTableEmptyMessage }}
       </div>
     </div>
 
@@ -1242,6 +1507,119 @@ function removeRepeatableItem(index: number) {
 }
 
 // ========================================================================
+// REPEATABLE ROW LOGIC
+// ========================================================================
+
+// Parse repeatable row items from modelValue
+const repeatableRowItems = computed(() => {
+  if (props.question.type !== 'repeatable_row') return []
+  return Array.isArray(props.modelValue) ? props.modelValue : []
+})
+
+// Get fields configuration
+const repeatableRowFields = computed(() => {
+  if (props.question.type !== 'repeatable_row') return []
+  return (props.question.options?.fields as any[]) || []
+})
+
+// Build grid template columns from field widths + button width
+const repeatableRowGridColumns = computed(() => {
+  if (props.question.type !== 'repeatable_row') return ''
+  const fieldWidths = repeatableRowFields.value.map(field => field.grid_width || '1fr')
+  const buttonWidth = props.question.options?.button_width || '100px'
+  return [...fieldWidths, buttonWidth].join(' ')
+})
+
+// Get translated add button text
+const repeatableRowAddButtonText = computed(() => {
+  if (props.question.type !== 'repeatable_row') return ''
+  return translate(props.question.options?.add_button_text, 'Add Row')
+})
+
+// Get button width
+const repeatableRowButtonWidth = computed(() => {
+  if (props.question.type !== 'repeatable_row') return '100px'
+  return props.question.options?.button_width || '100px'
+})
+
+// Get translated label for a repeatable row field
+function getRepeatableFieldLabel(field: any): string {
+  return translate(field.label, field.name)
+}
+
+// Get translated unit for a repeatable row field
+function getRepeatableFieldUnit(field: any): string {
+  return translate(field.unit, '')
+}
+
+// Get options for a repeatable row field with conditional readonly logic
+function getRepeatableRowFieldOptions(field: any, row: any): Array<{ value: string; label: string; disabled?: boolean }> {
+  if (field.type !== 'dropdown' || !field.options) return []
+
+  const options = field.options.map((opt: any) => {
+    let disabled = false
+
+    // Check if this option should be readonly based on readonly_when condition
+    if (opt.readonly_when) {
+      const conditionField = opt.readonly_when.field
+      const conditionValues = opt.readonly_when.values || []
+      const operator = opt.readonly_when.operator || 'in'
+
+      const currentFieldValue = row[conditionField]
+
+      if (operator === 'in') {
+        // Disable if current field value is in the readonly_when values
+        disabled = conditionValues.includes(currentFieldValue)
+      } else if (operator === 'not_in') {
+        // Disable if current field value is NOT in the readonly_when values
+        disabled = !conditionValues.includes(currentFieldValue)
+      }
+    }
+
+    return {
+      value: opt.value,
+      label: translate(opt.label, opt.value),
+      disabled
+    }
+  })
+
+  return options
+}
+
+// Add a new row to the repeatable row field
+function addRepeatableRow() {
+  const newRow: Record<string, any> = {}
+
+  // Initialize each field with empty value
+  for (const field of repeatableRowFields.value) {
+    if (field.type === 'number') {
+      newRow[field.name] = field.min || 1
+    } else {
+      newRow[field.name] = ''
+    }
+  }
+
+  const rows = [...repeatableRowItems.value, newRow]
+  emit('update:modelValue', rows)
+}
+
+// Update a specific field in a specific row
+function updateRepeatableRow(rowIndex: number, fieldName: string, value: any) {
+  const rows = [...repeatableRowItems.value]
+  rows[rowIndex] = {
+    ...rows[rowIndex],
+    [fieldName]: value
+  }
+  emit('update:modelValue', rows)
+}
+
+// Remove a row at a specific index
+function removeRepeatableRow(rowIndex: number) {
+  const rows = repeatableRowItems.value.filter((_, i) => i !== rowIndex)
+  emit('update:modelValue', rows)
+}
+
+// ========================================================================
 // MULTISELECT WITH DISTRIBUTION LOGIC
 // ========================================================================
 
@@ -1402,5 +1780,158 @@ function openDrawingModal() {
 // Handle drawing save
 function handleDrawingSave(imageData: string) {
   emit('update:modelValue', imageData)
+}
+
+// ========================================================================
+// DYNAMIC TABLE LOGIC
+// ========================================================================
+
+// Get columns from source field (selected energy carriers/heating devices)
+const dynamicTableColumns = computed(() => {
+  if (props.question.type !== 'dynamic_table') return []
+
+  const sourceField = props.question.options?.source_field as string
+  if (!sourceField) return []
+
+  // Get the selected values from the source field
+  let selectedValues = store.getResponse(sourceField)
+
+  // Parse JSON string if needed
+  if (typeof selectedValues === 'string') {
+    try {
+      selectedValues = JSON.parse(selectedValues)
+    } catch (e) {
+      console.error('Failed to parse dynamic table source values:', e)
+      return []
+    }
+  }
+
+  if (!selectedValues || !Array.isArray(selectedValues) || selectedValues.length === 0) {
+    return []
+  }
+
+  // Return columns with labels (values themselves are the labels)
+  return selectedValues.map(value => ({
+    value,
+    label: value
+  }))
+})
+
+// Get cell type (single or dual)
+const dynamicTableCellType = computed(() => {
+  if (props.question.type !== 'dynamic_table') return 'single'
+  return props.question.options?.cell_type as string || 'single'
+})
+
+// Get column units (from column_units config)
+function getDynamicTableColumnUnit(columnValue: string): string {
+  if (props.question.type !== 'dynamic_table') return ''
+  const columnUnits = props.question.options?.column_units as Record<string, string>
+  return columnUnits?.[columnValue] || ''
+}
+
+// Get row groups (for categorized tables)
+const dynamicTableRowGroups = computed(() => {
+  if (props.question.type !== 'dynamic_table') return []
+  return (props.question.options?.row_groups as any[]) || []
+})
+
+// Get simple rows (for non-categorized tables)
+const dynamicTableRows = computed(() => {
+  if (props.question.type !== 'dynamic_table') return []
+  return (props.question.options?.rows as any[]) || []
+})
+
+// Show category headers
+const dynamicTableShowCategoryHeaders = computed(() => {
+  if (props.question.type !== 'dynamic_table') return false
+  return props.question.options?.show_category_headers !== false
+})
+
+// Background color for simple rows
+const dynamicTableBackgroundColor = computed(() => {
+  if (props.question.type !== 'dynamic_table') return ''
+  const bgColor = props.question.options?.background_color as string
+  return getDynamicTableCategoryBgClass(bgColor)
+})
+
+// Empty message
+const dynamicTableEmptyMessage = computed(() => {
+  if (props.question.type !== 'dynamic_table') return ''
+  return translate(props.question.options?.empty_message, 'Kérjük, válasszon opciókat')
+})
+
+// Get background class for category
+function getDynamicTableCategoryBgClass(bgColor: string): string {
+  const colorMap: Record<string, string> = {
+    'beige': 'bg-amber-50 dark:bg-amber-900/20',
+    'pink': 'bg-pink-50 dark:bg-pink-900/20',
+    'lightblue': 'bg-cyan-50 dark:bg-cyan-900/20',
+    'lightgreen': 'bg-emerald-50 dark:bg-emerald-900/20',
+    'lavender': 'bg-purple-50 dark:bg-purple-900/20',
+    'bg-amber-50': 'bg-amber-50 dark:bg-amber-900/20',
+    'bg-pink-50': 'bg-pink-50 dark:bg-pink-900/20',
+    'bg-cyan-50': 'bg-cyan-50 dark:bg-cyan-900/20',
+    'bg-emerald-50': 'bg-emerald-50 dark:bg-emerald-900/20',
+    'bg-purple-50': 'bg-purple-50 dark:bg-purple-900/20'
+  }
+  return colorMap[bgColor] || ''
+}
+
+// Check if cell should be shown (based on row.columns array)
+function shouldShowDynamicTableCell(row: any, columnValue: string): boolean {
+  // If row.columns is not defined, show cell in all columns
+  if (!row.columns || !Array.isArray(row.columns)) {
+    return true
+  }
+  // Otherwise, only show if column is in the allowed list
+  return row.columns.includes(columnValue)
+}
+
+// Get cell value
+function getDynamicTableCellValue(rowKey: string, columnValue: string, fieldType: 'value' | 'percentage'): any {
+  if (props.question.type !== 'dynamic_table') return ''
+
+  const data = props.modelValue || {}
+
+  if (dynamicTableCellType.value === 'single') {
+    // Single cell type: just return the value
+    return data[rowKey]?.[columnValue] || ''
+  } else {
+    // Dual cell type: return value or percentage
+    if (fieldType === 'percentage') {
+      return data[rowKey]?.[`${columnValue}_percentage`] || ''
+    } else {
+      return data[rowKey]?.[columnValue] || ''
+    }
+  }
+}
+
+// Update cell value
+function updateDynamicTableCellValue(rowKey: string, columnValue: string, fieldType: 'value' | 'percentage', value: any) {
+  const data = props.modelValue || {}
+
+  if (dynamicTableCellType.value === 'single') {
+    // Single cell type: just update the value
+    const updatedData = {
+      ...data,
+      [rowKey]: {
+        ...(data[rowKey] || {}),
+        [columnValue]: value
+      }
+    }
+    emit('update:modelValue', updatedData)
+  } else {
+    // Dual cell type: update value or percentage
+    const fieldKey = fieldType === 'percentage' ? `${columnValue}_percentage` : columnValue
+    const updatedData = {
+      ...data,
+      [rowKey]: {
+        ...(data[rowKey] || {}),
+        [fieldKey]: value
+      }
+    }
+    emit('update:modelValue', updatedData)
+  }
 }
 </script>
