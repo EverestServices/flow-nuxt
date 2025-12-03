@@ -102,6 +102,7 @@ export interface PolygonSurface {
   edgeNotesCm?: { a?: number | null; b?: number | null };
   edgeNotesRect?: Point[];
   edgeNotesNorm?: Point[];
+  manualGeom?: ManualGeomCm | null;
 }
 
 export type ManualShapeType = 'triangle' | 'rectangle' | 'pentagon';
@@ -132,3 +133,8 @@ export type ManualShape = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+export type ManualGeomCm =
+  | { type: 'rectangle'; aCm?: number | null; bCm?: number | null }
+  | { type: 'triangle'; aCm?: number | null; bCm?: number | null; cCm?: number | null }
+  | { type: 'pentagon'; aCm?: number | null; bCm?: number | null; cCm?: number | null; dCm?: number | null; eCm?: number | null };

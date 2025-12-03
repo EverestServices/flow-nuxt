@@ -76,25 +76,8 @@ export const useWallSync = () => {
     // Update the page instances with cleaned data
     pageInstancesData.instances = existingInstances
 
-    // STEP 0: Clean up orphaned marker walls that don't have matching instances
-    // This prevents accumulation of marker walls when _markerWallId doesn't persist
-    const instanceMarkerIds = existingInstances
-      .map(inst => inst._markerWallId)
-      .filter(Boolean)
-
-    const orphanedWallIds: string[] = []
-    for (const wall of wallsArray) {
-      if (!instanceMarkerIds.includes(wall.id)) {
-        orphanedWallIds.push(wall.id)
-      }
-    }
-
-    // Remove orphaned walls from WallStore
-    for (const wallId of orphanedWallIds) {
-      wallStore.removeWall(surveyId, wallId)
-    }
-
-    // Refresh wallsArray after cleanup
+    // NOTE: Do not remove walls from WallStore here. Instead, create/update page instances for all walls below.
+    // This ensures drawings persist when returning to the wall list even if instances were not yet created.
     const cleanedWalls = wallStore.getWallsForSurvey(surveyId)
     const cleanedWallsArray = Object.values(cleanedWalls) as Wall[]
 

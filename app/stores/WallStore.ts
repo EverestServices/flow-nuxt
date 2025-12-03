@@ -32,7 +32,16 @@ export const useWallStore = defineStore(
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved) as Record<string, Record<string, Wall>>;
-          wallsBySurvey.value = parsed;
+          // hydrate into reactive tree so deep watch observes nested mutations
+          const hydrated: Record<string, Record<string, Wall>> = reactive({});
+          for (const [sid, walls] of Object.entries(parsed || {})) {
+            const rec = reactive({} as Record<string, Wall>);
+            for (const [wid, wall] of Object.entries(walls || {})) {
+              rec[wid] = reactive(wall as Wall);
+            }
+            hydrated[sid] = rec;
+          }
+          wallsBySurvey.value = hydrated;
         }
       } catch (e) {
         // ignore hydrate errors in mock/dev
@@ -62,7 +71,9 @@ export const useWallStore = defineStore(
       if (!wallsBySurvey.value[surveyId]) {
         wallsBySurvey.value[surveyId] = reactive({});
       }
-      wallsBySurvey.value[surveyId][wallId] = wall;
+      // ensure wall object is reactive so deep watch can persist nested edits
+      const reactiveWall = (wall as any).__v_isReactive ? wall : reactive(wall);
+      wallsBySurvey.value[surveyId][wallId] = reactiveWall;
     }
 
     function removeWall(surveyId: string, wallId: string) {
@@ -93,7 +104,22 @@ export const useWallStore = defineStore(
 
       const imgWidth = wall.images[0]?.processedImageWidth ?? 1;
       const imgHeight = wall.images[0]?.processedImageHeight ?? 1;
-      const meterPerPixel = wall.images[0]?.meterPerPixel ?? 1;
+      const rawMpp = wall.images[0]?.meterPerPixel;
+      const meterPerPixel = (typeof rawMpp === 'number' && isFinite(rawMpp) && rawMpp > 0) ? rawMpp : 1;
+
+      const polyArea = (p: PolygonSurface): number => {
+        const pts = (p.points || []) as Array<{x:number;y:number}>;
+        if (pts.length < 3) return 0;
+        // scale to pixels
+        const den = pts.map(pt => ({ x: pt.x * imgWidth, y: pt.y * imgHeight }));
+        let areaPx2 = 0;
+        for (let i = 0; i < den.length; i++) {
+          const j = (i + 1) % den.length;
+          areaPx2 += den[i]!.x * den[j]!.y - den[j]!.x * den[i]!.y;
+        }
+        return Math.abs(areaPx2 / 2) * meterPerPixel * meterPerPixel;
+      };
+      const sumAreas = (list: PolygonSurface[]) => list.reduce((s, p) => s + polyArea(p), 0);
 
       const isManual = Boolean(wall.images?.[0]?.manual);
       if (isManual) {
@@ -105,6 +131,27 @@ export const useWallStore = defineStore(
           const b = anyP.edgeNotesCm?.b as number | null | undefined;
           if (p.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
             return (a * b) / 10000;
+          }
+          if (p.points?.length === 3) {
+            const edges = (anyP.edgeNotesCm?.edges || []) as Array<number | null | undefined>;
+            if (edges.length === 3 && edges.every(v => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)) {
+              const aM = (edges[0] as number) / 100;
+              const bM = (edges[1] as number) / 100;
+              const cM = (edges[2] as number) / 100;
+              const s = (aM + bM + cM) / 2;
+              const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+              if (tri > 0) return tri;
+            }
+            const mg = anyP.manualGeom;
+            if (mg && mg.type === 'triangle') {
+              const aCm = Number(mg.aCm), bCm = Number(mg.bCm), cCm = Number(mg.cCm);
+              if (aCm > 0 && bCm > 0 && cCm > 0) {
+                const aM = aCm / 100, bM = bCm / 100, cM = cCm / 100;
+                const s = (aM + bM + cM) / 2;
+                const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+                if (tri > 0) return tri;
+              }
+            }
           }
           return 0;
         };
@@ -138,47 +185,62 @@ export const useWallStore = defineStore(
       }
 
       const getPolygonByType = (type: SurfaceType) => {
-        return wall.polygons.filter((p) => p.type === type && p.closed);
+        return wall.polygons.filter((p) => ((p.type ?? SurfaceType.FACADE) === type) && p.closed);
       };
 
       const facadePolygons = getPolygonByType(SurfaceType.FACADE);
       const windowPolygons = getPolygonByType(SurfaceType.WINDOW_DOOR);
       const plinthPolygons = getPolygonByType(SurfaceType.WALL_PLINTH);
 
-      const facadeGrossArea = unionPolygonsArea(
+      let facadeGrossArea = unionPolygonsArea(
         clonePolygonData(facadePolygons),
         imgWidth,
         imgHeight,
         meterPerPixel,
       );
-      const windowDoorArea = unionPolygonsArea(
+      if (!(facadeGrossArea > 0) && facadePolygons.length) {
+        facadeGrossArea = sumAreas(facadePolygons);
+      }
+      let windowDoorArea = unionPolygonsArea(
         clonePolygonData(windowPolygons),
         imgWidth,
         imgHeight,
         meterPerPixel,
       );
-      const wallPlinthArea = unionPolygonsArea(
+      if (!(windowDoorArea > 0) && windowPolygons.length) {
+        windowDoorArea = sumAreas(windowPolygons);
+      }
+      let wallPlinthArea = unionPolygonsArea(
         clonePolygonData(plinthPolygons),
         imgWidth,
         imgHeight,
         meterPerPixel,
       );
+      if (!(wallPlinthArea > 0) && plinthPolygons.length) {
+        wallPlinthArea = sumAreas(plinthPolygons);
+      }
 
-      const facadeNetArea = subtractPolygonGroupsArea(
+      let facadeNetArea = subtractPolygonGroupsArea(
         clonePolygonData(facadePolygons),
         clonePolygonData(windowPolygons),
         imgWidth,
         imgHeight,
         meterPerPixel,
       );
+      if (!(facadeNetArea > 0) && (facadePolygons.length || windowPolygons.length)) {
+        facadeNetArea = Math.max(0, facadeGrossArea - windowDoorArea);
+      }
 
-      const wallPlinthNetArea = subtractPolygonGroupsArea(
+      let wallPlinthNetArea = subtractPolygonGroupsArea(
         clonePolygonData(plinthPolygons),
         clonePolygonData(windowPolygons),
         imgWidth,
         imgHeight,
         meterPerPixel,
       );
+      if (!(wallPlinthNetArea > 0) && (plinthPolygons.length || windowPolygons.length)) {
+        wallPlinthNetArea = Math.max(0, wallPlinthArea - windowDoorArea);
+      }
 
       const manualArea = (wall.images || [])
         .flatMap((img: any) => (img?.manualShapes ?? []))
@@ -203,7 +265,8 @@ export const useWallStore = defineStore(
 
         const polygonsClone = clonePolygonData(polygonsOfType);
 
-        const meterPerPixel = wall.images[0]?.meterPerPixel ?? 1;
+        const rawMpp = wall.images[0]?.meterPerPixel;
+        const meterPerPixel = (typeof rawMpp === 'number' && isFinite(rawMpp) && rawMpp > 0) ? rawMpp : 1;
         const imgWidth = wall.images[0]?.processedImageWidth ?? 1;
         const imgHeight = wall.images[0]?.processedImageHeight ?? 1;
 
