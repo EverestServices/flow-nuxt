@@ -133,6 +133,9 @@ onMounted(async () => {
       console.log('Processing wall:', dbWall);
       console.log('Wall images:', dbWall.images);
 
+      // Preserve existing local polygons if present (e.g., manual mode edits not yet saved to DB)
+      const existing = store.getWallsForSurvey(sid)[dbWall.id] as Wall | undefined;
+
       const wallImages: WallImage[] = (dbWall.images || []).map((img: any) => {
         console.log('📷 Processing image:', img);
         console.log('   - Original URL:', img.original_url);
@@ -158,28 +161,71 @@ onMounted(async () => {
         };
       });
 
+      // Merge DB images with existing local meta (preserve MPP and dimensions if DB lacks them)
+      const mergedImages: WallImage[] = (() => {
+        if (existing?.images && existing.images.length) {
+          const byId = new Map(existing.images.map((im) => [im.imageId, im] as const));
+          return wallImages.map((im) => {
+            const prev = byId.get(im.imageId);
+            if (!prev) return im;
+            return {
+              ...im,
+              processedImageWidth: im.processedImageWidth ?? prev.processedImageWidth,
+              processedImageHeight: im.processedImageHeight ?? prev.processedImageHeight,
+              meterPerPixel: (typeof im.meterPerPixel === 'number' && isFinite(im.meterPerPixel) && im.meterPerPixel > 0)
+                ? im.meterPerPixel
+                : prev.meterPerPixel,
+              // Prefer non-empty URLs
+              previewUrl: im.previewUrl || prev.previewUrl,
+              processedImageUrl: im.processedImageUrl || prev.processedImageUrl,
+              // Keep manual flag if DB unset
+              manual: (typeof im.manual === 'boolean') ? im.manual : prev.manual,
+            } as WallImage;
+          });
+        }
+        return wallImages;
+      })();
+
       console.log('✅ Converted wall images count:', wallImages.length);
       console.log('✅ Wall images:', wallImages);
 
-      const wallPolygonsFromDb: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => ({
-        id: p.id,
-        type: p.type,
-        subType: p.sub_type,
-        externalShading: p.external_shading,
-        name: p.name,
-        visible: p.visible,
-        closed: p.closed,
-        points: p.points,
-        edgeNotesCm: p.edge_notes_cm ?? null,
-        edgeNotesRect: p.edge_notes_rect ?? null,
-        edgeNotesNorm: p.edge_notes_norm ?? null,
-        areaOverrideM2: p.area_override_m2 ?? null,
-      }));
+      const wallPolygonsFromDb: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => {
+        const edgeNotes = p.edge_notes_cm ?? null
+        let manualGeom: any = null
+        try {
+          const pts = Array.isArray(p.points) ? p.points : []
+          const len = pts.length || 0
+          const a = edgeNotes?.a as number | null | undefined
+          const b = edgeNotes?.b as number | null | undefined
+          const edgesArr = (edgeNotes?.edges as Array<number | null | undefined> | undefined) ?? undefined
+          const isPos = (v: any) => typeof v === 'number' && isFinite(v) && v > 0
+          if (len === 4 && isPos(a) && isPos(b)) {
+            manualGeom = { type: 'rectangle', aCm: Math.round(a as number), bCm: Math.round(b as number) }
+          } else if (len === 3 && Array.isArray(edgesArr) && edgesArr.length >= 3 && edgesArr.slice(0,3).every(isPos)) {
+            manualGeom = { type: 'triangle', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number) }
+          } else if (len === 5 && Array.isArray(edgesArr) && edgesArr.length >= 5 && edgesArr.slice(0,5).every(isPos)) {
+            manualGeom = { type: 'pentagon', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number), dCm: Math.round(edgesArr[3] as number), eCm: Math.round(edgesArr[4] as number) }
+          }
+        } catch {}
+        return {
+          id: p.id,
+          type: p.type,
+          subType: p.sub_type,
+          externalShading: p.external_shading,
+          name: p.name,
+          visible: p.visible,
+          closed: p.closed,
+          points: p.points,
+          edgeNotesCm: edgeNotes,
+          edgeNotesRect: p.edge_notes_rect ?? null,
+          edgeNotesNorm: p.edge_notes_norm ?? null,
+          areaOverrideM2: p.area_override_m2 ?? null,
+          manualGeom: manualGeom,
+        } as any
+      });
 
-      // Preserve existing local polygons if present (e.g., manual mode edits not yet saved to DB)
-      const existing = store.getWallsForSurvey(sid)[dbWall.id] as Wall | undefined;
       const finalPolygons = (existing?.polygons && existing.polygons.length > 0) ? existing.polygons : wallPolygonsFromDb;
-      const finalImages = wallImages.length > 0 ? wallImages : (existing?.images && existing.images.length > 0 ? existing.images : [createEmptyImage()]);
+      const finalImages = mergedImages.length > 0 ? mergedImages : (existing?.images && existing.images.length > 0 ? existing.images : [createEmptyImage()]);
 
       const wall: Wall = {
         id: dbWall.id,

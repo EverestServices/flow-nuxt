@@ -41,7 +41,7 @@ function calculatePolygonArea(
   if (typeof denormPoints === 'undefined') return 0;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    area += denormPoints[i].x * denormPoints[j].y - denormPoints[j].x * denormPoints[i].y;
+    area += denormPoints[i]!.x * denormPoints[j]!.y - denormPoints[j]!.x * denormPoints[i]!.y;
   }
   return Math.abs(area / 2) * meterPerPixel * meterPerPixel;
 }
@@ -55,20 +55,21 @@ function calculateAreaFromFeature(
   const coords =
     feature.geometry.type === 'Polygon'
       ? [feature.geometry.coordinates]
-      : feature.geometry.coordinates;
+      : (feature.geometry.coordinates as any);
 
   let total = 0;
 
   for (let i = 0; i < coords.length; i++) {
-    const polygon = coords[i];
-
-    const outerRing = polygon[0];
-    const outerPoints = outerRing.map(([x, y]) => ({ x, y }));
+    const polygon = coords[i]!;
+    if (!polygon || !polygon[0]) continue;
+    const outerRing = polygon[0]!;
+    const outerPoints = outerRing.map(([x, y]: [number, number]) => ({ x, y }));
     let ringArea = calculatePolygonArea(outerPoints, imageWidth, imageHeight, meterPerPixel);
 
     for (let j = 1; j < polygon.length; j++) {
-      const innerRing = polygon[j];
-      const innerPoints = innerRing.map(([x, y]) => ({ x, y }));
+      const innerRing = polygon[j]!;
+      if (!innerRing) continue;
+      const innerPoints = innerRing.map(([x, y]: [number, number]) => ({ x, y }));
       ringArea -= calculatePolygonArea(innerPoints, imageWidth, imageHeight, meterPerPixel);
     }
 
@@ -100,14 +101,14 @@ export function subtractPolygonGroupsArea(
 
   let subtractUnion: Feature<Polygon | MultiPolygon> | null = null;
   if (subtractPolygons.length === 1) {
-    subtractUnion = subtractPolygons[0];
+    subtractUnion = subtractPolygons[0] as Feature<Polygon>;
   } else if (subtractPolygons.length >= 2) {
     subtractUnion = union(featureCollection(subtractPolygons)) as Feature<Polygon | MultiPolygon>;
   }
 
   try {
     const result = subtractUnion
-      ? difference(featureCollection([baseUnion, subtractUnion]))
+      ? (difference(featureCollection([baseUnion, subtractUnion])) as Feature<Polygon | MultiPolygon> | null)
       : baseUnion;
 
     if (!result) return 0;
