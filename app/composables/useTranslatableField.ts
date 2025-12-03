@@ -68,15 +68,16 @@ export const useTranslatableField = () => {
    * @returns Array of options with translated labels for current locale
    */
   const translateOptions = (
-    options: Array<{ value: string; label: { en: string; hu: string } }> | undefined | null
-  ): Array<{ value: string; label: string }> => {
+    options: Array<{ value: string; label: { en: string; hu: string }; readonly?: boolean }> | undefined | null
+  ): Array<{ value: string; label: string; readonly?: boolean }> => {
     if (!options || options.length === 0) {
       return []
     }
 
     return options.map(option => ({
       value: option.value,
-      label: translate(option.label, option.value)
+      label: translate(option.label, option.value),
+      ...(option.readonly !== undefined && { readonly: option.readonly })
     }))
   }
 

@@ -67,9 +67,9 @@ const getOrientationAngle = (direction: string): number => {
     'K': 90,     // East
     'DK': 135,   // Southeast
     'D': 180,    // South
-    'DNy': 225,  // Southwest
-    'Ny': 270,   // West
-    'ÉNy': 315   // Northwest
+    'DNY': 225,  // Southwest (uppercase!)
+    'NY': 270,   // West (uppercase!)
+    'ÉNY': 315   // Northwest (uppercase!)
   }
   return angleMap[direction] || 0
 }
