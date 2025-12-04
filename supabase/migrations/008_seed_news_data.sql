@@ -5,7 +5,7 @@
 INSERT INTO public.user_profiles (user_id, company_id, first_name, last_name)
 SELECT
     id as user_id,
-    '550e8400-e29b-41d4-a716-446655440000'::uuid as company_id,  -- Default demo company
+    'f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44'::uuid as company_id,  -- Everest company (production)
     COALESCE(raw_user_meta_data->>'first_name', 'User') as first_name,
     COALESCE(raw_user_meta_data->>'last_name', SPLIT_PART(email, '@', 1)) as last_name
 FROM auth.users

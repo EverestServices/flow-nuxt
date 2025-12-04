@@ -1,18 +1,31 @@
--- Create clients table
+-- Create clients table (structure from production - managed by new migrations)
 CREATE TABLE public.clients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    company_id UUID NOT NULL, -- Multi-tenant support
+    company_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(50),
-    address TEXT,
     contact_person VARCHAR(255),
     notes TEXT,
-    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'archived')),
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL -- Who created this client
+    status VARCHAR(50) DEFAULT 'active',
+    user_id UUID,
+    postal_code VARCHAR(20),
+    city VARCHAR(100),
+    street VARCHAR(255),
+    house_number VARCHAR(50),
+    ofp_client_id UUID,
+    ekr_client_id UUID,
+    CONSTRAINT clients_status_check CHECK (status = ANY (ARRAY['active'::VARCHAR, 'inactive'::VARCHAR, 'archived'::VARCHAR, 'prospect'::VARCHAR]::TEXT[]))
 );
+
+-- Add foreign key constraints for clients
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- Create tickets table
 CREATE TABLE public.tickets (
@@ -71,22 +84,24 @@ CREATE TRIGGER set_ticket_number_trigger
     FOR EACH ROW
     EXECUTE FUNCTION set_ticket_number();
 
--- Add updated_at triggers
-CREATE TRIGGER update_clients_updated_at
-    BEFORE UPDATE ON public.clients
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
+-- Add updated_at trigger for tickets
+-- Note: clients trigger is in 496_add_functions_and_triggers.sql
 CREATE TRIGGER update_tickets_updated_at
     BEFORE UPDATE ON public.tickets
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Create indexes for performance
+-- Clients indexes
 CREATE INDEX idx_clients_company_id ON public.clients(company_id);
 CREATE INDEX idx_clients_name ON public.clients(name);
 CREATE INDEX idx_clients_status ON public.clients(status);
+CREATE INDEX idx_clients_ofp_client_id ON public.clients(ofp_client_id) WHERE ofp_client_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_clients_ofp_unique ON public.clients(ofp_client_id) WHERE ofp_client_id IS NOT NULL;
+CREATE INDEX idx_clients_ekr_client_id ON public.clients(ekr_client_id) WHERE ekr_client_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_clients_ekr_unique ON public.clients(ekr_client_id) WHERE ekr_client_id IS NOT NULL;
 
+-- Tickets indexes
 CREATE INDEX idx_tickets_company_id ON public.tickets(company_id);
 CREATE INDEX idx_tickets_client_id ON public.tickets(client_id);
 CREATE INDEX idx_tickets_status ON public.tickets(status);
@@ -96,49 +111,11 @@ CREATE INDEX idx_tickets_created_at ON public.tickets(created_at);
 CREATE INDEX idx_tickets_ticket_number ON public.tickets(ticket_number);
 
 -- Enable Row Level Security
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+-- Note: clients RLS is enabled in 495_add_rls_policies.sql
 ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for clients
-CREATE POLICY "Users can view clients from their company"
-    ON public.clients FOR SELECT
-    USING (
-        company_id IN (
-            SELECT company_id
-            FROM public.user_profiles
-            WHERE user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can insert clients for their company"
-    ON public.clients FOR INSERT
-    WITH CHECK (
-        company_id IN (
-            SELECT company_id
-            FROM public.user_profiles
-            WHERE user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can update clients from their company"
-    ON public.clients FOR UPDATE
-    USING (
-        company_id IN (
-            SELECT company_id
-            FROM public.user_profiles
-            WHERE user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can delete clients from their company"
-    ON public.clients FOR DELETE
-    USING (
-        company_id IN (
-            SELECT company_id
-            FROM public.user_profiles
-            WHERE user_id = auth.uid()
-        )
-    );
+-- Note: clients policies are in 495_add_rls_policies.sql
 
 -- RLS Policies for tickets
 CREATE POLICY "Users can view tickets from their company"
@@ -186,8 +163,4 @@ CREATE POLICY "Users can delete tickets from their company"
 GRANT ALL ON public.clients TO authenticated;
 GRANT ALL ON public.tickets TO authenticated;
 
--- Insert some sample clients for testing
-INSERT INTO public.clients (company_id, name, email, contact_person, user_id) VALUES
-    ('00000000-0000-0000-0000-000000000001', 'Acme Corporation', 'contact@acme.com', 'John Smith', NULL),
-    ('00000000-0000-0000-0000-000000000001', 'Tech Solutions Inc', 'info@techsolutions.com', 'Jane Doe', NULL),
-    ('00000000-0000-0000-0000-000000000001', 'Global Enterprises', 'hello@global.com', 'Mike Johnson', NULL);
+-- Note: Client seed data is in production seed migration, sample data removed
