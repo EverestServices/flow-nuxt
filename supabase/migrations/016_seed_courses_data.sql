@@ -4,8 +4,8 @@
 -- Create variables for reusable UUIDs
 DO $$
 DECLARE
-    demo_company_id UUID := '550e8400-e29b-41d4-a716-446655440000';
-    demo_user_id UUID := '550e8400-e29b-41d4-a716-446655440001';
+    demo_company_id UUID := 'f35b7a0c-6b54-4d0e-bc6a-182a64b8cc44'; -- Everest company (production)
+    demo_user_id UUID; -- Will be set to first available user
 
     -- Course IDs
     course1_id UUID := gen_random_uuid();
@@ -44,6 +44,15 @@ DECLARE
     exam4_id UUID := gen_random_uuid();
 
 BEGIN
+    -- Get first available user from user_profiles
+    SELECT user_id INTO demo_user_id FROM public.user_profiles LIMIT 1;
+
+    -- If no user exists, skip course insertion
+    IF demo_user_id IS NULL THEN
+        RAISE NOTICE 'No users found in user_profiles table. Skipping course seed data.';
+        RETURN;
+    END IF;
+
     -- Insert sample courses
     INSERT INTO courses (id, title, description, thumbnail_url, difficulty_level, duration_hours, is_published, is_featured, category, tags, company_id, created_by) VALUES
     (
