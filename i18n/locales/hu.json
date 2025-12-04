@@ -370,6 +370,8 @@
       "close": "Bezárás"
     },
     "consultationData": {
+      "selectInvestments": "Beruházások kiválasztása",
+      "savingsBreakdown": "Megtakarítás lebontása",
       "energyEfficiency": "Energia hatékonyság javulás",
       "zeroPercent": "0%",
       "hundredPercent": "100%",
@@ -403,6 +405,7 @@
       "price": "Ár:",
       "showPrice": "Ár megjelenítése",
       "showReturnTime": "Megtérülési idő megjelenítése",
+      "extraCosts": "járulékos költségei",
       "cancel": "Mégse",
       "save": "Mentés"
     },

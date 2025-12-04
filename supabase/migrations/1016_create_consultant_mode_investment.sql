@@ -744,7 +744,25 @@ BEGIN
                     'grid_width', 'calc(1/2 - 100px)'
                 )
             ),
-            'button_width', '100px'
+            'button_width', '100px',
+            'default_rows', jsonb_build_array(
+                jsonb_build_object(
+                    'size', 'Kisablak (90 cm × 90 cm-nél kisebb)',
+                    'quantity', 0
+                ),
+                jsonb_build_object(
+                    'size', 'Átlagos ablak (90-150 cm × 90-150 cm közötti)',
+                    'quantity', 0
+                ),
+                jsonb_build_object(
+                    'size', 'Nagyablak (150 cm × 150 cm-nél nagyobb)',
+                    'quantity', 0
+                ),
+                jsonb_build_object(
+                    'size', 'Bejárati ajtó',
+                    'quantity', 1
+                )
+            )
         ),
         70,
         jsonb_build_object('width', 'full')
@@ -1049,32 +1067,8 @@ BEGIN
         '["Gáz", "Villany", "Tűzifa", "Szén", "Pellet", "Hőszivattyú"]'::jsonb
     );
 
-    -- Fűtési hőleadók
-    INSERT INTO public.survey_questions (
-        survey_page_id, name, name_translations, type, is_required, sequence, min, max, unit
-    ) VALUES
-        (page_energy_consumption_id, 'heat_emitter_radiator', jsonb_build_object('hu', 'Fűtési hőleadók típusa', 'en', 'Heat Emitter Types'), 'number', false, 30, 1, 30, 'db'),
-        (page_energy_consumption_id, 'heat_emitter_underfloor_heating', 'number', false, 31, 10, 300, 'm²'),
-        (page_energy_consumption_id, 'heat_emitter_wall_heating', 'number', false, 32, 10, 300, 'm²'),
-        (page_energy_consumption_id, 'heat_emitter_ceiling_heating', 'number', false, 33, 10, 300, 'm²'),
-        (page_energy_consumption_id, 'heat_emitter_convector', 'number', false, 34, 1, 30, 'db'),
-        (page_energy_consumption_id, 'heat_emitter_fan_coil', 'number', false, 35, 1, 30, 'db');
-
-    -- Megújuló energia
-    INSERT INTO public.survey_questions (
-        survey_page_id, name, name_translations, type, is_required, sequence, min, max, unit
-    ) VALUES
-        (page_energy_consumption_id, 'renewable_solar_panel', jsonb_build_object('hu', 'Megújulóenergia alapú energiatermelés', 'en', 'Renewable Energy Production'), 'number', false, 40, 10, 20000, 'kWh/év'),
-        (page_energy_consumption_id, 'renewable_solar_collector', 'number', false, 41, 10, 5000, 'm²'),
-        (page_energy_consumption_id, 'renewable_wind_turbine', 'number', false, 42, 10, 5000, 'kWh/év');
-
-    -- Klíma készülékek
-    INSERT INTO public.survey_questions (
-        survey_page_id, name, name_translations, type, is_required, sequence, min, max, unit
-    ) VALUES
-        (page_energy_consumption_id, 'air_conditioner_split', jsonb_build_object('hu', 'Klíma készülékek', 'en', 'Air Conditioning Devices'), 'number', false, 50, 1, 10, 'db'),
-        (page_energy_consumption_id, 'air_conditioner_multi_split', 'number', false, 51, 1, 10, 'db'),
-        (page_energy_consumption_id, 'air_conditioner_heat_pump', 'number', false, 52, 1, 50, 'kW');
+    -- NOTE: Fűtési hőleadók, Megújuló energia, és Klíma készülékek kérdések
+    -- a későbbi migrációkban (1020-1022) lesznek létrehozva/módosítva
 
     RAISE NOTICE 'Created % questions for Page 2: Energiafelhasználási adatok',
         (SELECT COUNT(*) FROM public.survey_questions WHERE survey_page_id = page_energy_consumption_id);

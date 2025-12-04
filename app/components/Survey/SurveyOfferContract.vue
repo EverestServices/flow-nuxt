@@ -358,6 +358,72 @@
             </div>
           </div>
         </div>
+
+        <!-- Subsidy Accordion -->
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
+            @click="subsidyOpen = !subsidyOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-banknote" class="w-5 h-5" />
+              <span>{{ t('survey.consultation.subsidy') }}</span>
+            </div>
+            <UIcon
+              :name="subsidyOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="subsidyOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <div v-if="subsidiesLoading" class="flex items-center justify-center py-4">
+                <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+              <SurveySubsidies
+                v-else
+                :subsidies="getSubsidiesWithStatus"
+                :eligibility-conditions="eligibilityConditions"
+                @toggle="handleSubsidyToggle"
+                @update-condition="handleConditionUpdate"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Financing Types Accordion -->
+        <div v-if="selectedScenarioId" class="backdrop-blur-sm bg-white/50 dark:bg-gray-900/50 border border-white/30 dark:border-gray-700/30 rounded-2xl overflow-hidden shadow-sm">
+          <button
+            type="button"
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-white/70 dark:hover:bg-gray-800/70 transition-colors"
+            @click="financingTypesOpen = !financingTypesOpen"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-wallet" class="w-5 h-5" />
+              <span>{{ t('survey.financing.financingType') }}</span>
+            </div>
+            <UIcon
+              :name="financingTypesOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
+            />
+          </button>
+          <div
+            v-show="financingTypesOpen"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <!-- Financing Types Content -->
+              <SurveyOfferContractFinancingTypes
+                v-if="selectedScenarioId"
+                :survey-id="surveyId"
+                :scenario-id="selectedScenarioId"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -475,6 +541,8 @@ import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useContractsStore } from '~/stores/contracts'
 import { useOfpCalculation, type OfpCalculationResult } from '~/composables/useOfpCalculation'
 import { useExternalApiKeys } from '~/composables/useExternalApiKeys'
+import { useSubsidies } from '~/composables/useSubsidies'
+import type { EligibilityConditions } from '~/types/subsidy'
 
 const { t } = useI18n()
 const { calculateOfp, loading: ofpLoading, error: ofpError } = useOfpCalculation()
@@ -492,6 +560,17 @@ const investmentsStore = useSurveyInvestmentsStore()
 const contractsStore = useContractsStore()
 const supabase = useSupabaseClient()
 
+// Initialize subsidies composable
+const {
+  loadSubsidies,
+  loadSurveySubsidies,
+  toggleSubsidy,
+  updateEligibilityCondition,
+  getSubsidiesWithStatus,
+  eligibilityConditions,
+  loading: subsidiesLoading
+} = useSubsidies()
+
 // Check if this is an OFP survey
 const isOfpSurvey = ref(false)
 
@@ -507,8 +586,10 @@ const loadSurveyData = async () => {
 }
 
 // Load on component mount
-onMounted(() => {
-  loadSurveyData()
+onMounted(async () => {
+  await loadSurveyData()
+  await loadSubsidies()
+  await loadSurveySubsidies(props.surveyId)
 })
 
 // Selected scenario state
@@ -525,6 +606,8 @@ const windowsExtraCostsOpen = ref(true)
 const heatPumpExtraCostsOpen = ref(true)
 const generalExtraCostsOpen = ref(true)
 const discountsOpen = ref(true)
+const subsidyOpen = ref(false)
+const financingTypesOpen = ref(false)
 const contractDetailsOpen = ref(true)
 const pricesOpen = ref(false)
 const ofpCalculationOpen = ref(false)
@@ -630,6 +713,20 @@ watch([selectedScenarioId, isOfpSurvey], async ([newScenarioId, isOfp]) => {
   console.log('[OFP Auto-Calc] Automatically calculating OFP for scenario:', newScenarioId)
   await handleOfpCalculate()
 }, { immediate: true })
+
+// Handle subsidy toggle
+const handleSubsidyToggle = async (subsidyId: string, isEnabled: boolean) => {
+  try {
+    await toggleSubsidy(props.surveyId, subsidyId, isEnabled)
+  } catch (error) {
+    console.error('Error toggling subsidy:', error)
+  }
+}
+
+// Handle condition update
+const handleConditionUpdate = (key: keyof EligibilityConditions, value: boolean) => {
+  updateEligibilityCondition(key, value)
+}
 
 // Handle OFP calculation
 const handleOfpCalculate = async () => {

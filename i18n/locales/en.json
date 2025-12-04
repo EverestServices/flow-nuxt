@@ -363,6 +363,8 @@
       "close": "Close"
     },
     "consultationData": {
+      "selectInvestments": "Select Investments",
+      "savingsBreakdown": "Savings Breakdown",
       "energyEfficiency": "Energy Efficiency Improvement",
       "zeroPercent": "0%",
       "hundredPercent": "100%",
@@ -396,6 +398,7 @@
       "price": "Price:",
       "showPrice": "Show Price",
       "showReturnTime": "Show return time",
+      "extraCosts": "extra costs",
       "cancel": "Cancel",
       "save": "Save"
     },

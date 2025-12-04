@@ -185,7 +185,17 @@
     <!-- System Visualization Column - Center (Full Width Background) -->
     <div class="w-full flex flex-col">
       <div class="flex-1 p-4 flex items-center justify-center overflow-auto">
-        <div class="w-full h-full flex items-center justify-center">
+        <div class="w-full h-full flex items-center justify-center relative">
+          <!-- Play Button - Top Center -->
+          <button
+            v-if="hasHeatPumpInvestment || hasSolarPanelInvestment"
+            @click="replayAnimations"
+            class="absolute top-4 left-1/2 -translate-x-1/2 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20 rounded-full p-3 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all shadow-lg z-30 flex cursor-pointer"
+            :title="$t('survey.consultation.replayAnimation')"
+          >
+            <UIcon name="i-lucide-play" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+
           <div class="relative max-w-2xl max-h-full">
             <!-- Background House Image -->
             <img
@@ -199,7 +209,8 @@
               <!-- Heat Pump Animation -->
               <img
                 v-if="hasHeatPumpInvestment"
-                src="/images/heatpump_anim.gif"
+                :src="`/images/heatpump_30fps.webp?t=${animationTimestamp}`"
+                :key="`heatpump-${animationTimestamp}`"
                 alt="Heat Pump Animation"
                 class="absolute inset-0 w-full h-full object-contain z-20"
               />
@@ -207,7 +218,8 @@
               <!-- Solar Panel Animation -->
               <img
                 v-if="hasSolarPanelInvestment"
-                src="/images/solarpanel_anim.gif"
+                :src="`/images/solarpanel_30fps.webp?t=${animationTimestamp}`"
+                :key="`solarpanel-${animationTimestamp}`"
                 alt="Solar Panel Animation"
                 class="absolute inset-0 w-full h-full object-contain z-10"
               />
@@ -293,6 +305,7 @@
                 <SurveyConsultationData
                   :survey-id="surveyId"
                   :show-return-time="showReturnTime"
+                  :is-consultant-mode-active="isConsultantModeActive"
                 />
               </div>
             </div>
@@ -439,9 +452,12 @@ interface Props {
   surveyId: string
   systemDesignOpen: boolean
   consultationOpen: boolean
+  isConsultantModeActive?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isConsultantModeActive: false
+})
 
 const emit = defineEmits<{
   'update:system-design-open': [value: boolean]
@@ -580,6 +596,9 @@ const showFinancingModal = ref(false)
 const showReturnTime = ref(true)
 const commissionRate = ref(0.12) // Default 12%
 
+// Animation timestamp for replaying GIFs
+const animationTimestamp = ref(Date.now())
+
 // Computed
 const activeScenario = computed(() => scenariosStore.activeScenario)
 const hasScenarios = computed(() => scenariosStore.scenarios.length > 0)
@@ -710,6 +729,11 @@ onBeforeUnmount(() => {
 })
 
 // Methods
+const replayAnimations = () => {
+  // Update timestamp to force GIF reload and replay from start
+  animationTimestamp.value = Date.now()
+}
+
 const handleSystemDesignToggle = (isOpen: boolean) => {
   emit('update:system-design-open', isOpen)
 }
