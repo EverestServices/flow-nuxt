@@ -12,7 +12,7 @@
           type="text"
           inputmode="numeric"
           step="1"
-          :value="edgeInputA"
+          :value="edgeInputA || selectedRectNotes?.a || ''"
           placeholder="cm"
           @input="(e) => { $emit('update:edgeInputA', (e.target as HTMLInputElement).value); if (selectedRectId) onRectInputBuffer?.(selectedRectId, 'a', e) }"
           @keyup.enter="(e) => { (e.target as HTMLInputElement)?.blur?.() }"
@@ -33,7 +33,7 @@
           type="text"
           inputmode="numeric"
           step="1"
-          :value="edgeInputB"
+          :value="edgeInputB || selectedRectNotes?.b || ''"
           placeholder="cm"
           @input="(e) => { $emit('update:edgeInputB', (e.target as HTMLInputElement).value); if (selectedRectId) onRectInputBuffer?.(selectedRectId, 'b', e) }"
           @keyup.enter="(e) => { (e.target as HTMLInputElement)?.blur?.() }"
@@ -115,6 +115,7 @@ const props = defineProps<{
   allEdgeOverlays: EdgeOverlay[]
   rectOverlaysAll: RectOverlay[]
   selectedRectId?: string | null
+  selectedRectNotes?: { a?: number | string | null; b?: number | string | null } | null
   edgeInputA: string
   edgeInputB: string
   manualAreaOverlays: { id: string; x: number; y: number; label: string }[]

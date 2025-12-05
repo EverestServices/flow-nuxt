@@ -343,6 +343,7 @@
               :all-edge-overlays="allEdgeOverlays as any"
               :rect-overlays-all="rectOverlaysAll as any"
               :selected-rect-id="selectedRectangle ? selectedRectangle.id : null"
+              :selected-rect-notes="selectedRectangle ? (selectedRectangle.edgeNotesCm as any) : null"
               :manual-area-overlays="manualAreaOverlays as any"
               v-model:edgeInputA="edgeInputA"
               v-model:edgeInputB="edgeInputB"
@@ -643,7 +644,36 @@ const polygons = computed({
   },
 });
 
-
+// Rehydrate rectangle cm notes from manualGeom when present (e.g. after reload)
+const rehydrateRectEdgeNotesFromManualGeom = () => {
+  const list = polygons.value as PolygonSurface[];
+  let changed = false;
+  for (const p of list) {
+    if (!p || !p.closed || p.points?.length !== 4) continue;
+    const anyP = p as any;
+    const mg = anyP.manualGeom;
+    if (!mg || mg.type !== 'rectangle') continue;
+    if (!anyP.edgeNotesCm) anyP.edgeNotesCm = {};
+    const curA = anyP.edgeNotesCm.a as number | null | undefined;
+    const curB = anyP.edgeNotesCm.b as number | null | undefined;
+    const hasA = typeof curA === 'number' && isFinite(curA) && curA > 0;
+    const hasB = typeof curB === 'number' && isFinite(curB) && curB > 0;
+    let localChanged = false;
+    if (!hasA && typeof mg.aCm === 'number' && isFinite(mg.aCm) && mg.aCm > 0) {
+      anyP.edgeNotesCm.a = Math.round(mg.aCm);
+      localChanged = true;
+    }
+    if (!hasB && typeof mg.bCm === 'number' && isFinite(mg.bCm) && mg.bCm > 0) {
+      anyP.edgeNotesCm.b = Math.round(mg.bCm);
+      localChanged = true;
+    }
+    if (localChanged) changed = true;
+  }
+  if (changed) {
+    // trigger store setter so changes persist and overlays see updated values
+    polygons.value = [...(polygons.value as PolygonSurface[])];
+  }
+};
 
 const currentPolygon = ref<PolygonSurface | null>(null);
 const editingMode = ref<boolean>(false);
@@ -978,6 +1008,8 @@ const saveManualArea = () => {
 };
 
 onMounted(() => {
+  // Ensure rectangle cm notes exist after reload (from manualGeom / persisted edgeNotesCm)
+  rehydrateRectEdgeNotesFromManualGeom();
   refreshRectInputs();
   showEdgeInput.value = { a: false, b: false };
   nextTick(() => { updateEdgeNotesRect(); });
