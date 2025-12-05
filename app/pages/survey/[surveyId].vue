@@ -113,6 +113,7 @@
       :contract-count="contracts.length"
       :show-scenario-footer="scenarioFooterVisible"
       :fill-all-data-active="fillAllDataActive"
+      :is-consultant-mode-active="isConsultantModeActive"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -320,6 +321,7 @@
     <SurveyMissingItemsModal
       v-model="showMissingItemsModal"
       :survey-id="surveyId"
+      :is-consultant-mode-active="isConsultantModeActive"
       @open-photo-upload="handleOpenPhotoUploadFromMissing"
       @open-survey-page="handleOpenSurveyPageFromMissing"
     />
@@ -543,8 +545,19 @@ const canProceed = computed(() => {
 const missingItemsCount = computed(() => {
   let count = 0
 
+  // Filter investments based on mode
+  const filteredInvestments = investmentsStore.selectedInvestments.filter(investment => {
+    if (isConsultantModeActive.value) {
+      // In Consultant Mode, exclude basicData
+      return investment.persist_name !== 'basicData'
+    } else {
+      // In Graphic/Marker Mode, exclude consultantMode
+      return investment.persist_name !== 'consultantMode'
+    }
+  })
+
   // Count missing photo categories
-  investmentsStore.selectedInvestments.forEach(investment => {
+  filteredInvestments.forEach(investment => {
     const categories = investmentsStore.documentCategories[investment.id] || []
     categories.forEach(category => {
       // Get actual uploaded photo count from store
@@ -556,7 +569,7 @@ const missingItemsCount = computed(() => {
   })
 
   // Count unanswered required questions
-  investmentsStore.selectedInvestments.forEach(investment => {
+  filteredInvestments.forEach(investment => {
     const pages = investmentsStore.surveyPages[investment.id] || []
     pages.forEach(page => {
       const questions = investmentsStore.surveyQuestions[page.id] || []

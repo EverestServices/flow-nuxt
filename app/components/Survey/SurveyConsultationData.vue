@@ -6,53 +6,67 @@
 
     <div v-else class="space-y-6">
       <!-- Investment Switches (Only shown in Consultant Mode) -->
-      <div v-if="isConsultantModeActive" class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-          {{ $t('survey.consultationData.selectInvestments') }}
+      <div v-if="isConsultantModeActive">
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          {{ t('survey.consultationData.selectInvestments') }}
         </h4>
 
-        <!-- Homlokzati szigetelés -->
-        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-home" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              Homlokzati szigetelés
-            </span>
-          </div>
-          <USwitch v-model="facadeInsulationSwitch" />
-        </div>
+        <div class="flex flex-wrap gap-2">
+          <!-- Homlokzati szigetelés -->
+          <button
+            type="button"
+            class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+            :class="investmentStates.facadeInsulation
+              ? 'text-white shadow-md'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'"
+            :style="investmentStates.facadeInsulation ? { backgroundColor: investmentColors.facadeInsulation } : {}"
+            @click="facadeInsulationSwitch = !facadeInsulationSwitch"
+          >
+            <UIcon name="i-lucide-home" class="w-8 h-8 mb-1" />
+            <span class="text-sm font-medium">{{ (investmentImprovements.facadeInsulation * 100).toFixed(1) }}%</span>
+          </button>
 
-        <!-- Padlásfödém szigetelés -->
-        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-layers" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              Padlásfödém szigetelés
-            </span>
-          </div>
-          <USwitch v-model="roofInsulationSwitch" />
-        </div>
+          <!-- Padlásfödém szigetelés -->
+          <button
+            type="button"
+            class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+            :class="investmentStates.roofInsulation
+              ? 'text-white shadow-md'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'"
+            :style="investmentStates.roofInsulation ? { backgroundColor: investmentColors.roofInsulation } : {}"
+            @click="roofInsulationSwitch = !roofInsulationSwitch"
+          >
+            <UIcon name="i-lucide-layers" class="w-8 h-8 mb-1" />
+            <span class="text-sm font-medium">{{ (investmentImprovements.roofInsulation * 100).toFixed(1) }}%</span>
+          </button>
 
-        <!-- Nyílászárók -->
-        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-door-open" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              Nyílászárók
-            </span>
-          </div>
-          <USwitch v-model="windowsSwitch" />
-        </div>
+          <!-- Nyílászárók -->
+          <button
+            type="button"
+            class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+            :class="investmentStates.windows
+              ? 'text-white shadow-md'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'"
+            :style="investmentStates.windows ? { backgroundColor: investmentColors.windows } : {}"
+            @click="windowsSwitch = !windowsSwitch"
+          >
+            <UIcon name="i-lucide-door-open" class="w-8 h-8 mb-1" />
+            <span class="text-sm font-medium">{{ (investmentImprovements.windows * 100).toFixed(1) }}%</span>
+          </button>
 
-        <!-- Hőszivattyú -->
-        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-wind" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              Hőszivattyú
-            </span>
-          </div>
-          <USwitch v-model="heatPumpSwitch" />
+          <!-- Hőszivattyú -->
+          <button
+            type="button"
+            class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+            :class="investmentStates.heatPump
+              ? 'text-white shadow-md'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'"
+            :style="investmentStates.heatPump ? { backgroundColor: investmentColors.heatPump } : {}"
+            @click="heatPumpSwitch = !heatPumpSwitch"
+          >
+            <UIcon name="i-lucide-wind" class="w-8 h-8 mb-1" />
+            <span class="text-sm font-medium">{{ (investmentImprovements.heatPump * 100).toFixed(1) }}%</span>
+          </button>
         </div>
       </div>
 
@@ -63,10 +77,10 @@
       <div>
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ $t('survey.consultationData.energyEfficiency') }}
+            {{ t('survey.consultationData.energyEfficiency') }}
           </label>
           <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
-            {{ isConsultantModeActive ? formatPercentage(totalEnergyEfficiency) : formatPercentage(roiData.energyEfficiencyImprovement) }}
+            {{ isConsultantModeActive ? (totalEnergyEfficiency * 100).toFixed(1) + '%' : (roiData.energyEfficiencyImprovement * 100).toFixed(1) + '%' }}
           </span>
         </div>
 
@@ -78,31 +92,60 @@
             min="0"
             max="100"
             disabled
-            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-not-allowed dark:bg-gray-700"
+            class="w-full h-5 bg-gray-200 rounded-lg appearance-none cursor-not-allowed dark:bg-gray-700"
             :style="{ background: sliderGradient }"
           />
 
           <!-- Interactive overlay for tooltips (only in Consultant Mode) -->
-          <div v-if="isConsultantModeActive" class="absolute left-0 w-full h-2 flex pointer-events-auto" style="top: 10px;">
+          <div v-if="isConsultantModeActive" class="absolute left-0 top-0 w-full h-5 flex pointer-events-auto">
             <div
               v-for="investment in enabledInvestmentsList"
               :key="investment.key"
               :style="{ width: `${investment.percentage}%` }"
-              :title="`${investment.name}: ${investment.percentage.toFixed(1)}%`"
-              class="h-full cursor-pointer hover:opacity-75 transition-opacity relative group"
+              class="h-full cursor-pointer relative group"
             >
               <!-- Tooltip -->
-              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <div class="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50">
                 {{ investment.name }}: {{ investment.percentage.toFixed(1) }}%
-                <!-- Arrow -->
-                <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-100"></div>
+                <!-- Arrow (pointing left) -->
+                <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full w-0 h-0 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700"></div>
               </div>
             </div>
           </div>
 
           <div class="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-            <span>{{ $t('survey.consultationData.zeroPercent') }}</span>
-            <span>{{ $t('survey.consultationData.hundredPercent') }}</span>
+            <span>{{ t('survey.consultationData.zeroPercent') }}</span>
+            <span>{{ t('survey.consultationData.hundredPercent') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estimation Accuracy Slider (Only shown in Consultant Mode) -->
+      <div v-if="isConsultantModeActive">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium text-gray-900 dark:text-white">
+            {{ t('survey.consultationData.estimationAccuracy') }}
+          </label>
+          <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
+            {{ formatPercentage(estimationAccuracy) }}
+          </span>
+        </div>
+
+        <div class="relative">
+          <!-- Slider with gradient (green for filled, gray for remaining) -->
+          <input
+            type="range"
+            :value="estimationAccuracy * 100"
+            min="0"
+            max="100"
+            disabled
+            class="w-full h-5 bg-gray-200 rounded-lg appearance-none cursor-not-allowed dark:bg-gray-700"
+            :style="{ background: estimationAccuracyGradient }"
+          />
+
+          <div class="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <span>{{ answeredRequiredQuestions }} / {{ totalRequiredQuestions }} {{ t('survey.consultationData.questionsAnswered') }}</span>
+            <span>{{ formatPercentage(estimationAccuracy) }}</span>
           </div>
         </div>
       </div>
@@ -113,7 +156,7 @@
       <!-- Return on Investment -->
       <div class="space-y-3">
         <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-          {{ $t('survey.consultationData.returnOnInvestment') }}
+          {{ t('survey.consultationData.returnOnInvestment') }}
         </h4>
 
         <div class="grid grid-cols-2 gap-3">
@@ -122,15 +165,15 @@
             v-if="showReturnTime"
             class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
           >
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.returnTime') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.returnTime') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ roiData.returnTime.toFixed(1) }} {{ $t('survey.consultationData.years') }}
+              {{ roiData.returnTime.toFixed(1) }} {{ t('survey.consultationData.years') }}
             </div>
           </div>
 
           <!-- Monthly Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.monthlySavings') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.monthlySavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.monthlySavings) }}
             </div>
@@ -138,7 +181,7 @@
 
           <!-- Annual Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.annualSavings') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.annualSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.annualSavings) }}
             </div>
@@ -146,15 +189,15 @@
 
           <!-- Current State -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.currentState') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.currentState') }}</div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/{{ $t('survey.consultationData.perYear').split('/')[1] }}
+              {{ formatCurrency(roiData.currentAnnualTotalCost) }}/{{ t('survey.consultationData.perYear').split('/')[1] }}
             </div>
           </div>
 
           <!-- 10-year Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.tenYearSavings') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.tenYearSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.savings10Year) }}
             </div>
@@ -162,7 +205,7 @@
 
           <!-- 20-year Savings -->
           <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ $t('survey.consultationData.twentyYearSavings') }}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">{{ t('survey.consultationData.twentyYearSavings') }}</div>
             <div class="text-sm font-semibold text-green-600 dark:text-green-400">
               {{ formatCurrency(roiData.savings20Year) }}
             </div>
@@ -176,7 +219,7 @@
       <!-- Planned Inflation Rate -->
       <div>
         <label class="block text-sm font-medium text-gray-900 dark:text-white mb-3">
-          {{ $t('survey.consultationData.plannedInflation') }}
+          {{ t('survey.consultationData.plannedInflation') }}
         </label>
         <div class="grid grid-cols-4 gap-2">
           <button
@@ -198,10 +241,13 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useROICalculations } from '~/composables/useROICalculations'
 import type { ROIData } from '~/composables/useROICalculations'
+
+const { t } = useI18n()
 
 interface Props {
   surveyId: string
@@ -353,6 +399,76 @@ const sliderGradient = computed(() => {
 // Compute total energy efficiency from OFP values
 const totalEnergyEfficiency = computed(() => {
   return enabledInvestmentsList.value.reduce((sum, inv) => sum + inv.improvement, 0)
+})
+
+// Calculate estimation accuracy based on answered required questions
+const totalRequiredQuestions = computed(() => {
+  if (!props.isConsultantModeActive) return 0
+
+  let count = 0
+
+  // Filter investments based on mode - in Consultant Mode, exclude basicData
+  const filteredInvestments = investmentsStore.selectedInvestments.filter(investment => {
+    return investment.persist_name !== 'basicData'
+  })
+
+  // Count required questions for filtered investments
+  filteredInvestments.forEach(investment => {
+    const pages = investmentsStore.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = investmentsStore.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          count++
+        }
+      })
+    })
+  })
+
+  return count
+})
+
+const answeredRequiredQuestions = computed(() => {
+  if (!props.isConsultantModeActive) return 0
+
+  let answered = 0
+
+  // Filter investments based on mode - in Consultant Mode, exclude basicData
+  const filteredInvestments = investmentsStore.selectedInvestments.filter(investment => {
+    return investment.persist_name !== 'basicData'
+  })
+
+  // Count answered required questions for filtered investments
+  filteredInvestments.forEach(investment => {
+    const pages = investmentsStore.surveyPages[investment.id] || []
+    pages.forEach(page => {
+      const questions = investmentsStore.surveyQuestions[page.id] || []
+      questions.forEach(question => {
+        if (question.is_required) {
+          const response = investmentsStore.investmentResponses[investment.id]?.[question.name]
+          if (response && response !== '' && response !== null && response !== undefined) {
+            answered++
+          }
+        }
+      })
+    })
+  })
+
+  return answered
+})
+
+// Compute estimation accuracy percentage (0-1)
+const estimationAccuracy = computed(() => {
+  if (totalRequiredQuestions.value === 0) return 0
+  return answeredRequiredQuestions.value / totalRequiredQuestions.value
+})
+
+// Compute gradient for estimation accuracy slider
+const estimationAccuracyGradient = computed(() => {
+  const percentage = estimationAccuracy.value * 100
+
+  // Green for filled, gray for remaining
+  return `linear-gradient(to right, rgb(34, 197, 94) 0%, rgb(34, 197, 94) ${percentage}%, rgb(229, 231, 235) ${percentage}%, rgb(229, 231, 235) 100%)`
 })
 
 // Initialize investment states based on active scenario

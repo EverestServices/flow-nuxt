@@ -16,6 +16,19 @@
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-ruler" class="w-5 h-5" />
             <span>{{ $t('survey.consultation.systemDesign') }}</span>
+            <!-- Mode Badge -->
+            <span
+              v-if="isConsultantModeActive"
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+            >
+              {{ $t('survey.header.consultantMode') }}
+            </span>
+            <span
+              v-else
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+            >
+              {{ $t('survey.header.graphicMode') }}
+            </span>
           </div>
           <UButton
             icon="i-lucide-chevron-left"
@@ -26,8 +39,8 @@
           />
         </div>
         <div class="flex-1 overflow-auto">
-          <!-- Action Buttons -->
-          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+          <!-- Action Buttons (Hidden in Consultant Mode) -->
+          <div v-if="!isConsultantModeActive" class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
             <!-- AI Scenarios button -->
             <UIButtonEnhanced
               variant="primary"
@@ -245,6 +258,19 @@
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-message-circle" class="w-5 h-5" />
             <span>{{ $t('survey.consultation.consultation') }}</span>
+            <!-- Mode Badge -->
+            <span
+              v-if="isConsultantModeActive"
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+            >
+              {{ $t('survey.header.consultantMode') }}
+            </span>
+            <span
+              v-else
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+            >
+              {{ $t('survey.header.graphicMode') }}
+            </span>
           </div>
           <UButton
             icon="i-lucide-chevron-right"
