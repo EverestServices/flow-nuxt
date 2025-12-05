@@ -37,7 +37,7 @@ export function drawPolygonsOnCtx(params: {
       ctx.fill()
     }
     ctx.strokeStyle = strokeColor
-    ctx.lineWidth = selectedPolygonId === poly.id ? 3.5 : 2
+    ctx.lineWidth = selectedPolygonId === poly.id ? 4.5 : 2
     ctx.stroke()
 
     denormPoints.forEach((p) => drawCircle(ctx, p.x, p.y, 6, pointColor))

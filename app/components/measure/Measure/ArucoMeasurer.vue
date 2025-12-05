@@ -318,6 +318,7 @@
             <img
               :src="imageSrc"
               ref="imageRef"
+              crossorigin="anonymous"
               @load="onImageLoad"
               :class="[
                 'select-none pointer-events-none w-full h-full',
@@ -1223,29 +1224,30 @@ const denormalizePoint = (norm: Point): Point => gDenormalizePoint(norm, imageRe
 // Touch handled by interactionHandlers
 
 const getPolygonColors = (poly: PolygonSurface) => {
+  const isSelected = poly.id === selectedPolygonId.value;
   switch (poly.type) {
     case SurfaceType.FACADE:
       return {
         strokeColor: '#f59e0b',
-        fillColor: 'rgba(245,158,11,0.15)',
+        fillColor: isSelected ? 'rgba(245,158,11,0.45)' : 'rgba(245,158,11,0.15)',
         pointColor: '#f59e0b',
       };
     case SurfaceType.WINDOW_DOOR:
       return {
         strokeColor: '#10b981',
-        fillColor: 'rgba(16,185,129,0.2)',
+        fillColor: isSelected ? 'rgba(16,185,129,0.5)' : 'rgba(16,185,129,0.2)',
         pointColor: 'rgba(16,185,129,0.7)',
       };
     case SurfaceType.WALL_PLINTH:
       return {
         strokeColor: '#f59e0b',
-        fillColor: 'rgba(245,158,11,0.2)',
+        fillColor: isSelected ? 'rgba(245,158,11,0.45)' : 'rgba(245,158,11,0.2)',
         pointColor: 'rgba(245,158,11,0.7)',
       };
     default:
       return {
         strokeColor: '#4b5563',
-        fillColor: 'rgba(75,85,99,0.15)',
+        fillColor: isSelected ? 'rgba(75,85,99,0.4)' : 'rgba(75,85,99,0.15)',
         pointColor: 'rgba(75,85,99,0.7)',
       };
   }
