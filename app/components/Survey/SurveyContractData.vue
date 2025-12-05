@@ -163,6 +163,15 @@
 
               <div class="space-y-3">
                 <UIInput
+                  v-model="contractsData[contract.id].birth_name"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.birthName')"
+                  :placeholder="$t('survey.contractData.birthName')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
+
+                <UIInput
                   v-model="contractsData[contract.id].birth_place"
                   variant="glass"
                   size="sm"
@@ -253,6 +262,40 @@
                 />
               </div>
             </div>
+
+            <!-- Property Data Section -->
+            <div class="backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
+              <div class="flex items-center justify-between mb-4">
+                <h5 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <UIcon name="i-lucide-map-pin" class="w-4 h-4" />
+                  {{ $t('survey.contractData.propertyData') }}
+                </h5>
+                <div v-if="selectedContracts.length > 1" class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t('survey.contractData.copyTo') }}</span>
+                  <div class="flex gap-1">
+                    <button
+                      v-for="otherContract in getOtherContracts(contract.id)"
+                      :key="otherContract.id"
+                      class="px-2 py-1 text-xs font-medium rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all hover:scale-105"
+                      @click="copyPropertyData(contract.id, otherContract.id)"
+                    >
+                      {{ getContractShortName(otherContract.name) }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <UIInput
+                  v-model="contractsData[contract.id].parcel_number"
+                  variant="glass"
+                  size="sm"
+                  :label="$t('survey.contractData.parcelNumber')"
+                  :placeholder="$t('survey.contractData.parcelNumber')"
+                  @update:model-value="handleFieldUpdate(contract.id)"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -332,6 +375,7 @@ const toggleContractSelection = (contractId: string) => {
             client_address: contract.client_address || clientAddress || '',
             client_phone: contract.client_phone || props.clientData?.phone || '',
             client_email: contract.client_email || props.clientData?.email || '',
+            birth_name: contract.birth_name || '',
             birth_place: contract.birth_place || '',
             date_of_birth: contract.date_of_birth || null,
             id_card_number: contract.id_card_number || '',
@@ -341,7 +385,8 @@ const toggleContractSelection = (contractId: string) => {
             citizenship: contract.citizenship || '',
             marital_status: contract.marital_status || '',
             residence_card_number: contract.residence_card_number || '',
-            mailing_address: contract.mailing_address || ''
+            mailing_address: contract.mailing_address || '',
+            parcel_number: contract.parcel_number || ''
           }
         }
       }
@@ -411,6 +456,7 @@ const copyPersonalDetails = (fromContractId: string, toContractId: string) => {
   const fromData = contractsData.value[fromContractId]
   if (!fromData) return
 
+  contractsData.value[toContractId].birth_name = fromData.birth_name
   contractsData.value[toContractId].birth_place = fromData.birth_place
   contractsData.value[toContractId].date_of_birth = fromData.date_of_birth
   contractsData.value[toContractId].id_card_number = fromData.id_card_number
@@ -421,6 +467,17 @@ const copyPersonalDetails = (fromContractId: string, toContractId: string) => {
   contractsData.value[toContractId].marital_status = fromData.marital_status
   contractsData.value[toContractId].residence_card_number = fromData.residence_card_number
   contractsData.value[toContractId].mailing_address = fromData.mailing_address
+
+  // Trigger save for the target contract
+  handleFieldUpdate(toContractId)
+}
+
+// Copy Property Data from one contract to another
+const copyPropertyData = (fromContractId: string, toContractId: string) => {
+  const fromData = contractsData.value[fromContractId]
+  if (!fromData) return
+
+  contractsData.value[toContractId].parcel_number = fromData.parcel_number
 
   // Trigger save for the target contract
   handleFieldUpdate(toContractId)
@@ -450,6 +507,7 @@ const saveContractData = async (contractId: string) => {
       client_address: data.client_address,
       client_phone: data.client_phone,
       client_email: data.client_email,
+      birth_name: data.birth_name,
       birth_place: data.birth_place,
       date_of_birth: data.date_of_birth || null, // Convert empty string to null
       id_card_number: data.id_card_number,
@@ -459,7 +517,8 @@ const saveContractData = async (contractId: string) => {
       citizenship: data.citizenship,
       marital_status: data.marital_status,
       residence_card_number: data.residence_card_number,
-      mailing_address: data.mailing_address
+      mailing_address: data.mailing_address,
+      parcel_number: data.parcel_number
     })
 
     console.log(`Contract ${contractId} data saved successfully`)

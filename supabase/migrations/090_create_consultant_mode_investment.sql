@@ -1080,32 +1080,26 @@ BEGIN
     INSERT INTO public.survey_questions (
         survey_page_id, name, name_translations, type, is_required, sequence
     ) VALUES
-        (page_other_info_id, 'mothers_name', jsonb_build_object('hu', 'Anyja neve', 'en', 'Mother''s Name'), 'text', false, 1),
-        (page_other_info_id, 'birth_date', jsonb_build_object('hu', 'Születési dátum', 'en', 'Birth Date'), 'text', false, 2),
-        (page_other_info_id, 'birth_place', jsonb_build_object('hu', 'Születési hely', 'en', 'Birth Place'), 'text', false, 3),
-        (page_other_info_id, 'birth_name', jsonb_build_object('hu', 'Születési név', 'en', 'Birth Name'), 'text', false, 4),
-        (page_other_info_id, 'parcel_number', jsonb_build_object('hu', 'Helyrajzi szám', 'en', 'Parcel Number'), 'text', false, 5),
-        (page_other_info_id, 'planned_investment', jsonb_build_object('hu', 'Tervezett beruházás', 'en', 'Planned Investment'), 'text', false, 6),
-        (page_other_info_id, 'is_residential_building', jsonb_build_object('hu', 'Lakóépület', 'en', 'Residential Building'), 'switch', false, 7),
-        (page_other_info_id, 'add_subsidy', jsonb_build_object('hu', 'Támogatás hozzáadása', 'en', 'Add Subsidy'), 'switch', false, 8);
+        (page_other_info_id, 'is_residential_building', jsonb_build_object('hu', 'Lakóépület', 'en', 'Residential Building'), 'switch', false, 1),
+        (page_other_info_id, 'add_subsidy', jsonb_build_object('hu', 'Támogatás hozzáadása', 'en', 'Add Subsidy'), 'switch', false, 2);
 
     INSERT INTO public.survey_questions (
         survey_page_id, name, name_translations, type, is_required, sequence, unit
     ) VALUES (
-        page_other_info_id, 'average_monthly_gross_income', jsonb_build_object('hu', 'Átlagos havi bruttó jövedelem', 'en', 'Average Monthly Gross Income'), 'number', false, 9, 'Ft'
+        page_other_info_id, 'average_monthly_gross_income', jsonb_build_object('hu', 'Átlagos havi bruttó jövedelem', 'en', 'Average Monthly Gross Income'), 'number', false, 3, 'Ft'
     );
 
     INSERT INTO public.survey_questions (
         survey_page_id, name, name_translations, type, is_required, sequence, min, max, unit
     ) VALUES (
-        page_other_info_id, 'number_residents', jsonb_build_object('hu', 'Lakók száma', 'en', 'Number of Residents'), 'number', false, 10, 1, 20, 'fő'
+        page_other_info_id, 'number_residents', jsonb_build_object('hu', 'Lakók száma', 'en', 'Number of Residents'), 'number', false, 4, 1, 20, 'fő'
     );
 
     INSERT INTO public.survey_questions (
         survey_page_id, name, name_translations, type, is_required, sequence
     ) VALUES
-        (page_other_info_id, 'other_informations', jsonb_build_object('hu', 'Egyéb megjegyzések a használatra vonatkozóan', 'en', 'Other Notes on Usage'), 'textarea', false, 11),
-        (page_other_info_id, 'any_questions', jsonb_build_object('hu', 'Kérdések, amit a tanácsadónak feltenne', 'en', 'Questions for the Consultant'), 'textarea', false, 12);
+        (page_other_info_id, 'other_informations', jsonb_build_object('hu', 'Egyéb megjegyzések a használatra vonatkozóan', 'en', 'Other Notes on Usage'), 'textarea', false, 5),
+        (page_other_info_id, 'any_questions', jsonb_build_object('hu', 'Kérdések, amit a tanácsadónak feltenne', 'en', 'Questions for the Consultant'), 'textarea', false, 6);
 
     RAISE NOTICE 'Created % questions for Page 3: Egyéb információk',
         (SELECT COUNT(*) FROM public.survey_questions WHERE survey_page_id = page_other_info_id);
