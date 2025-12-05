@@ -160,6 +160,79 @@ export function createInteractionHandlers(deps: {
     return { x: nx, y: ny }
   }
 
+  // --- Surface type auto-detection (facade / window-door / wall-plinth) ---
+  const autoDetectSurfaceType = (polygon: PolygonSurface) => {
+    if (polygon.type || !polygon.closed || polygon.points.length < 3) return
+    const img = imageRef.value
+    const mpp = meterPerPixel.value || storedMeterPerPixel.value || 0
+    if (!img || !(mpp > 0)) return
+
+    const natW = img.naturalWidth || img.width
+    const natH = img.naturalHeight || img.height
+    if (!(natW > 0 && natH > 0)) return
+
+    const denormPoints = polygon.points.map((p) => ({ x: p.x * natW, y: p.y * natH }))
+
+    const calculateAreaM2 = () => {
+      let areaPx = 0
+      const n = denormPoints.length
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n
+        const pi = denormPoints[i]!
+        const pj = denormPoints[j]!
+        areaPx += pi.x * pj.y - pj.x * pi.y
+      }
+      return Math.abs(areaPx / 2) * mpp * mpp
+    }
+
+    const areaM2 = calculateAreaM2()
+
+    const minX = Math.min(...denormPoints.map((p) => p.x))
+    const maxX = Math.max(...denormPoints.map((p) => p.x))
+    const minY = Math.min(...denormPoints.map((p) => p.y))
+    const maxY = Math.max(...denormPoints.map((p) => p.y))
+    const widthPx = maxX - minX
+    const heightPx = maxY - minY
+    const aspectRatio = heightPx > 0 ? widthPx / heightPx : 0
+
+    const imageAreaM2 = natW * natH * mpp * mpp
+    const coverageRatio = imageAreaM2 > 0 ? areaM2 / imageAreaM2 : 0
+
+    const isWallPlinth = (
+      heightPx < natH * 0.15 &&
+      aspectRatio > 1.5 &&
+      areaM2 > 0.5
+    )
+
+    const isFacade = coverageRatio >= 0.15
+
+    const isWindowDoor = (
+      areaM2 >= 0.3 &&
+      areaM2 <= 2.5 &&
+      aspectRatio < 5 &&
+      aspectRatio > 0.2
+    )
+
+    if (isWallPlinth) {
+      polygon.type = SurfaceType.WALL_PLINTH
+      return
+    }
+    if (isFacade) {
+      polygon.type = SurfaceType.FACADE
+      return
+    }
+    if (isWindowDoor) {
+      polygon.type = SurfaceType.WINDOW_DOOR
+      // subType heuristics (same as PolygonList)
+      const widthM = (maxX - minX) * mpp
+      const heightM = (maxY - minY) * mpp
+      const ratio = heightM / Math.max(widthM, 1e-6)
+      if (ratio >= 1.6 && heightM >= 1.6) (polygon as any).subType = SurfaceType.WINDOW_DOOR /* WindowSubType.DOOR fallback */
+      return
+    }
+    // If nothing matches, leave type undefined so user can choose manually
+  }
+
   const handleCanvasClick = (event: MouseEvent) => {
     let clickPoint = norm(getCanvasCoords(event))
 
@@ -226,11 +299,11 @@ export function createInteractionHandlers(deps: {
     // 4) Draw mode: add points / close polygon
     pushHistory()
     if (!currentPolygon.value || currentPolygon.value.closed) {
+      // Start a new polygon without a pre-set type; detection runs on close
       currentPolygon.value = {
         id: crypto.randomUUID(),
         points: [],
         closed: false,
-        type: SurfaceType.FACADE,
         visible: true,
       } as PolygonSurface
     }
@@ -251,6 +324,7 @@ export function createInteractionHandlers(deps: {
     if (existingPoints.length >= 3 && isNearPoint(clickPoint, existingPoints[0]!)) {
       currentPolygon.value.closed = true
       const closedId = currentPolygon.value.id
+      autoDetectSurfaceType(currentPolygon.value as PolygonSurface)
       polygons.value.push(currentPolygon.value as PolygonSurface)
       // Auto-select the newly closed polygon so overlay inputs target it
       try { selectedPolygonId.value = closedId } catch {}
@@ -259,6 +333,7 @@ export function createInteractionHandlers(deps: {
       existingPoints.push(clickPoint)
       currentPolygon.value.closed = true
       const closedId = currentPolygon.value.id
+      autoDetectSurfaceType(currentPolygon.value as PolygonSurface)
       polygons.value.push(currentPolygon.value as PolygonSurface)
       // Auto-select the newly closed polygon so overlay inputs target it
       try { selectedPolygonId.value = closedId } catch {}

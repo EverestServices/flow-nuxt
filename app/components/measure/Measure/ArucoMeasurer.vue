@@ -318,6 +318,7 @@
             <img
               :src="imageSrc"
               ref="imageRef"
+              crossorigin="anonymous"
               @load="onImageLoad"
               :class="[
                 'select-none pointer-events-none w-full h-full',
@@ -343,8 +344,8 @@
               :all-edge-overlays="allEdgeOverlays as any"
               :rect-overlays-all="rectOverlaysAll as any"
               :selected-rect-id="selectedRectangle ? selectedRectangle.id : null"
-              :manual-area-label="manualAreaLabel"
-              :selected-polygon-center="selectedPolygonCenter as any"
+              :selected-rect-notes="selectedRectangle ? (selectedRectangle.edgeNotesCm as any) : null"
+              :manual-area-overlays="manualAreaOverlays as any"
               v-model:edgeInputA="edgeInputA"
               v-model:edgeInputB="edgeInputB"
               :on-edge-input-buffer="onEdgeInputBuffer as any"
@@ -441,7 +442,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { canvasOffset } from '@/service/Measurment/overlayPosition';
 import { getPolygonCenter, denormalizePoint as gDenormalizePoint } from '@/service/Measurment/geometry';
 import { computeAllEdgeOverlays, computeRectOverlays, computeSelectedRectEdges, updateEdgeNotesRectFor as updateEdgeNotesRectForSvc } from '@/service/Measurment/manualOverlays';
-import type { EdgeOverlay, RectOverlay } from '@/service/Measurment/manualOverlays';
 import { drawOnMainCanvas, exportPng } from '@/service/Measurment/CanvasRenderer';
 import { drawDynamicOverlays } from '@/service/Measurment/dynamicOverlays';
 import { recalcMeterPerPixelFromReference as recalcMppSvc, computeCalibrationMidOverlay } from '@/service/Measurment/Calibration';
@@ -645,7 +645,36 @@ const polygons = computed({
   },
 });
 
-
+// Rehydrate rectangle cm notes from manualGeom when present (e.g. after reload)
+const rehydrateRectEdgeNotesFromManualGeom = () => {
+  const list = polygons.value as PolygonSurface[];
+  let changed = false;
+  for (const p of list) {
+    if (!p || !p.closed || p.points?.length !== 4) continue;
+    const anyP = p as any;
+    const mg = anyP.manualGeom;
+    if (!mg || mg.type !== 'rectangle') continue;
+    if (!anyP.edgeNotesCm) anyP.edgeNotesCm = {};
+    const curA = anyP.edgeNotesCm.a as number | null | undefined;
+    const curB = anyP.edgeNotesCm.b as number | null | undefined;
+    const hasA = typeof curA === 'number' && isFinite(curA) && curA > 0;
+    const hasB = typeof curB === 'number' && isFinite(curB) && curB > 0;
+    let localChanged = false;
+    if (!hasA && typeof mg.aCm === 'number' && isFinite(mg.aCm) && mg.aCm > 0) {
+      anyP.edgeNotesCm.a = Math.round(mg.aCm);
+      localChanged = true;
+    }
+    if (!hasB && typeof mg.bCm === 'number' && isFinite(mg.bCm) && mg.bCm > 0) {
+      anyP.edgeNotesCm.b = Math.round(mg.bCm);
+      localChanged = true;
+    }
+    if (localChanged) changed = true;
+  }
+  if (changed) {
+    // trigger store setter so changes persist and overlays see updated values
+    polygons.value = [...(polygons.value as PolygonSurface[])];
+  }
+};
 
 const currentPolygon = ref<PolygonSurface | null>(null);
 const editingMode = ref<boolean>(false);
@@ -835,53 +864,71 @@ const selectedPolygonObj = computed<PolygonSurface | null>(() => {
   return list.find((p) => p.id === (selectedPolygonId.value || '')) ?? null;
 });
 
-const manualAreaLabel = computed(() => {
-  if (!manualActive.value) return '';
-  const p = (selectedPolygonObj.value as any) ?? (currentPolygon.value as any);
-  if (!p) return '';
-  let area: number | null | undefined = p.areaOverrideM2;
-  if (!(typeof area === 'number' && isFinite(area) && area > 0)) {
-    // Rectangle fallback from A/B
-    const a = p?.edgeNotesCm?.a as number | null | undefined;
-    const b = p?.edgeNotesCm?.b as number | null | undefined;
-    if (p?.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
-      area = (a * b) / 10000;
-    }
-  }
-  if (!(typeof area === 'number' && isFinite(area) && area > 0)) {
-    // Triangle fallback from per-edge inputs (Heron)
-    if (p?.points?.length === 3) {
-      const edges = (p?.edgeNotesCm?.edges || []) as Array<number | null | undefined>;
-      if (edges.length === 3 && edges.every((v) => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)) {
-        const aM = (edges[0] as number) / 100;
-        const bM = (edges[1] as number) / 100;
-        const cM = (edges[2] as number) / 100;
-        const valid = aM + bM > cM && aM + cM > bM && bM + cM > aM;
-        if (!valid) return 'Érvénytelen háromszög';
-        const s = (aM + bM + cM) / 2;
-        const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
-        area = tri;
-      }
-    }
-  }
-  return typeof area === 'number' && isFinite(area) && area > 0 ? `${area.toFixed(2)} m²` : '';
-});
-
-const selectedPolygonCenter = computed(() => {
-  if (!manualActive.value) return null as null | { x: number; y: number };
-  const poly = selectedPolygonObj.value ?? currentPolygon.value;
+// Manual area labels for all polygons (not only selected)
+const manualAreaOverlays = computed(() => {
+  if (!manualActive.value) return [] as { id: string; x: number; y: number; label: string }[];
+  const img = imageRef.value;
   const wrapper = zoomWrapperRef.value;
   const canvasEl = canvasRef.value;
   const _zs = zoomScale.value; // depend on zoom
   const _st = scrollTick.value; // depend on scroll
-  if (!poly || !wrapper || !canvasEl) return null as null | { x: number; y: number };
-  const img = imageRef.value;
-  if (!img) return null as any;
-  const den = poly.points.map((pt) => gDenormalizePoint(pt, img));
-  if (!den.length) return null as null | { x: number; y: number };
-  const center = getPolygonCenter(den);
+  if (!img || !wrapper || !canvasEl) return [];
+
   const { offX, offY } = canvasOffset(wrapper, canvasEl);
-  return { x: offX + center.x, y: offY + center.y };
+
+  const computeArea = (p: PolygonSurface): number => {
+    const anyP = p as any;
+    const ov = anyP.areaOverrideM2 as number | null | undefined;
+    if (typeof ov === 'number' && isFinite(ov) && ov > 0) return ov;
+
+    // Rectangle from A/B notes
+    const a = anyP.edgeNotesCm?.a as number | null | undefined;
+    const b = anyP.edgeNotesCm?.b as number | null | undefined;
+    if (p.points?.length === 4 && typeof a === 'number' && typeof b === 'number' && isFinite(a) && isFinite(b) && a > 0 && b > 0) {
+      return (a * b) / 10000;
+    }
+
+    // Triangle from edges/manualGeom (Heron)
+    if (p.points?.length === 3) {
+      const edges = (anyP.edgeNotesCm?.edges || []) as Array<number | null | undefined>;
+      if (edges.length === 3 && edges.every(v => typeof v === 'number' && isFinite(v as number) && (v as number) > 0)) {
+        const aM = (edges[0] as number) / 100;
+        const bM = (edges[1] as number) / 100;
+        const cM = (edges[2] as number) / 100;
+        const valid = aM + bM > cM && aM + cM > bM && bM + cM > aM;
+        if (!valid) return 0;
+        const s = (aM + bM + cM) / 2;
+        const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+        if (tri > 0) return tri;
+      }
+      const mg = anyP.manualGeom;
+      if (mg && mg.type === 'triangle') {
+        const aCm = Number(mg.aCm), bCm = Number(mg.bCm), cCm = Number(mg.cCm);
+        if (aCm > 0 && bCm > 0 && cCm > 0) {
+          const aM = aCm / 100, bM = bCm / 100, cM = cCm / 100;
+          const valid = aM + bM > cM && aM + cM > bM && bM + cM > aM;
+          if (!valid) return 0;
+          const s = (aM + bM + cM) / 2;
+          const tri = Math.sqrt(Math.max(0, s * (s - aM) * (s - bM) * (s - cM)));
+          if (tri > 0) return tri;
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  const overlays: { id: string; x: number; y: number; label: string }[] = [];
+  for (const p of polygons.value as PolygonSurface[]) {
+    if (!p.closed) continue;
+    const area = computeArea(p);
+    if (!(area > 0)) continue;
+    const den = p.points.map((pt) => gDenormalizePoint(pt, img));
+    if (!den.length) continue;
+    const center = getPolygonCenter(den);
+    overlays.push({ id: p.id, x: offX + center.x, y: offY + center.y, label: `${area.toFixed(2)} m²` });
+  }
+  return overlays;
 });
 
 // Manual per-edge input overlays for all non-rectangle polygons (buffers provided by service)
@@ -901,11 +948,8 @@ const allEdgeOverlays = computed(() => {
     canvasEl: canvas,
     edgeInputsBuf: edgeInputsBuf.value,
   });
-  const sel = selectedPolygonId.value;
-  if (sel) return base.filter((o: any) => o.key.startsWith(sel + ':'));
-  const cur = currentPolygon.value?.id || null;
-  if (cur) return base.filter((o: any) => o.key.startsWith(cur + ':'));
-  return [] as any[];
+  // show overlays for all polygons, do not filter by selection
+  return base as any[];
 });
 
 // onEdgeInputBuffer/saveEdgeInput provided by service
@@ -965,6 +1009,8 @@ const saveManualArea = () => {
 };
 
 onMounted(() => {
+  // Ensure rectangle cm notes exist after reload (from manualGeom / persisted edgeNotesCm)
+  rehydrateRectEdgeNotesFromManualGeom();
   refreshRectInputs();
   showEdgeInput.value = { a: false, b: false };
   nextTick(() => { updateEdgeNotesRect(); });
@@ -1178,29 +1224,30 @@ const denormalizePoint = (norm: Point): Point => gDenormalizePoint(norm, imageRe
 // Touch handled by interactionHandlers
 
 const getPolygonColors = (poly: PolygonSurface) => {
+  const isSelected = poly.id === selectedPolygonId.value;
   switch (poly.type) {
     case SurfaceType.FACADE:
       return {
         strokeColor: '#f59e0b',
-        fillColor: 'rgba(245,158,11,0.15)',
+        fillColor: isSelected ? 'rgba(245,158,11,0.45)' : 'rgba(245,158,11,0.15)',
         pointColor: '#f59e0b',
       };
     case SurfaceType.WINDOW_DOOR:
       return {
         strokeColor: '#10b981',
-        fillColor: 'rgba(16,185,129,0.2)',
+        fillColor: isSelected ? 'rgba(16,185,129,0.5)' : 'rgba(16,185,129,0.2)',
         pointColor: 'rgba(16,185,129,0.7)',
       };
     case SurfaceType.WALL_PLINTH:
       return {
         strokeColor: '#f59e0b',
-        fillColor: 'rgba(245,158,11,0.2)',
+        fillColor: isSelected ? 'rgba(245,158,11,0.45)' : 'rgba(245,158,11,0.2)',
         pointColor: 'rgba(245,158,11,0.7)',
       };
     default:
       return {
         strokeColor: '#4b5563',
-        fillColor: 'rgba(75,85,99,0.15)',
+        fillColor: isSelected ? 'rgba(75,85,99,0.4)' : 'rgba(75,85,99,0.15)',
         pointColor: 'rgba(75,85,99,0.7)',
       };
   }

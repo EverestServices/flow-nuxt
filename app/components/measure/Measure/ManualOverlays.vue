@@ -12,7 +12,7 @@
           type="text"
           inputmode="numeric"
           step="1"
-          :value="edgeInputA"
+          :value="edgeInputA || selectedRectNotes?.a || ''"
           placeholder="cm"
           @input="(e) => { $emit('update:edgeInputA', (e.target as HTMLInputElement).value); if (selectedRectId) onRectInputBuffer?.(selectedRectId, 'a', e) }"
           @keyup.enter="(e) => { (e.target as HTMLInputElement)?.blur?.() }"
@@ -33,7 +33,7 @@
           type="text"
           inputmode="numeric"
           step="1"
-          :value="edgeInputB"
+          :value="edgeInputB || selectedRectNotes?.b || ''"
           placeholder="cm"
           @input="(e) => { $emit('update:edgeInputB', (e.target as HTMLInputElement).value); if (selectedRectId) onRectInputBuffer?.(selectedRectId, 'b', e) }"
           @keyup.enter="(e) => { (e.target as HTMLInputElement)?.blur?.() }"
@@ -92,14 +92,15 @@
       </div>
     </div>
 
-    <!-- Manual area label at polygon center -->
+    <!-- Manual area labels at polygon centers for all polygons -->
     <div
-      v-if="selectedPolygonCenter && manualAreaLabel"
+      v-for="al in manualAreaOverlays"
+      :key="al.id"
       class="absolute z-30"
-      :style="{ left: selectedPolygonCenter.x + 'px', top: selectedPolygonCenter.y + 'px', transform: 'translate(-50%, -50%)' }"
+      :style="{ left: al.x + 'px', top: al.y + 'px', transform: 'translate(-50%, -50%)' }"
     >
       <div class="flex items-center gap-1 bg-neutral-900/85 text-white rounded-full px-2 py-1 shadow select-none">
-        <span class="text-xs font-semibold">{{ manualAreaLabel }}</span>
+        <span class="text-xs font-semibold">{{ al.label }}</span>
       </div>
     </div>
   </template>
@@ -114,10 +115,10 @@ const props = defineProps<{
   allEdgeOverlays: EdgeOverlay[]
   rectOverlaysAll: RectOverlay[]
   selectedRectId?: string | null
+  selectedRectNotes?: { a?: number | string | null; b?: number | string | null } | null
   edgeInputA: string
   edgeInputB: string
-  manualAreaLabel: string
-  selectedPolygonCenter: { x: number; y: number } | null
+  manualAreaOverlays: { id: string; x: number; y: number; label: string }[]
   onEdgeInputBuffer?: (key: string, e: Event) => void
   saveEdgeInput?: (key: string) => void
   onRectInputBuffer?: (polyId: string, which: 'a'|'b', e: Event) => void

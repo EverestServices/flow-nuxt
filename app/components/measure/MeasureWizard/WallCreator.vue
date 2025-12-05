@@ -189,8 +189,15 @@ onMounted(async () => {
       console.log('✅ Converted wall images count:', wallImages.length);
       console.log('✅ Wall images:', wallImages);
 
+      const primaryImg = wallImages[0] as WallImage | undefined
+      const imgW = (primaryImg?.processedImageWidth && primaryImg.processedImageWidth > 0) ? primaryImg.processedImageWidth : 0
+      const imgH = (primaryImg?.processedImageHeight && primaryImg.processedImageHeight > 0) ? primaryImg.processedImageHeight : 0
+      const mpp = (typeof primaryImg?.meterPerPixel === 'number' && isFinite(primaryImg.meterPerPixel) && primaryImg.meterPerPixel > 0)
+        ? primaryImg.meterPerPixel
+        : 0
+
       const wallPolygonsFromDb: PolygonSurface[] = (dbWall.polygons || []).map((p: any) => {
-        const edgeNotes = p.edge_notes_cm ?? null
+        let edgeNotes = p.edge_notes_cm ?? null
         let manualGeom: any = null
         try {
           const pts = Array.isArray(p.points) ? p.points : []
@@ -205,6 +212,17 @@ onMounted(async () => {
             manualGeom = { type: 'triangle', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number) }
           } else if (len === 5 && Array.isArray(edgesArr) && edgesArr.length >= 5 && edgesArr.slice(0,5).every(isPos)) {
             manualGeom = { type: 'pentagon', aCm: Math.round(edgesArr[0] as number), bCm: Math.round(edgesArr[1] as number), cCm: Math.round(edgesArr[2] as number), dCm: Math.round(edgesArr[3] as number), eCm: Math.round(edgesArr[4] as number) }
+          }
+          // Backfill rectangle edgeNotes for legacy data (only geometry/area stored)
+          if (len === 4 && (!edgeNotes || (!isPos(edgeNotes?.a) && !isPos(edgeNotes?.b))) && imgW > 0 && imgH > 0 && mpp > 0) {
+            const ptsNorm = pts as Point[]
+            const { w, h } = polygonBBoxM(ptsNorm, imgW, imgH, mpp)
+            const wCm = w > 0 ? Math.round(w * 100) : null
+            const hCm = h > 0 ? Math.round(h * 100) : null
+            if (wCm && hCm) {
+              edgeNotes = { ...(edgeNotes || {}), a: wCm, b: hCm }
+              manualGeom = manualGeom || { type: 'rectangle', aCm: wCm, bCm: hCm }
+            }
           }
         } catch {}
         return {
