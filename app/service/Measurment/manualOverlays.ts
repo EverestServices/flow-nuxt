@@ -133,10 +133,12 @@ export function computeRectOverlays(params: {
     const den = poly.points.map((pt) => denormalizePoint(pt, imageEl))
     const mA = { x: (den[0]!.x + den[1]!.x) / 2, y: (den[0]!.y + den[1]!.y) / 2 }
     const mB = { x: (den[1]!.x + den[2]!.x) / 2, y: (den[1]!.y + den[2]!.y) / 2 }
-    const aStored = (poly as any)?.edgeNotesCm?.a as number | null | undefined
-    const bStored = (poly as any)?.edgeNotesCm?.b as number | null | undefined
-    const aVal = typeof aStored === 'number' && isFinite(aStored) && aStored > 0 ? String(Math.round(aStored)) : (rectInputsBuf[`${poly.id}:a`] ?? '')
-    const bVal = typeof bStored === 'number' && isFinite(bStored) && bStored > 0 ? String(Math.round(bStored)) : (rectInputsBuf[`${poly.id}:b`] ?? '')
+    const aStoredRaw = (poly as any)?.edgeNotesCm?.a as number | string | null | undefined
+    const bStoredRaw = (poly as any)?.edgeNotesCm?.b as number | string | null | undefined
+    const aNum = typeof aStoredRaw === 'string' ? Number(aStoredRaw.replace(',', '.')) : aStoredRaw
+    const bNum = typeof bStoredRaw === 'string' ? Number(bStoredRaw.replace(',', '.')) : bStoredRaw
+    const aVal = typeof aNum === 'number' && isFinite(aNum) && aNum > 0 ? String(Math.round(aNum)) : (rectInputsBuf[`${poly.id}:a`] ?? '')
+    const bVal = typeof bNum === 'number' && isFinite(bNum) && bNum > 0 ? String(Math.round(bNum)) : (rectInputsBuf[`${poly.id}:b`] ?? '')
     result.push({ key: `${poly.id}:a`, polyId: poly.id, which: 'a', x: offX + mA.x, y: offY + mA.y, value: aVal })
     result.push({ key: `${poly.id}:b`, polyId: poly.id, which: 'b', x: offX + mB.x, y: offY + mB.y, value: bVal })
   }

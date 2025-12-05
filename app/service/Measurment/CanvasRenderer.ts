@@ -18,6 +18,9 @@ export function drawPolygonsOnCtx(params: {
   const rect = img.getBoundingClientRect()
   const allPolygons = [...polygons]
   if (currentPolygon) allPolygons.push(currentPolygon)
+  const natW = img.naturalWidth
+  const natH = img.naturalHeight
+
   for (const poly of allPolygons) {
     if (poly.visible === false) continue
     const denormPoints: Point[] = poly.points.map((p) => ({ x: p.x * rect.width, y: p.y * rect.height }))
@@ -34,7 +37,7 @@ export function drawPolygonsOnCtx(params: {
       ctx.fill()
     }
     ctx.strokeStyle = strokeColor
-    ctx.lineWidth = selectedPolygonId === poly.id ? 3.5 : 2
+    ctx.lineWidth = selectedPolygonId === poly.id ? 4.5 : 2
     ctx.stroke()
 
     denormPoints.forEach((p) => drawCircle(ctx, p.x, p.y, 6, pointColor))
@@ -42,12 +45,18 @@ export function drawPolygonsOnCtx(params: {
     if (showComputedLabels && poly.closed && denormPoints.length >= 3 && pixelSize > 0) {
       for (let i = 0; i < denormPoints.length; i++) {
         const j = (i + 1) % denormPoints.length
+
+        // Metric length: use normalized points scaled by natural image size (zoom independent)
+        const p1N = poly.points[i]!
+        const p2N = poly.points[j]!
+        const dxN = (p2N.x - p1N.x) * natW
+        const dyN = (p2N.y - p1N.y) * natH
+        const pxDist = Math.sqrt(dxN * dxN + dyN * dyN)
+        const length = pxDist * pixelSize
+
+        // Screen position for label: use denormalized (on-screen) points
         const p1 = denormPoints[i]!
         const p2 = denormPoints[j]!
-        const dx = p2.x - p1.x
-        const dy = p2.y - p1.y
-        const pxDist = Math.sqrt(dx * dx + dy * dy)
-        const length = pxDist * pixelSize
         const midX = (p1.x + p2.x) / 2
         const midY = (p1.y + p2.y) / 2
         drawLabel(ctx, `${length.toFixed(2)} m`, midX - 22, midY - 8)

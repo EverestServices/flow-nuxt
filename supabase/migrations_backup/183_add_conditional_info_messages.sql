@@ -83,7 +83,7 @@ BEGIN
             ),
             'type', 'danger',
             'message_translations', jsonb_build_object(
-                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszünették, kijavították, addig nem folytatható a projekt!',
+                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszüntették, kijavították, addig nem folytatható a projekt!',
                 'en', 'The project cannot continue until the customer reports that the source of the defect has been eliminated and repaired!'
             )
         )
@@ -103,7 +103,7 @@ BEGIN
             ),
             'type', 'danger',
             'message_translations', jsonb_build_object(
-                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszünették, kijavították, addig nem folytatható a projekt!',
+                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszüntették, kijavították, addig nem folytatható a projekt!',
                 'en', 'The project cannot continue until the customer reports that the source of the defect has been eliminated and repaired!'
             )
         )
@@ -123,7 +123,7 @@ BEGIN
             ),
             'type', 'danger',
             'message_translations', jsonb_build_object(
-                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszünették, kijavították, addig nem folytatható a projekt!',
+                'hu', 'Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását megszüntették, kijavították, addig nem folytatható a projekt!',
                 'en', 'The project cannot continue until the customer reports that the source of the defect has been eliminated and repaired!'
             )
         )
@@ -146,6 +146,6 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE 'When these switches are checked (true), a danger icon with tooltip will appear';
     RAISE NOTICE 'Message: "Amíg az ügyfél nem jelentkezik újra, hogy a hiba forrását';
-    RAISE NOTICE '          megszünették, kijavították, addig nem folytatható a projekt!"';
+    RAISE NOTICE '          megszüntették, kijavították, addig nem folytatható a projekt!"';
 
 END $$;
