@@ -24,11 +24,44 @@ Amikor a marker módban dolgozol (`/survey/[surveyId]/measure/[wallId]`):
 3. **Tájolás beállítása**: Válaszd ki a fal tájolását (É, ÉK, K, DK, D, DNy, Ny, ÉNy)
 4. **Név megadása**: Adj egyedi nevet a falnak (pl. "Északi fal", "Déli fal")
 
-**Nyílászárók (Ablakok/Ajtók):**
-1. **Rajzolás**: Rajzold be az ablakokat és ajtókat a falon (zöld polygon)
+**Kézi kijelölés mód ("Jelölő mód" → "Kézi kijelölés módban"):**
+
+Amikor kézzel jelölsz ki egy **homlokzat** területet:
+1. **Rajzolás**: Kattints négy pontot a vásznon egy téglalap létrehozásához
+2. **Méretek megadása**:
+   - A téglalap **alsó élén** megjelenik egy beviteli mező (pl. 500 cm)
+   - A téglalap **oldalsó élén** megjelenik egy beviteli mező (pl. 300 cm)
+3. **Automatikus számítás**:
+   - ✅ **Bruttó homlokzat**: Automatikusan kiszámolódik (pl. 15.00 m² = 5.00 m × 3.00 m)
+   - ✅ **Nettó homlokzat**: Automatikusan kiszámolódik
+   - ✅ **Fal hossza (m)**: Automatikusan frissül a bal oldali mezőben (pl. 5.00 m)
+   - ✅ **Fal magassága (m)**: Automatikusan frissül a bal oldali mezőben (pl. 3.00 m)
+     - Ha van **lábazat** is, akkor a homlokzat + lábazat összes magassága jelenik meg
+4. **Mentés**: Az értékek azonnal mentésre kerülnek és szinkronizálódnak a survey oldalra
+
+Amikor kézzel jelölsz ki egy **lábazat** területet:
+1. **Rajzolás**: Kattints négy pontot a vásznon egy téglalap létrehozásához
+2. **Típus beállítása**: Állítsd be a polygon típusát "Lábazat"-ra
+3. **Méretek megadása**:
+   - A téglalap **oldalsó élén** megjelenik egy beviteli mező (pl. 50 cm)
+4. **Automatikus számítás**:
+   - ✅ **Lábazat magassága (cm)**: Automatikusan frissül a bal oldali mezőben (pl. 50 cm)
+   - Nincs átváltás, közvetlenül cm-ben kerül be
+   - ✅ **Fal magassága (m)**: Automatikusan frissül és **hozzáadódik a homlokzat magasságához**
+     - Pl. homlokzat 300 cm + lábazat 50 cm = **3.50 m** (összesen)
+5. **Mentés**: Az érték azonnal mentésre kerül és szinkronizálódik a survey oldalra
+
+**Nyílászárók (Ablakok/Ajtók) - Kézi kijelölés mód:**
+1. **Rajzolás**: Rajzold be az ablakokat és ajtókat a falon (zöld polygon, négyzet alakban)
 2. **Típus kiválasztása**: Állítsd be, hogy ablak, ajtó vagy erkélyajtó
-3. **Árnyékolás** (opcionális): Add meg a külső árnyékoló típusát
-4. **Automatikus méret**: A szélesség és magasság automatikusan számolódik a rajzolt területből
+3. **Méretek megadása**:
+   - A téglalap **alsó élén** megjelenik egy beviteli mező (pl. 120 cm szélesség)
+   - A téglalap **oldalsó élén** megjelenik egy beviteli mező (pl. 150 cm magasság)
+4. **Árnyékolás** (opcionális): Add meg a külső árnyékoló típusát
+5. **Automatikus szinkronizáció**:
+   - ✅ **Szélesség (cm)**: Automatikusan átkerül a survey oldalra (pl. 120 cm)
+   - ✅ **Magasság (cm)**: Automatikusan átkerül a survey oldalra (pl. 150 cm)
+   - Nincs átváltás, közvetlenül cm-ben kerül át
 
 ### 2. Automatikus Szinkronizáció (Kétirányú!)
 
@@ -55,6 +88,12 @@ A "Homlokzati szigetelés → Falak" oldalon:
 **Falak - Automatikusan kitöltött mezők:**
 - ✅ **Fal neve**: A marker módban megadott név (pl. "Északi fal")
 - ✅ **Tájolás**: Automatikusan beállított (pl. "É", "K", "D")
+- ✅ **Fal hossza (m)**: Automatikusan számolva kézi kijelölés módban (edgeNotesCm alapján) vagy marker módban (bounding box alapján)
+- ✅ **Fal magassága (m)**: Automatikusan számolva homlokzat + lábazat összegéből
+  - Kézi kijelölés mód: edgeNotesCm alapján
+  - Marker mód: bounding box alapján
+  - **Ha van lábazat is, automatikusan hozzáadódik a homlokzat magasságához**
+- ✅ **Lábazat magassága (cm)**: Automatikusan számolva lábazat polygonokból (külön mező)
 - ✅ **Területek** (háttérben tárolva):
   - Homlokzat bruttó terület
   - Homlokzat nettó terület
@@ -62,16 +101,17 @@ A "Homlokzati szigetelés → Falak" oldalon:
   - Lábazat területe
 
 **Falak - Manuálisan kitöltendő mezők:**
-- ⏳ Fal hossza (m)
-- ⏳ Fal magassága (m)
 - ⏳ Fal vastagsága (cm)
-- ⏳ Lábazat magassága (m)
 - ⏳ Egyéb specifikus adatok
 
 **Nyílászárók (Subpage) - Automatikusan kitöltött mezők:**
 - ✅ **Típus**: Ablak / Ajtó / Erkélyajtó
-- ✅ **Szélesség (cm)**: Automatikusan számolva a rajzból
-- ✅ **Magasság (cm)**: Automatikusan számolva a rajzból
+- ✅ **Szélesség (cm)**: Automatikusan számolva
+  - Kézi kijelölés mód: edgeNotesCm.b értékből (alsó él, amit megadsz a beviteli mezőben)
+  - Marker mód: bounding box alapján
+- ✅ **Magasság (cm)**: Automatikusan számolva
+  - Kézi kijelölés mód: edgeNotesCm.a értékből (oldalsó él, amit megadsz a beviteli mezőben)
+  - Marker mód: bounding box alapján
 - ✅ **Külső árnyékoló típusa**: Nincs / Redőny / Zsalugáter / Zsalúzia / Textil roló
 
 **Nyílászárók - Manuálisan kitöltendő/finomítandó mezők:**
@@ -177,7 +217,50 @@ A `_markerWallId` hidden field tartalmazza a marker mode wall ID-t, így:
 3. ✅ Az összes nyílászáró (polygon) is törlődik a marker módból
 4. ✅ A localStorage-ból is törlődik
 
-### 6. Nyílászáró (Ablak/Ajtó) Törlése
+### 6. Homlokzat + Lábazat Együttes Használata (Kézi Kijelölés Mód)
+
+**Példa: Északi fal mérése**
+
+1. **Homlokzat rajzolása**:
+   - Jelöld ki a falfelületet négyzet alakban
+   - Alsó él: 500 cm
+   - Oldalsó él: 300 cm
+   - ✅ Fal hossza: **5.00 m**
+   - ✅ Fal magassága: **3.00 m** (csak homlokzat)
+
+2. **Lábazat hozzáadása**:
+   - Jelöld ki a lábazat területét (ugyanazon falon)
+   - Állítsd be a típust "Lábazat"-ra
+   - Oldalsó él: 50 cm
+   - ✅ Lábazat magassága: **50 cm**
+   - ✅ **Fal magassága automatikusan frissül: 3.50 m** (3.00 + 0.50)
+
+3. **Survey oldalon**:
+   - Fal hossza: **5.00 m**
+   - Fal magassága: **3.50 m** (homlokzat + lábazat összesen)
+   - Lábazat magassága: **50 cm** (külön mező)
+
+### 7. Nyílászáró Hozzáadása (Kézi Kijelölés Mód)
+
+**Példa: Ablak hozzáadása az Északi falhoz**
+
+1. **Nyílászáró rajzolása**:
+   - Jelöld ki az ablakot négyzet alakban a falon (zöld polygon)
+   - Állítsd be a típust "Ablak"-ra
+   - Alsó él: 120 cm (szélesség)
+   - Oldalsó él: 150 cm (magasság)
+
+2. **Árnyékolás beállítása** (opcionális):
+   - Külső árnyékoló típusa: pl. "Redőny"
+
+3. **Survey oldalon megjelenik**:
+   - Típus: **Ablak**
+   - Szélesség (cm): **120**
+   - Magasság (cm): **150**
+   - Mennyiség (db): **1** (módosítható)
+   - Külső árnyékoló típusa: **Redőny**
+
+### 8. Nyílászáró (Ablak/Ajtó) Törlése
 
 #### Marker módban törölsz:
 1. Marker módban töröld a zöld polygon-t (ablak/ajtó)
@@ -194,18 +277,26 @@ A `_markerWallId` hidden field tartalmazza a marker mode wall ID-t, így:
 ### Ami Automatikus (Falak)
 - ✅ Fal neve
 - ✅ Tájolás
+- ✅ **Fal hossza (m)**: Kézi kijelölés módban (edgeNotesCm alapján) vagy marker módban (bounding box alapján)
+- ✅ **Fal magassága (m)**:
+  - Homlokzat magasság: Kézi kijelölés módban (edgeNotesCm alapján) vagy marker módban (bounding box alapján)
+  - **+ Lábazat magasság**: Ha van lábazat polygon, automatikusan hozzáadódik
+  - **Összesen**: Homlokzat + Lábazat (pl. 3.00 m + 0.50 m = 3.50 m)
+- ✅ **Lábazat magassága (cm)**: Lábazat polygonokból számolva (külön mező)
 - ✅ Területek (háttérben tárolva, később használható számításokhoz)
 
 ### Ami Manuális (Falak)
-- ⏳ Fal hossza és magassága (pontos méretezés)
 - ⏳ Fal vastagsága
-- ⏳ Lábazat magassága
 - ⏳ Egyéb specifikus kérdések
 
 ### Ami Automatikus (Nyílászárók)
 - ✅ Típus (Ablak / Ajtó / Erkélyajtó)
-- ✅ Szélesség (cm) - számolva a rajzból
-- ✅ Magasság (cm) - számolva a rajzból
+- ✅ **Szélesség (cm)**:
+  - Kézi kijelölés mód: edgeNotesCm.b értékből (alsó él, közvetlenül, nincs átváltás)
+  - Marker mód: bounding box alapján számolva
+- ✅ **Magasság (cm)**:
+  - Kézi kijelölés mód: edgeNotesCm.a értékből (oldalsó él, közvetlenül, nincs átváltás)
+  - Marker mód: bounding box alapján számolva
 - ✅ Külső árnyékoló típusa
 
 ### Ami Manuális/Finomítandó (Nyílászárók)
@@ -218,13 +309,19 @@ A `_markerWallId` hidden field tartalmazza a marker mode wall ID-t, így:
 - ⚠️ **Kétirányú törlés (Nyílászárók)**: Ha törlöd a nyílászárót bármelyik módban, mindkét helyről törlődik
 - ⚠️ **Tájolás szinkronizáció**: Ha megváltoztatod a tájolást a survey oldalon, frissül a marker módban is
 - ⚠️ Ha manuálisan szerkeszted a survey instance-t, ne módosítsd a `_markerWallId` vagy `_markerPolygonId` mezőket
-- ⚠️ A falak hossza/magassága nem számítható automatikusan (csak területek)
-- ⚠️ A nyílászárók méretei bounding box alapján számolódnak - lehet, hogy finomítani kell őket
+- ⚠️ **Kézi kijelölés mód (Homlokzat)**: A homlokzat hossza az `edgeNotesCm.b` (alsó él), magassága az `edgeNotesCm.a` (oldalsó él) értékből számolódik
+- ⚠️ **Kézi kijelölés mód (Lábazat)**: A lábazat magassága az `edgeNotesCm.a` (oldalsó él) értékből számolódik közvetlenül (cm-ben, nincs átváltás)
+- ⚠️ **Kézi kijelölés mód (Nyílászárók)**: Szélesség az `edgeNotesCm.b` (alsó él), magasság az `edgeNotesCm.a` (oldalsó él) értékből számolódik közvetlenül (cm-ben, nincs átváltás)
+- ⚠️ **Fal magasság összesítés**: A "Fal magassága (m)" mező **mindig a homlokzat + lábazat összege**, ha mindkettő van
+- ⚠️ **Marker mód**: A falak hossza/magassága a FACADE polygon bounding box-ából, a lábazat magasság a WALL_PLINTH polygon bounding box-ából, a nyílászárók méretei a bounding box-ból számolódnak
 
 ## Fejlesztési Lehetőségek
 
 A jövőben implementálható:
-- [ ] Automatikus hossz/magasság számítás a polygon adatokból
+- [x] **Automatikus hossz/magasság számítás a polygon adatokból** - **Implementálva!** ✅
+  - [x] Kézi kijelölés mód: `edgeNotesCm` értékekből számítva
+  - [x] Marker mód: FACADE polygon bounding box-ából számítva
+  - [x] Lábazat magasság: WALL_PLINTH polygon-okból számítva
 - [x] **Teljes kétirányú szinkronizáció (Falak)** - **Implementálva!** ✅
   - [x] Törlés kétirányú
   - [x] Tájolás frissítés kétirányú

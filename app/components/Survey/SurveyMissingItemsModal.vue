@@ -99,9 +99,12 @@ interface UnansweredQuestion {
 interface Props {
   modelValue: boolean
   surveyId: string
+  isConsultantModeActive?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isConsultantModeActive: false
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -135,7 +138,18 @@ const close = () => {
 const missingPhotoCategories = computed<MissingPhotoCategory[]>(() => {
   const missing: MissingPhotoCategory[] = []
 
-  store.selectedInvestments.forEach(investment => {
+  // Filter investments based on mode
+  const filteredInvestments = store.selectedInvestments.filter(investment => {
+    if (props.isConsultantModeActive) {
+      // In Consultant Mode, exclude basicData
+      return investment.persist_name !== 'basicData'
+    } else {
+      // In Graphic/Marker Mode, exclude consultantMode
+      return investment.persist_name !== 'consultantMode'
+    }
+  })
+
+  filteredInvestments.forEach(investment => {
     const categories = store.documentCategories[investment.id] || []
     categories.forEach(category => {
       // Get actual uploaded photo count from store
@@ -162,7 +176,18 @@ const unansweredQuestions = computed<UnansweredQuestion[]>(() => {
   const unanswered: UnansweredQuestion[] = []
   const seenQuestions = new Set<string>() // Track by investment + question name
 
-  store.selectedInvestments.forEach(investment => {
+  // Filter investments based on mode
+  const filteredInvestments = store.selectedInvestments.filter(investment => {
+    if (props.isConsultantModeActive) {
+      // In Consultant Mode, exclude basicData
+      return investment.persist_name !== 'basicData'
+    } else {
+      // In Graphic/Marker Mode, exclude consultantMode
+      return investment.persist_name !== 'consultantMode'
+    }
+  })
+
+  filteredInvestments.forEach(investment => {
     const pages = store.surveyPages[investment.id] || []
     pages.forEach(page => {
       const questions = store.surveyQuestions[page.id] || []

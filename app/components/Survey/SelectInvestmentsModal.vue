@@ -75,8 +75,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 
 const { translate } = useTranslatableField()
+const investmentsStore = useSurveyInvestmentsStore()
 
 interface Investment {
   id: string
@@ -89,10 +91,12 @@ interface Props {
   surveyId: string
   selectedInvestments: Investment[]
   mode?: 'ai' | 'manual'
+  preselectedInvestmentIds?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  mode: 'ai'
+  mode: 'ai',
+  preselectedInvestmentIds: () => []
 })
 
 const emit = defineEmits<{
@@ -106,14 +110,22 @@ const isOpen = ref(false)
 // Local selection state for the modal
 const localSelectedIds = ref<string[]>([])
 
-// Initialize local selections with all investments selected (excluding is_default)
+// Initialize local selections
 const initializeSelections = () => {
-  localSelectedIds.value = filteredInvestments.value.map(inv => inv.id)
+  // If preselected IDs are provided (from Consultant Mode), use those
+  if (props.preselectedInvestmentIds && props.preselectedInvestmentIds.length > 0) {
+    localSelectedIds.value = props.preselectedInvestmentIds
+  } else {
+    // Otherwise, select all investments (excluding is_default)
+    localSelectedIds.value = filteredInvestments.value.map(inv => inv.id)
+  }
 }
 
-// Computed
+// Computed - Show ALL available investments (except is_default and consultantMode)
 const filteredInvestments = computed(() => {
-  return props.selectedInvestments.filter(inv => !inv.is_default)
+  return investmentsStore.availableInvestments.filter(inv =>
+    !inv.is_default && inv.persist_name !== 'consultantMode'
+  )
 })
 
 const hasSelectedInvestments = computed(() => localSelectedIds.value.length > 0)

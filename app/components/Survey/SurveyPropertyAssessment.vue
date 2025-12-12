@@ -560,7 +560,16 @@ const randomIcons = computed(() => {
 
 // Computed from store
 const hasInvestments = computed(() => store.hasSelectedInvestments)
-const selectedInvestments = computed(() => store.selectedInvestments)
+const selectedInvestments = computed(() => {
+  const investments = store.selectedInvestments
+
+  // In consultant mode, hide basicData investment
+  if (props.isConsultantModeActive) {
+    return investments.filter(inv => inv.persist_name !== 'basicData')
+  }
+
+  return investments
+})
 const activeInvestmentId = computed(() => store.activeInvestmentId)
 const activeInvestment = computed(() => store.activeInvestment)
 const activePageId = computed(() => store.activePageId)
@@ -602,16 +611,25 @@ const allDocumentCategories = computed(() => {
 
 // Displayed investments based on page display mode
 const displayedInvestments = computed(() => {
+  let investments: Investment[] = []
+
   if (props.pageDisplayMode === 'single') {
     // Mode 1: Only active investment
-    return activeInvestment.value ? [activeInvestment.value] : []
+    investments = activeInvestment.value ? [activeInvestment.value] : []
   } else if (props.pageDisplayMode === 'investment') {
     // Mode 2: Only active investment
-    return activeInvestment.value ? [activeInvestment.value] : []
+    investments = activeInvestment.value ? [activeInvestment.value] : []
   } else {
     // Mode 3: All selected investments
-    return selectedInvestments.value
+    investments = selectedInvestments.value
   }
+
+  // In consultant mode, hide basicData investment
+  if (props.isConsultantModeActive) {
+    return investments.filter(inv => inv.persist_name !== 'basicData')
+  }
+
+  return investments
 })
 
 // Displayed pages for each investment based on page display mode (only root pages, not subpages)

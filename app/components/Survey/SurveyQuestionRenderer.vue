@@ -822,7 +822,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import type { SurveyQuestion } from '~/stores/surveyInvestments'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import OrientationSelector from '@/components/shared/OrientationSelector.vue'
@@ -1618,6 +1618,62 @@ function removeRepeatableRow(rowIndex: number) {
   const rows = repeatableRowItems.value.filter((_, i) => i !== rowIndex)
   emit('update:modelValue', rows)
 }
+
+// Initialize repeatable rows with default_rows if available and no value exists
+function initializeRepeatableRowDefaults() {
+  if (props.question.type !== 'repeatable_row') return
+
+  // Check if default_rows exists in options
+  const defaultRows = props.question.options?.default_rows as any[] | undefined
+  if (!defaultRows || defaultRows.length === 0) return
+
+  // Only initialize if modelValue is empty
+  const currentValue = props.modelValue
+  if (currentValue && Array.isArray(currentValue) && currentValue.length > 0) return
+
+  // Get all field names from the repeatable_row configuration
+  const allFields = repeatableRowFields.value
+
+  // Ensure each default row has all fields (fill in missing ones with empty values)
+  const completeDefaultRows = defaultRows.map(row => {
+    const completeRow: Record<string, any> = {}
+
+    for (const field of allFields) {
+      if (row[field.name] !== undefined) {
+        // Use the value from default_rows
+        completeRow[field.name] = row[field.name]
+      } else {
+        // Fill in missing field with empty/default value
+        if (field.type === 'number') {
+          completeRow[field.name] = field.min || 0
+        } else {
+          completeRow[field.name] = ''
+        }
+      }
+    }
+
+    return completeRow
+  })
+
+  // Emit the complete default rows as initial value
+  emit('update:modelValue', completeDefaultRows)
+}
+
+// Watch for question changes and initialize defaults
+watch(() => props.question.id, () => {
+  initializeRepeatableRowDefaults()
+}, { immediate: true })
+
+// Also watch modelValue to initialize if it becomes undefined/empty
+watch(() => props.modelValue, (newValue, oldValue) => {
+  // Only initialize if transitioning from undefined/null to still undefined/null
+  // or from non-empty to empty
+  if (props.question.type === 'repeatable_row') {
+    if (!newValue || (Array.isArray(newValue) && newValue.length === 0)) {
+      initializeRepeatableRowDefaults()
+    }
+  }
+}, { immediate: true })
 
 // ========================================================================
 // MULTISELECT WITH DISTRIBUTION LOGIC

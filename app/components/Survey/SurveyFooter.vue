@@ -63,8 +63,8 @@
           </UIButtonEnhanced>
         </template>
 
-        <!-- Consultation specific actions -->
-        <template v-if="activeTab === 'consultation'">
+        <!-- Consultation specific actions (Hidden in Consultant Mode) -->
+        <template v-if="activeTab === 'consultation' && !isConsultantModeActive">
           <!-- Use Scenarios Button -->
           <UIButtonEnhanced
             variant="outline"
@@ -211,6 +211,7 @@ interface Props {
   contractCount?: number
   showScenarioFooter?: boolean
   fillAllDataActive?: boolean
+  isConsultantModeActive?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -220,7 +221,8 @@ withDefaults(defineProps<Props>(), {
   canSaveContract: false,
   contractCount: 0,
   showScenarioFooter: false,
-  fillAllDataActive: false
+  fillAllDataActive: false,
+  isConsultantModeActive: false
 })
 
 defineEmits<{

@@ -3,6 +3,97 @@
     <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400" />
   </div>
 
+  <!-- OFP Mode -->
+  <div v-else-if="isOfpMode" class="space-y-4">
+    <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('survey.costs.costs') }}</h4>
+
+    <!-- OFP Components -->
+    <div v-if="ofpComponentsList.length > 0" class="space-y-3">
+      <div v-for="component in ofpComponentsList" :key="component.key" class="space-y-1">
+        <div class="flex justify-between items-start text-sm">
+          <div class="flex-1">
+            <div class="text-gray-900 dark:text-white font-medium">{{ component.label }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-3">
+              <span v-if="component.surface">Terület: {{ component.surface }} m²</span>
+              <span v-if="component.pricePerM2">Ár: {{ formatCurrency(component.pricePerM2) }}/m²</span>
+              <span v-if="component.capacityKw">Kapacitás: {{ component.capacityKw }} kW</span>
+            </div>
+          </div>
+          <span class="text-gray-900 dark:text-white font-medium">
+            {{ formatCurrency(component.totalCostGross) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- No components message -->
+    <div v-else class="text-sm text-gray-500 dark:text-gray-400 py-2">
+      {{ $t('survey.costs.noComponents') }}
+    </div>
+
+    <!-- Implementation Fee (Total Gross) -->
+    <div class="flex justify-between text-base font-semibold border-t border-gray-300 dark:border-gray-600 pt-3">
+      <span class="text-gray-900 dark:text-white">{{ $t('survey.costs.implementationFee') }}</span>
+      <span class="text-gray-900 dark:text-white">
+        {{ formatCurrency(ofpTotalGross) }}
+      </span>
+    </div>
+
+    <!-- OFP Financing -->
+    <div class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+        OFP Finanszírozás
+      </div>
+
+      <div class="flex justify-between text-sm">
+        <span class="text-gray-700 dark:text-gray-300">
+          Önerő ({{ (ofpPercentage * 0.143).toFixed(1) }}%)
+        </span>
+        <span class="text-orange-600 dark:text-orange-400 font-medium">
+          {{ formatCurrency(ofpSelfStrength) }}
+        </span>
+      </div>
+
+      <div class="flex justify-between text-sm">
+        <span class="text-gray-700 dark:text-gray-300">
+          Vissza nem térítendő ({{ ofpPercentage }}%)
+        </span>
+        <span class="text-green-600 dark:text-green-400 font-medium">
+          -{{ formatCurrency(ofpNonRefundable) }}
+        </span>
+      </div>
+
+      <div class="flex justify-between text-sm">
+        <span class="text-gray-700 dark:text-gray-300">Kamatmentes kölcsön</span>
+        <span class="text-blue-600 dark:text-blue-400 font-medium">
+          {{ formatCurrency(ofpInterestFreeLoan) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Flow Subsidies (if any) -->
+    <div v-if="subsidies.length > 0" class="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+        További támogatások
+      </div>
+      <div v-for="subsidy in subsidies" :key="subsidy.id" class="flex justify-between text-sm">
+        <span class="text-green-600 dark:text-green-400 font-medium">{{ subsidy.name }}</span>
+        <span class="text-green-600 dark:text-green-400 font-medium">
+          -{{ formatCurrency(subsidy.calculatedPrice) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Total (Self Strength) -->
+    <div class="flex justify-between text-base font-bold border-t-2 border-gray-300 dark:border-gray-600 pt-3">
+      <span class="text-gray-900 dark:text-white">Összesen fizetendő (önerő)</span>
+      <span class="text-gray-900 dark:text-white">
+        {{ formatCurrency(ofpSelfStrength - subsidyTotal) }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Flow Mode -->
   <div v-else class="space-y-4">
     <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('survey.costs.costs') }}</h4>
 
@@ -63,10 +154,13 @@
 </template>
 
 <script setup lang="ts">
+import type { OfpCalculationResult } from '~/composables/useOfpCalculation'
+
 interface Props {
   surveyId: string
   scenarioId: string | null
   commissionRate: number
+  ofpCalculation?: OfpCalculationResult | null
 }
 
 interface MainComponent {
@@ -92,6 +186,58 @@ const loading = ref(false)
 const mainComponents = ref<MainComponent[]>([])
 const extraCostTotal = ref(0)
 const subsidies = ref<Subsidy[]>([])
+
+// Check if we should use OFP mode
+const isOfpMode = computed(() => {
+  return !!props.ofpCalculation
+})
+
+// OFP investment labels
+const ofpInvestmentLabels: Record<string, string> = {
+  wall_insulation: 'Homlokzati szigetelés',
+  roof_insulation: 'Tetőszigetelés',
+  window_replacement: 'Nyílászáró csere',
+  heat_pump: 'Hőszivattyú',
+}
+
+// Format OFP calculations as a list
+const ofpComponentsList = computed(() => {
+  if (!props.ofpCalculation?.calculations) return []
+
+  return Object.entries(props.ofpCalculation.calculations).map(([key, value]) => ({
+    key,
+    label: ofpInvestmentLabels[key] || key,
+    totalCostGross: value.total_cost_gross,
+    totalCostNet: value.total_cost_net,
+    surface: value.surface,
+    capacityKw: value.capacity_kw,
+    pricePerM2: value.price_per_m2,
+    selfStrength: value.self_strength,
+    nonRefundable: value.non_refundable,
+    interestFreeLoan: value.interest_free_loan,
+  }))
+})
+
+// OFP totals
+const ofpTotalGross = computed(() => {
+  return props.ofpCalculation?.totals.total_investment_gross || 0
+})
+
+const ofpSelfStrength = computed(() => {
+  return props.ofpCalculation?.totals.total_self_strength || 0
+})
+
+const ofpNonRefundable = computed(() => {
+  return props.ofpCalculation?.totals.total_non_refundable || 0
+})
+
+const ofpInterestFreeLoan = computed(() => {
+  return props.ofpCalculation?.totals.total_interest_free_loan || 0
+})
+
+const ofpPercentage = computed(() => {
+  return props.ofpCalculation?.percentage || 0
+})
 
 // Group components by category
 const groupedComponents = computed(() => {

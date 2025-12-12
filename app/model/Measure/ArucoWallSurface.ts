@@ -27,6 +27,14 @@ export type Wall = {
   polygons: PolygonSurface[];
   clientId?: string;
   orientation?: Orientation;
+  // Additional wall properties from survey
+  wall_structure?: string;
+  wall_thickness?: number; // cm
+  wall_length?: number; // m
+  wall_height?: number; // m
+  foundation_height?: number; // cm
+  foundation_type?: string;
+  protrusion_size?: number; // cm
 };
 export enum DimensionType {
   height = 'height',

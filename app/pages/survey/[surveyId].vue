@@ -66,6 +66,7 @@
           :survey-id="surveyId"
           :system-design-open="consultationSystemDesignOpen"
           :consultation-open="consultationPanelOpen"
+          :is-consultant-mode-active="isConsultantModeActive"
           @update:system-design-open="(value) => handleConsultationPanelToggle('systemDesign', value)"
           @update:consultation-open="(value) => handleConsultationPanelToggle('consultation', value)"
           @ai-scenarios="handleAIScenarios"
@@ -112,6 +113,7 @@
       :contract-count="contracts.length"
       :show-scenario-footer="scenarioFooterVisible"
       :fill-all-data-active="fillAllDataActive"
+      :is-consultant-mode-active="isConsultantModeActive"
       @save-exit="handleSaveExit"
       @upload-photos="handleUploadPhotos"
       @fill-all-data="handleFillAllData"
@@ -319,6 +321,7 @@
     <SurveyMissingItemsModal
       v-model="showMissingItemsModal"
       :survey-id="surveyId"
+      :is-consultant-mode-active="isConsultantModeActive"
       @open-photo-upload="handleOpenPhotoUploadFromMissing"
       @open-survey-page="handleOpenSurveyPageFromMissing"
     />
@@ -329,6 +332,7 @@
       :survey-id="surveyId"
       :selected-investments="selectedInvestments"
       :mode="selectInvestmentsModalMode"
+      :preselected-investment-ids="preselectedInvestmentIds"
       @create-scenarios="handleCreateScenarios"
       @create-manual-scenario="handleCreateManualScenario"
     />
@@ -446,8 +450,17 @@ const isMeasureRoute = computed(() => route.path.includes('/measure'))
 // Get survey ID from route
 const surveyId = computed(() => route.params.surveyId as string)
 
-// Get selected investments for header
-const selectedInvestments = computed(() => investmentsStore.selectedInvestments)
+// Get selected investments for header (filter out basicData in consultant mode)
+const selectedInvestments = computed(() => {
+  const investments = investmentsStore.selectedInvestments
+
+  // In consultant mode, hide basicData investment
+  if (isConsultantModeActive.value) {
+    return investments.filter(inv => inv.persist_name !== 'basicData')
+  }
+
+  return investments
+})
 
 // Get scenarios for header
 const scenarios = computed(() => scenariosStore.scenarios)
@@ -464,6 +477,13 @@ const activeTab = ref<'property-assessment' | 'consultation' | 'offer-contract' 
 
 // Contract mode state (null = not set, 'offer' = Offer mode, 'contract' = Contract mode)
 const contractMode = ref<'offer' | 'contract' | null>(null)
+
+// Watch for first navigation to offer-contract tab and set default mode to 'contract'
+watch(activeTab, (newTab) => {
+  if (newTab === 'offer-contract' && contractMode.value === null) {
+    contractMode.value = 'contract'
+  }
+}, { immediate: true })
 
 // Summary view mode state
 const summaryViewMode = ref<'list' | 'card'>('list')
@@ -525,8 +545,19 @@ const canProceed = computed(() => {
 const missingItemsCount = computed(() => {
   let count = 0
 
+  // Filter investments based on mode
+  const filteredInvestments = investmentsStore.selectedInvestments.filter(investment => {
+    if (isConsultantModeActive.value) {
+      // In Consultant Mode, exclude basicData
+      return investment.persist_name !== 'basicData'
+    } else {
+      // In Graphic/Marker Mode, exclude consultantMode
+      return investment.persist_name !== 'consultantMode'
+    }
+  })
+
   // Count missing photo categories
-  investmentsStore.selectedInvestments.forEach(investment => {
+  filteredInvestments.forEach(investment => {
     const categories = investmentsStore.documentCategories[investment.id] || []
     categories.forEach(category => {
       // Get actual uploaded photo count from store
@@ -538,7 +569,7 @@ const missingItemsCount = computed(() => {
   })
 
   // Count unanswered required questions
-  investmentsStore.selectedInvestments.forEach(investment => {
+  filteredInvestments.forEach(investment => {
     const pages = investmentsStore.surveyPages[investment.id] || []
     pages.forEach(page => {
       const questions = investmentsStore.surveyQuestions[page.id] || []
@@ -1023,6 +1054,15 @@ const handleNext = () => {
 const handleSelectScenario = (scenarioId: string) => {
   scenariosStore.setActiveScenario(scenarioId)
 }
+
+// Computed: Get preselected investments from active scenario in Consultant Mode
+const preselectedInvestmentIds = computed(() => {
+  // Only preselect if in Consultant Mode and there's an active scenario
+  if (isConsultantModeActive.value && activeScenario.value) {
+    return scenarioInvestments.value[activeScenario.value.id] || []
+  }
+  return []
+})
 
 const handleAIScenarios = () => {
   selectInvestmentsModalMode.value = 'ai'
