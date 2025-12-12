@@ -893,17 +893,36 @@ serve(async (req) => {
     }
 
     // 10. Store result in scenario
+    console.log('\n\n╔════════════════════════════════════════════════╗')
+    console.log('║         STORING RESULT TO SCENARIOS TABLE      ║')
+    console.log('╚════════════════════════════════════════════════╝')
+    console.log(`Scenario ID: ${body.scenarioId}`)
+    console.log(`Result object keys: ${Object.keys(result).join(', ')}`)
+    console.log(`Result size: ${JSON.stringify(result).length} characters`)
+
     const { error: updateError } = await supabaseAdmin
       .from('scenarios')
       .update({ energy_savings: result })
       .eq('id', body.scenarioId)
 
     if (updateError) {
-      console.error('Failed to store energy savings:', updateError)
+      console.error('❌ Failed to store energy savings!')
+      console.error('Error details:', JSON.stringify(updateError, null, 2))
+      console.error('Error message:', updateError.message)
+      console.error('Error code:', updateError.code)
+      console.error('Error hint:', updateError.hint)
+      console.error('Error details:', updateError.details)
+
       return new Response(
         JSON.stringify({
           success: false,
           error: 'Failed to store calculation result',
+          errorDetails: {
+            message: updateError.message,
+            code: updateError.code,
+            hint: updateError.hint,
+            details: updateError.details,
+          },
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -911,6 +930,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('✅ Successfully stored energy savings to scenarios table')
 
     // 11. Return result
     return new Response(
