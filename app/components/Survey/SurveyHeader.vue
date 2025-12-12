@@ -180,7 +180,7 @@
       <!-- Right Section -->
       <div class="flex items-center gap-4">
         <!-- Property Assessment specific controls -->
-        <template v-if="showModeToggle && !hideInvestmentControls">
+        <template v-if="showModeToggle">
           <!-- Hide/Show Visualization Button -->
           <UButton
             :icon="showVisualization ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"

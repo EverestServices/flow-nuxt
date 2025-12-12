@@ -144,6 +144,17 @@ export interface SurveyValueCopyRule {
   target_question_id: string
 }
 
+// Helper function to parse stored answer values
+function parseAnswerValue(answerString: string): any {
+  // Try to parse as JSON first (for arrays/objects)
+  try {
+    return JSON.parse(answerString)
+  } catch {
+    // If parsing fails, return the raw string
+    return answerString
+  }
+}
+
 export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
   state: () => ({
     // Available investments from database
@@ -511,12 +522,15 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
           const { question, page, investmentId } = questionData
 
+          // Parse the answer value (handles JSON arrays/objects)
+          const parsedValue = parseAnswerValue(answer.answer)
+
           if (answer.item_group === null && answer.parent_item_group === null) {
             // Regular answer (no item_group, no parent_item_group) - store in investmentResponses
             if (!this.investmentResponses[investmentId]) {
               this.investmentResponses[investmentId] = {}
             }
-            this.investmentResponses[investmentId][question.name] = answer.answer
+            this.investmentResponses[investmentId][question.name] = parsedValue
           } else if (answer.parent_item_group === null) {
             // Answer with item_group but no parent (root-level multi-instance page)
             if (!this.pageInstances[surveyId]) {
@@ -537,8 +551,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
               instances.push({})
             }
 
-            // Store the answer
-            instances[itemGroup][question.name] = answer.answer
+            // Store the parsed answer
+            instances[itemGroup][question.name] = parsedValue
           } else {
             // Answer with both item_group and parent_item_group (hierarchical subpage)
             if (!this.pageInstances[surveyId]) {
@@ -569,8 +583,8 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
               instances.push({})
             }
 
-            // Store the answer
-            instances[itemGroup][question.name] = answer.answer
+            // Store the parsed answer
+            instances[itemGroup][question.name] = parsedValue
           }
         }
 
@@ -818,10 +832,15 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (checkError) throw checkError
 
+        // Convert value to string - use JSON.stringify for arrays and objects
+        const answerValue = (typeof value === 'object' && value !== null)
+          ? JSON.stringify(value)
+          : String(value)
+
         if (existing) {
           const { error: updateError } = await supabase
             .from('survey_answers')
-            .update({ answer: String(value) })
+            .update({ answer: answerValue })
             .eq('id', existing.id)
           if (updateError) throw updateError
         } else {
@@ -830,7 +849,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .insert({
               survey_id: this.currentSurveyId,
               survey_question_id: actualQuestionId,
-              answer: String(value),
+              answer: answerValue,
               item_group: null
             })
           if (insertError) throw insertError
@@ -1045,11 +1064,16 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (checkError) throw checkError
 
+        // Convert value to string - use JSON.stringify for arrays and objects
+        const answerValue = (typeof value === 'object' && value !== null)
+          ? JSON.stringify(value)
+          : String(value)
+
         if (existing) {
           // Update existing answer
           const { error: updateError } = await supabase
             .from('survey_answers')
-            .update({ answer: String(value) })
+            .update({ answer: answerValue })
             .eq('id', existing.id)
 
           if (updateError) throw updateError
@@ -1060,7 +1084,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .insert({
               survey_id: this.currentSurveyId,
               survey_question_id: actualQuestionId,
-              answer: String(value),
+              answer: answerValue,
               item_group: instanceIndex
             })
 
@@ -1475,11 +1499,16 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
 
         if (checkError) throw checkError
 
+        // Convert value to string - use JSON.stringify for arrays and objects
+        const answerValue = (typeof value === 'object' && value !== null)
+          ? JSON.stringify(value)
+          : String(value)
+
         if (existing) {
           // Update existing answer
           const { error: updateError } = await supabase
             .from('survey_answers')
-            .update({ answer: String(value) })
+            .update({ answer: answerValue })
             .eq('id', existing.id)
 
           if (updateError) throw updateError
@@ -1490,7 +1519,7 @@ export const useSurveyInvestmentsStore = defineStore('surveyInvestments', {
             .insert({
               survey_id: this.currentSurveyId,
               survey_question_id: actualQuestionId,
-              answer: String(value),
+              answer: answerValue,
               item_group: instanceIndex,
               parent_item_group: parentItemGroup
             })

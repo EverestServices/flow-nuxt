@@ -1,41 +1,39 @@
 <template>
   <div class="space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-    <!-- Header with toggle and price -->
+    <!-- Header with price and toggle -->
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1">
-        <div class="flex items-center gap-3">
-          <USwitch
-            :model-value="selected"
-            @update:model-value="$emit('toggle')"
+        <div class="flex items-center gap-2">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            {{ displayName }}
+          </p>
+          <SurveyQuestionInfoTooltip
+            v-if="infoMessage"
+            :info-message="infoMessage"
           />
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ displayName }}
-              </p>
-              <SurveyQuestionInfoTooltip
-                v-if="infoMessage"
-                :info-message="infoMessage"
-              />
-            </div>
-            <p v-if="cost.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {{ cost.description }}
-            </p>
-          </div>
         </div>
+        <p v-if="cost.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          {{ cost.description }}
+        </p>
       </div>
-      <div class="text-right">
-        <p class="text-sm font-semibold text-gray-900 dark:text-white">
-          {{ formatPrice(cost.price) }} Ft
-        </p>
-        <p v-if="cost.is_quantity_based" class="text-xs text-gray-500 dark:text-gray-400">
-          / db
-        </p>
+      <div class="flex items-center gap-3">
+        <div class="text-right">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white">
+            {{ formatPrice(cost.price) }} Ft
+          </p>
+          <p v-if="cost.is_quantity_based" class="text-xs text-gray-500 dark:text-gray-400">
+            / db
+          </p>
+        </div>
+        <USwitch
+          :model-value="selected"
+          @update:model-value="$emit('toggle')"
+        />
       </div>
     </div>
 
     <!-- Quantity input (only for quantity-based costs) -->
-    <div v-if="selected && cost.is_quantity_based" class="ml-11">
+    <div v-if="selected && cost.is_quantity_based">
       <UInput
         type="number"
         :model-value="quantity"
@@ -48,7 +46,7 @@
     </div>
 
     <!-- Notes textarea (when selected) -->
-    <div v-if="selected" class="ml-11">
+    <div v-if="selected">
       <UTextarea
         :model-value="notes"
         @update:model-value="$emit('update:notes', $event)"
@@ -59,7 +57,7 @@
     </div>
 
     <!-- Subtotal (when selected) -->
-    <div v-if="selected" class="ml-11 flex justify-end">
+    <div v-if="selected" class="flex justify-end">
       <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
         Részösszeg: {{ formatPrice(subtotal) }} Ft
       </p>

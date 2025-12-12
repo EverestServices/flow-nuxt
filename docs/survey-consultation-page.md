@@ -8,6 +8,32 @@ A Consultation oldal a survey folyamat második fázisa, ahol az energetikai ren
 
 ## Recent Updates
 
+### 2025-12-04: Investment Switches + Stacked Energy Efficiency Slider
+
+**Investment Switches (Tanácsadó mód):**
+- 4 switch az Energia hatékonyság csúszka felett: Homlokzati szigetelés, Padlásfödém szigetelés, Nyílászárók, Hőszivattyú
+- USwitch komponens, scenario_investments táblába ír/töröl
+- Prop chain: `survey/[surveyId].vue` → `SurveyConsultation.vue` → `SurveyConsultationData.vue`
+- i18n: `survey.consultationData.selectInvestments`
+
+**Stacked Energy Efficiency Slider:**
+- Energia hatékonyság csúszka stacked gradient háttérrel
+- Fehér alapértelmezett (0% amikor semmi nincs bejelölve)
+- OFP-stílusú színek: Turquoise (#40E0D0), Tomato (#FF6347), SteelBlue (#4682B4), Thistle (#D8BFD8)
+- OFP-alapú improvement értékek hardcoded map-ben:
+  - Homlokzati szigetelés: 20.6%
+  - Padlásfödém szigetelés: 17.1%
+  - Nyílászárók: 0.1%
+  - Hőszivattyú: 0%
+- **Energia hatékonyság javulás százalék**: Tanácsadó módban OFP értékek összege (pl. 20.6% + 17.1% = 37.7%)
+- **Interactive tooltips**: Hover a csúszkán megjeleníti az investment nevét és százalékát
+- `sliderGradient` computed property: dinamikus gradient generálás bejelölt investments alapján
+- `totalEnergyEfficiency` computed property: bejelölt investments OFP értékeinek összege
+- Slider thumb elrejtve (csak a színes háttér látható)
+- Overlay div a csúszkán hover és tooltip funkció biztosítására
+
+---
+
 ### 2025-10-22: Contract Details, Commission System & UI Enhancements
 
 **Major Features Added:**

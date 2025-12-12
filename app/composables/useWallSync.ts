@@ -86,7 +86,7 @@ export const useWallSync = () => {
       await syncSingleWall(surveyId, wall, facadeInvestment.id, wallsPage, existingInstances)
     }
 
-    // STEP 2: Sync survey instances -> marker mode walls (create missing walls)
+    // STEP 2: Sync survey instances -> marker mode walls (create missing walls and sync properties)
     const cleanedWallIds = cleanedWallsArray.map(w => w.id)
     const instancesToRemove: number[] = []
 
@@ -102,6 +102,13 @@ export const useWallSync = () => {
           id: newWallId,
           name: wallName,
           orientation: instance.wall_orientation || undefined,
+          wall_structure: instance.wall_structure || undefined,
+          wall_thickness: instance.wall_thickness || undefined,
+          wall_length: instance.wall_length || undefined,
+          wall_height: instance.wall_height || undefined,
+          foundation_height: instance.foundation_height || undefined,
+          foundation_type: instance.foundation_type || undefined,
+          protrusion_size: instance.protrusion_size || undefined,
           images: [],
           polygons: []
         })
@@ -113,6 +120,10 @@ export const useWallSync = () => {
       // If instance has a marker wall ID but the wall doesn't exist, remove the instance
       else if (!cleanedWallIds.includes(instance._markerWallId)) {
         instancesToRemove.push(index)
+      }
+      // If instance has a marker wall ID and the wall exists, sync properties from survey to marker
+      else {
+        syncSurveyToWall(surveyId, instance._markerWallId, instance)
       }
     }
 
@@ -270,6 +281,7 @@ export const useWallSync = () => {
 
   /**
    * Calculates dimensions of a polygon in cm
+   * In manual mode with edgeNotesCm, uses those values directly instead of bounding box
    */
   const calculatePolygonDimensions = (
     polygon: PolygonSurface,
@@ -279,6 +291,27 @@ export const useWallSync = () => {
       return { widthCm: 0, heightCm: 0 }
     }
 
+    // Check if we have manual edge notes (kézi kijelölés mode)
+    // For window/door polygons, use edgeNotesCm if available
+    if (polygon.edgeNotesCm?.a && polygon.edgeNotesCm?.b &&
+        typeof polygon.edgeNotesCm.a === 'number' && typeof polygon.edgeNotesCm.b === 'number' &&
+        polygon.edgeNotesCm.a > 0 && polygon.edgeNotesCm.b > 0) {
+
+      // Use manual edge notes directly (already in cm, no conversion needed)
+      // Note: 'b' is the bottom edge (width), 'a' is the side edge (height)
+      const widthCm = Math.round(polygon.edgeNotesCm.b)  // alsó él
+      const heightCm = Math.round(polygon.edgeNotesCm.a) // oldalsó él
+
+      console.log('[calculatePolygonDimensions] Using manual edge notes:', {
+        polygonId: polygon.id,
+        widthCm,
+        heightCm
+      })
+
+      return { widthCm, heightCm }
+    }
+
+    // Fall back to bounding box calculation for non-manual mode
     // Get bounding box
     let minX = Infinity, maxX = -Infinity
     let minY = Infinity, maxY = -Infinity
@@ -303,7 +336,203 @@ export const useWallSync = () => {
     const widthCm = Math.round(widthMeters * 100)
     const heightCm = Math.round(heightMeters * 100)
 
+    console.log('[calculatePolygonDimensions] Using bounding box:', {
+      polygonId: polygon.id,
+      widthCm,
+      heightCm
+    })
+
     return { widthCm, heightCm }
+  }
+
+  /**
+   * Calculates wall dimensions (length and height) from FACADE polygons
+   * Uses the same logic as calculatePolygonDimensions for consistency
+   * In manual mode with edgeNotesCm, uses those values directly instead of bounding box
+   * If both FACADE and WALL_PLINTH are present, adds them together for total height
+   */
+  const calculateWallDimensions = (wall: Wall): { length: number | null; height: number | null } => {
+    // Get all FACADE type polygons
+    const facadePolygons = wall.polygons.filter(
+      p => p.type === SurfaceType.FACADE && p.closed && p.points.length > 0
+    )
+
+    if (facadePolygons.length === 0) {
+      return { length: null, height: null }
+    }
+
+    // Check if we have manual edge notes (kézi kijelölés mode)
+    // Use the first facade polygon with edge notes if available
+    const manualPolygon = facadePolygons.find(p =>
+      p.edgeNotesCm?.a && p.edgeNotesCm?.b &&
+      typeof p.edgeNotesCm.a === 'number' && typeof p.edgeNotesCm.b === 'number' &&
+      p.edgeNotesCm.a > 0 && p.edgeNotesCm.b > 0
+    )
+
+    if (manualPolygon && manualPolygon.edgeNotesCm) {
+      // Use manual edge notes (convert from cm to m)
+      const aCm = manualPolygon.edgeNotesCm.a!
+      const bCm = manualPolygon.edgeNotesCm.b!
+
+      // Note: 'b' is the bottom edge (length), 'a' is the side edge (facade height)
+      const length = bCm / 100  // alsó él
+      let height = aCm / 100     // oldalsó él
+
+      // Check if there's a plinth (lábazat) and add its height
+      const plinthHeightCm = calculateFoundationHeight(wall)
+      if (plinthHeightCm !== null && plinthHeightCm > 0) {
+        const plinthHeightM = plinthHeightCm / 100
+        height = height + plinthHeightM
+
+        console.log('[calculateWallDimensions] Using manual edge notes + plinth:', {
+          facadeHeightCm: aCm,
+          plinthHeightCm,
+          totalHeightM: height
+        })
+      } else {
+        console.log('[calculateWallDimensions] Using manual edge notes (no plinth):', {
+          aCm,
+          bCm,
+          length,
+          height
+        })
+      }
+
+      // Round to 2 decimal places
+      return {
+        length: Math.round(length * 100) / 100,
+        height: Math.round(height * 100) / 100
+      }
+    }
+
+    // Fall back to bounding box calculation for non-manual mode
+    // Calculate bounding box of all FACADE polygons combined
+    let minX = Infinity, maxX = -Infinity
+    let minY = Infinity, maxY = -Infinity
+
+    facadePolygons.forEach(polygon => {
+      polygon.points.forEach(point => {
+        if (point.x < minX) minX = point.x
+        if (point.x > maxX) maxX = point.x
+        if (point.y < minY) minY = point.y
+        if (point.y > maxY) maxY = point.y
+      })
+    })
+
+    const widthUnits = maxX - minX
+    const heightUnits = maxY - minY
+
+    // Convert to meters using meterPerPixel from wall image
+    const meterPerPixel = wall.images[0]?.meterPerPixel || 0.01
+
+    // DEBUG: Log calculation details
+    console.log('[calculateWallDimensions] Debug info:', {
+      facadePolygonCount: facadePolygons.length,
+      boundingBox: { minX, maxX, minY, maxY },
+      widthUnits,
+      heightUnits,
+      meterPerPixel,
+      imageWidth: wall.images[0]?.processedImageWidth,
+      imageHeight: wall.images[0]?.processedImageHeight,
+      naturalWidth: wall.images[0]?.processedImageWidth,
+      samplePoints: facadePolygons[0]?.points.slice(0, 3) // First 3 points as sample
+    })
+
+    const lengthMeters = widthUnits * meterPerPixel
+    let heightMeters = heightUnits * meterPerPixel
+
+    // Check if there's a plinth (lábazat) and add its height
+    const plinthHeightCm = calculateFoundationHeight(wall)
+    if (plinthHeightCm !== null && plinthHeightCm > 0) {
+      const plinthHeightM = plinthHeightCm / 100
+      heightMeters = heightMeters + plinthHeightM
+
+      console.log('[calculateWallDimensions] Bounding box + plinth:', {
+        facadeHeightM: heightUnits * meterPerPixel,
+        plinthHeightCm,
+        totalHeightM: heightMeters
+      })
+    } else {
+      console.log('[calculateWallDimensions] Bounding box (no plinth):', {
+        lengthMeters,
+        heightMeters
+      })
+    }
+
+    // Round to 2 decimal places
+    const length = Math.round(lengthMeters * 100) / 100
+    const height = Math.round(heightMeters * 100) / 100
+
+    return { length, height }
+  }
+
+  /**
+   * Calculates foundation height from WALL_PLINTH polygons in cm
+   * In manual mode with edgeNotesCm, uses those values directly instead of bounding box
+   */
+  const calculateFoundationHeight = (wall: Wall): number | null => {
+    // Get all WALL_PLINTH type polygons
+    const plinthPolygons = wall.polygons.filter(
+      p => p.type === SurfaceType.WALL_PLINTH && p.closed && p.points.length > 0
+    )
+
+    if (plinthPolygons.length === 0) {
+      return null
+    }
+
+    // Check if we have manual edge notes (kézi kijelölés mode)
+    // Use the first plinth polygon with edge notes if available
+    const manualPolygon = plinthPolygons.find(p =>
+      p.edgeNotesCm?.a &&
+      typeof p.edgeNotesCm.a === 'number' &&
+      p.edgeNotesCm.a > 0
+    )
+
+    if (manualPolygon && manualPolygon.edgeNotesCm?.a) {
+      // Use manual edge note directly (already in cm, no conversion needed)
+      // Note: 'a' is the side edge (height)
+      const heightCm = manualPolygon.edgeNotesCm.a  // oldalsó él
+
+      console.log('[calculateFoundationHeight] Using manual edge note:', {
+        heightCm
+      })
+
+      // Return rounded to integer
+      return Math.round(heightCm)
+    }
+
+    // Fall back to bounding box calculation for non-manual mode
+    // Convert to meters using meterPerPixel from wall image
+    const meterPerPixel = wall.images[0]?.meterPerPixel || 0.01
+
+    // Calculate the average height of all plinth polygons
+    let totalHeight = 0
+    let count = 0
+
+    plinthPolygons.forEach(polygon => {
+      let minY = Infinity, maxY = -Infinity
+
+      polygon.points.forEach(point => {
+        if (point.y < minY) minY = point.y
+        if (point.y > maxY) maxY = point.y
+      })
+
+      const heightUnits = maxY - minY
+
+      // Convert to meters
+      const heightMeters = heightUnits * meterPerPixel
+
+      // Convert to cm
+      totalHeight += heightMeters * 100
+      count++
+    })
+
+    if (count === 0) {
+      return null
+    }
+
+    // Return average height rounded to integer
+    return Math.round(totalHeight / count)
   }
 
   /**
@@ -335,6 +564,60 @@ export const useWallSync = () => {
       instanceData.wall_orientation = wall.orientation
     }
 
+    // Sync wall structure properties from marker mode
+    if (wall.wall_structure) {
+      instanceData.wall_structure = wall.wall_structure
+
+      // Get wall_structure_other from survey responses if wall_structure is "Egyéb"
+      if (wall.wall_structure === 'Egyéb') {
+        const existingOtherValue = surveyStore.investmentResponses[investmentId]?.['wall_structure_other']
+        if (existingOtherValue) {
+          instanceData.wall_structure_other = existingOtherValue
+        }
+      }
+    }
+
+    if (wall.wall_thickness !== undefined && wall.wall_thickness !== null) {
+      instanceData.wall_thickness = wall.wall_thickness
+    }
+
+    if (wall.foundation_type) {
+      instanceData.foundation_type = wall.foundation_type
+    }
+
+    if (wall.protrusion_size !== undefined && wall.protrusion_size !== null) {
+      instanceData.protrusion_size = wall.protrusion_size
+    }
+
+    // Calculate and sync wall dimensions from FACADE polygons
+    const facadeDimensions = calculateWallDimensions(wall)
+    let needsWallUpdate = false
+    const wallUpdates: Partial<Wall> = {}
+
+    if (facadeDimensions.length !== null) {
+      instanceData.wall_length = facadeDimensions.length
+      wallUpdates.wall_length = facadeDimensions.length
+      needsWallUpdate = true
+    }
+    if (facadeDimensions.height !== null) {
+      instanceData.wall_height = facadeDimensions.height
+      wallUpdates.wall_height = facadeDimensions.height
+      needsWallUpdate = true
+    }
+
+    // Calculate and sync foundation height from WALL_PLINTH polygons
+    const foundationHeight = calculateFoundationHeight(wall)
+    if (foundationHeight !== null) {
+      instanceData.foundation_height = foundationHeight
+      wallUpdates.foundation_height = foundationHeight
+      needsWallUpdate = true
+    }
+
+    // Update the wall model with calculated values
+    if (needsWallUpdate) {
+      wallStore.setWall(surveyId, wall.id, { ...wall, ...wallUpdates })
+    }
+
     // Calculate wall dimensions from surface areas if available
     if (surfaceAreas) {
       // We can derive approximate dimensions from the gross facade area
@@ -360,6 +643,59 @@ export const useWallSync = () => {
       // Create new instance
       existingInstances.push(instanceData)
     }
+  }
+
+  /**
+   * Syncs survey instance properties back to marker mode wall
+   */
+  const syncSurveyToWall = (
+    surveyId: string,
+    wallId: string,
+    instance: Record<string, any>
+  ) => {
+    const walls = wallStore.getWallsForSurvey(surveyId)
+    const wall = walls[wallId]
+
+    if (!wall) {
+      return
+    }
+
+    // Prepare wall updates from survey instance
+    const wallUpdates: Partial<Wall> = {
+      ...wall
+    }
+
+    // Sync basic properties
+    if (instance.wall_name && instance.wall_name !== wall.name) {
+      wallUpdates.name = instance.wall_name
+    }
+
+    if (instance.wall_orientation && instance.wall_orientation !== wall.orientation) {
+      wallUpdates.orientation = instance.wall_orientation
+    }
+
+    // Sync wall structure properties
+    if (instance.wall_structure !== undefined && instance.wall_structure !== wall.wall_structure) {
+      wallUpdates.wall_structure = instance.wall_structure || undefined
+    }
+
+    if (instance.wall_thickness !== undefined && instance.wall_thickness !== wall.wall_thickness) {
+      wallUpdates.wall_thickness = instance.wall_thickness || undefined
+    }
+
+    if (instance.foundation_type !== undefined && instance.foundation_type !== wall.foundation_type) {
+      wallUpdates.foundation_type = instance.foundation_type || undefined
+    }
+
+    if (instance.protrusion_size !== undefined && instance.protrusion_size !== wall.protrusion_size) {
+      wallUpdates.protrusion_size = instance.protrusion_size || undefined
+    }
+
+    // Note: wall_length, wall_height, and foundation_height are calculated from polygons,
+    // so we don't sync them back from survey to marker (marker mode is the source of truth for these)
+
+    // Update the wall if there are changes
+    wallStore.setWall(surveyId, wallId, wallUpdates)
   }
 
   /**

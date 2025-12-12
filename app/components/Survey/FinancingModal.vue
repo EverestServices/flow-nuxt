@@ -42,51 +42,47 @@
       <!-- Divider -->
       <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
-      <!-- ExtraCost List -->
+      <!-- Investment Extra Costs Accordions -->
       <div v-if="loading" class="flex items-center justify-center py-8">
         <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400" />
       </div>
 
-      <div v-else class="space-y-3">
+      <div v-else-if="scenarioInvestments.length > 0" class="space-y-3">
+        <!-- Accordion for each investment -->
         <div
-          v-for="extraCost in extraCosts"
-          :key="extraCost.id"
-          class="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+          v-for="investment in scenarioInvestments"
+          :key="investment.id"
+          class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
         >
-          <!-- ExtraCost Header -->
-          <div class="flex items-center justify-between">
-            <div class="flex-1">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ extraCost.name }}
-              </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {{ formatCurrency(extraCost.price) }}
-              </div>
+          <!-- Accordion Header -->
+          <button
+            class="flex items-center justify-between w-full py-3 px-4 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="toggleInvestmentAccordion(investment.id)"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-coins" class="w-5 h-5" />
+              <span>{{ getInvestmentName(investment) }} {{ $t('survey.financing.extraCosts') }}</span>
             </div>
-            <USwitch
-              :model-value="isExtraCostSelected(extraCost.id)"
-              @update:model-value="handleExtraCostToggle(extraCost.id, $event)"
+            <UIcon
+              :name="isInvestmentAccordionOpen(investment.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="w-5 h-5"
             />
-          </div>
+          </button>
 
-          <!-- Comment Textarea - shown when selected -->
-          <Transition name="expand">
-            <div
-              v-if="isExtraCostSelected(extraCost.id)"
-              class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
-            >
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {{ $t('survey.financing.note') }}
-              </label>
-              <textarea
-                :value="getExtraCostComment(extraCost.id)"
-                @input="handleCommentChange(extraCost.id, ($event.target as HTMLTextAreaElement).value)"
-                rows="3"
-                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="$t('survey.financing.notePlaceholder')"
-              ></textarea>
+          <!-- Accordion Body -->
+          <div
+            v-show="isInvestmentAccordionOpen(investment.id)"
+            class="border-t border-gray-200 dark:border-gray-700"
+          >
+            <div class="p-4">
+              <SurveyOfferContractInvestmentExtraCosts
+                v-if="props.scenarioId"
+                :survey-id="props.surveyId"
+                :scenario-id="props.scenarioId"
+                :investment-persist-name="investment.persist_name"
+              />
             </div>
-          </Transition>
+          </div>
         </div>
       </div>
 
@@ -167,6 +163,8 @@
 </template>
 
 <script setup lang="ts">
+import SurveyOfferContractInvestmentExtraCosts from './SurveyOfferContractInvestmentExtraCosts.vue'
+
 interface Props {
   modelValue: boolean
   surveyId: string
@@ -174,15 +172,11 @@ interface Props {
   showReturnTime: boolean
 }
 
-interface ExtraCost {
+interface Investment {
   id: string
+  persist_name: string
   name: string
-  price: number
-}
-
-interface ExtraCostRelation {
-  extra_cost_id: string
-  comment: string | null
+  name_translations: any
 }
 
 const props = defineProps<Props>()
@@ -228,9 +222,10 @@ const financing = ref({
 })
 const showPrice = ref(false)
 const commissionColor = ref<CommissionColor>('red')
-const extraCosts = ref<ExtraCost[]>([])
-const selectedExtraCosts = ref<Map<string, ExtraCostRelation>>(new Map())
+const scenarioInvestments = ref<Investment[]>([])
+const openAccordions = ref<Set<string>>(new Set())
 const totalPrice = ref(0)
+const { translate } = useTranslatableField()
 
 // Get commission rate as number
 const commissionRate = computed(() => COMMISSION_RATES[commissionColor.value])
@@ -246,7 +241,7 @@ const priceUnderlineColor = computed(() => {
   return colors[commissionColor.value]
 })
 
-// Load extra costs and existing relations
+// Load scenario investments and financing data
 const loadData = async () => {
   if (!props.scenarioId) return
 
@@ -269,27 +264,31 @@ const loadData = async () => {
       commissionColor.value = colorEntry[0] as CommissionColor
     }
 
-    // Load all extra costs
-    const { data: extraCostsData, error: extraCostsError } = await supabase
-      .from('extra_costs')
-      .select('id, name, price')
-      .order('name')
-
-    if (extraCostsError) throw extraCostsError
-    extraCosts.value = extraCostsData || []
-
-    // Load existing relations for this scenario
-    const { data: relationsData, error: relationsError } = await supabase
-      .from('extra_cost_relations')
-      .select('extra_cost_id, comment')
+    // Get scenario's investments with full investment details
+    const { data: siData, error: siError } = await supabase
+      .from('scenario_investments')
+      .select('investment_id')
       .eq('scenario_id', props.scenarioId)
 
-    if (relationsError) throw relationsError
+    if (siError) throw siError
 
-    // Build map of selected extra costs
-    selectedExtraCosts.value = new Map(
-      (relationsData || []).map(rel => [rel.extra_cost_id, rel])
-    )
+    const investmentIds = (siData || []).map(si => si.investment_id)
+
+    if (investmentIds.length === 0) {
+      scenarioInvestments.value = []
+      loading.value = false
+      return
+    }
+
+    // Load full investment objects
+    const { data: investmentsData, error: investmentsError } = await supabase
+      .from('investments')
+      .select('id, persist_name, name, name_translations')
+      .in('id', investmentIds)
+      .order('name')
+
+    if (investmentsError) throw investmentsError
+    scenarioInvestments.value = investmentsData || []
 
     // Calculate total price
     await calculateTotalPrice()
@@ -319,16 +318,20 @@ const calculateTotalPrice = async () => {
       return sum + (c.quantity * c.price_snapshot * (1 + rate))
     }, 0)
 
-    // Get extra costs
-    const { data: extras, error: extraError } = await supabase
-      .from('extra_cost_relations')
-      .select('quantity, snapshot_price')
+    // Get extra costs from scenario_extra_costs with prices
+    const { data: scenarioExtras, error: extraError } = await supabase
+      .from('scenario_extra_costs')
+      .select('extra_cost_id, quantity, extra_costs(price)')
       .eq('scenario_id', props.scenarioId)
 
     if (extraError) throw extraError
 
-    const extraTotal = (extras || []).reduce((sum: number, e: any) => {
-      return sum + (e.quantity * e.snapshot_price * (1 + rate))
+    // Calculate extra costs total
+    const extraTotal = (scenarioExtras || []).reduce((sum: number, se: any) => {
+      if (se.extra_costs?.price) {
+        return sum + (se.quantity * se.extra_costs.price * (1 + rate))
+      }
+      return sum
     }, 0)
 
     const implementationFee = mainTotal + extraTotal
@@ -359,34 +362,21 @@ const calculateTotalPrice = async () => {
   }
 }
 
-// Check if extra cost is selected
-const isExtraCostSelected = (extraCostId: string): boolean => {
-  return selectedExtraCosts.value.has(extraCostId)
-}
-
-// Get comment for extra cost
-const getExtraCostComment = (extraCostId: string): string => {
-  return selectedExtraCosts.value.get(extraCostId)?.comment || ''
-}
-
-// Handle extra cost toggle
-const handleExtraCostToggle = (extraCostId: string, enabled: boolean) => {
-  if (enabled) {
-    selectedExtraCosts.value.set(extraCostId, {
-      extra_cost_id: extraCostId,
-      comment: null
-    })
+// Investment accordion helper functions
+const toggleInvestmentAccordion = (investmentId: string) => {
+  if (openAccordions.value.has(investmentId)) {
+    openAccordions.value.delete(investmentId)
   } else {
-    selectedExtraCosts.value.delete(extraCostId)
+    openAccordions.value.add(investmentId)
   }
 }
 
-// Handle comment change
-const handleCommentChange = (extraCostId: string, comment: string) => {
-  const relation = selectedExtraCosts.value.get(extraCostId)
-  if (relation) {
-    relation.comment = comment
-  }
+const isInvestmentAccordionOpen = (investmentId: string): boolean => {
+  return openAccordions.value.has(investmentId)
+}
+
+const getInvestmentName = (investment: Investment): string => {
+  return translate(investment.name_translations, investment.name)
 }
 
 // Handle price color button clicks
@@ -427,32 +417,7 @@ const handleSave = async () => {
 
     if (scenarioError) throw scenarioError
 
-    // Delete all existing relations for this scenario
-    const { error: deleteError } = await supabase
-      .from('extra_cost_relations')
-      .delete()
-      .eq('scenario_id', props.scenarioId)
-
-    if (deleteError) throw deleteError
-
-    // Insert new relations
-    if (selectedExtraCosts.value.size > 0) {
-      const relationsToInsert = Array.from(selectedExtraCosts.value.entries()).map(
-        ([extraCostId, relation]) => ({
-          scenario_id: props.scenarioId,
-          extra_cost_id: extraCostId,
-          comment: relation.comment || null,
-          quantity: 1,
-          snapshot_price: extraCosts.value.find(ec => ec.id === extraCostId)?.price || 0
-        })
-      )
-
-      const { error: insertError } = await supabase
-        .from('extra_cost_relations')
-        .insert(relationsToInsert)
-
-      if (insertError) throw insertError
-    }
+    // Note: Extra costs are saved by the child SurveyOfferContractInvestmentExtraCosts components
 
     // Emit commission changed event
     emit('commission-changed', commissionRate.value)

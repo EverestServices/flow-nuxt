@@ -16,6 +16,19 @@
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-ruler" class="w-5 h-5" />
             <span>{{ $t('survey.consultation.systemDesign') }}</span>
+            <!-- Mode Badge -->
+            <span
+              v-if="isConsultantModeActive"
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+            >
+              {{ $t('survey.header.consultantMode') }}
+            </span>
+            <span
+              v-else
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+            >
+              {{ $t('survey.header.graphicMode') }}
+            </span>
           </div>
           <UButton
             icon="i-lucide-chevron-left"
@@ -26,8 +39,8 @@
           />
         </div>
         <div class="flex-1 overflow-auto">
-          <!-- Action Buttons -->
-          <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+          <!-- Action Buttons (Hidden in Consultant Mode) -->
+          <div v-if="!isConsultantModeActive" class="p-4 border-b border-gray-200 dark:border-gray-700 flex gap-2">
             <!-- AI Scenarios button -->
             <UIButtonEnhanced
               variant="primary"
@@ -185,7 +198,17 @@
     <!-- System Visualization Column - Center (Full Width Background) -->
     <div class="w-full flex flex-col">
       <div class="flex-1 p-4 flex items-center justify-center overflow-auto">
-        <div class="w-full h-full flex items-center justify-center">
+        <div class="w-full h-full flex items-center justify-center relative">
+          <!-- Play Button - Top Center -->
+          <button
+            v-if="hasHeatPumpInvestment || hasSolarPanelInvestment"
+            @click="replayAnimations"
+            class="absolute top-4 left-1/2 -translate-x-1/2 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20 rounded-full p-3 hover:bg-white/90 dark:hover:bg-gray-700/90 transition-all shadow-lg z-30 flex cursor-pointer"
+            :title="$t('survey.consultation.replayAnimation')"
+          >
+            <UIcon name="i-lucide-play" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </button>
+
           <div class="relative max-w-2xl max-h-full">
             <!-- Background House Image -->
             <img
@@ -199,7 +222,8 @@
               <!-- Heat Pump Animation -->
               <img
                 v-if="hasHeatPumpInvestment"
-                src="/images/heatpump_anim.gif"
+                :src="`/images/heatpump_30fps.webp?t=${animationTimestamp}`"
+                :key="`heatpump-${animationTimestamp}`"
                 alt="Heat Pump Animation"
                 class="absolute inset-0 w-full h-full object-contain z-20"
               />
@@ -207,7 +231,8 @@
               <!-- Solar Panel Animation -->
               <img
                 v-if="hasSolarPanelInvestment"
-                src="/images/solarpanel_anim.gif"
+                :src="`/images/solarpanel_30fps.webp?t=${animationTimestamp}`"
+                :key="`solarpanel-${animationTimestamp}`"
                 alt="Solar Panel Animation"
                 class="absolute inset-0 w-full h-full object-contain z-10"
               />
@@ -233,6 +258,19 @@
           <div class="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
             <UIcon name="i-lucide-message-circle" class="w-5 h-5" />
             <span>{{ $t('survey.consultation.consultation') }}</span>
+            <!-- Mode Badge -->
+            <span
+              v-if="isConsultantModeActive"
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+            >
+              {{ $t('survey.header.consultantMode') }}
+            </span>
+            <span
+              v-else
+              class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+            >
+              {{ $t('survey.header.graphicMode') }}
+            </span>
           </div>
           <UButton
             icon="i-lucide-chevron-right"
@@ -293,6 +331,7 @@
                 <SurveyConsultationData
                   :survey-id="surveyId"
                   :show-return-time="showReturnTime"
+                  :is-consultant-mode-active="isConsultantModeActive"
                 />
               </div>
             </div>
@@ -342,42 +381,12 @@
                   :survey-id="surveyId"
                   :scenario-id="activeScenario.id"
                   :commission-rate="commissionRate"
+                  :ofp-calculation="currentOfpCalculation"
                 />
               </div>
             </div>
           </div>
 
-          <!-- OFP Calculation Accordion - Only for OFP-relevant investments -->
-          <div v-if="activeScenario && hasOfpInvestments" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <button
-              type="button"
-              class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="ofpCalculationOpen = !ofpCalculationOpen"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-calculator" class="w-4 h-4" />
-                <span>OFP Kalkuláció</span>
-              </div>
-              <UIcon
-                :name="ofpCalculationOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                class="w-4 h-4"
-              />
-            </button>
-            <div
-              v-show="ofpCalculationOpen"
-              class="border-t border-gray-200 dark:border-gray-700"
-            >
-              <div class="p-3">
-                <!-- OFP Calculation Content -->
-                <ScenarioOfpCalculation
-                  v-if="activeScenario"
-                  :scenario-id="activeScenario.id"
-                  :ofp-calculation="currentOfpCalculation"
-                  @calculate="handleOfpCalculate"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </Transition>
@@ -429,8 +438,6 @@ import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useSubsidies } from '~/composables/useSubsidies'
-import { useOfpCalculation } from '~/composables/useOfpCalculation'
-import { useExternalApiKeys } from '~/composables/useExternalApiKeys'
 import type { EligibilityConditions } from '~/types/subsidy'
 
 const { t } = useI18n()
@@ -439,9 +446,12 @@ interface Props {
   surveyId: string
   systemDesignOpen: boolean
   consultationOpen: boolean
+  isConsultantModeActive?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  isConsultantModeActive: false
+})
 
 const emit = defineEmits<{
   'update:system-design-open': [value: boolean]
@@ -461,8 +471,6 @@ const {
   eligibilityConditions,
   loading: subsidiesLoading
 } = useSubsidies()
-const { calculateOfp, loading: ofpLoading, error: ofpError } = useOfpCalculation()
-const { getOfpApiKey, getUserEmail, hasOfpApiKey } = useExternalApiKeys()
 
 // Check if this is an OFP survey
 const isOfpSurvey = ref(false)
@@ -472,7 +480,6 @@ const subsidyOpen = ref(false)
 const householdDataOpen = ref(false)
 const consultationDataOpen = ref(false)
 const contractDetailsOpen = ref(false)
-const ofpCalculationOpen = ref(false)
 
 // Panel widths - with localStorage persistence
 const STORAGE_KEY_SYSTEM_DESIGN = 'surveyConsultation.systemDesignWidth'
@@ -580,6 +587,9 @@ const showFinancingModal = ref(false)
 const showReturnTime = ref(true)
 const commissionRate = ref(0.12) // Default 12%
 
+// Animation timestamp for replaying GIFs
+const animationTimestamp = ref(Date.now())
+
 // Computed
 const activeScenario = computed(() => scenariosStore.activeScenario)
 const hasScenarios = computed(() => scenariosStore.scenarios.length > 0)
@@ -647,14 +657,6 @@ const hasSolarPanelInvestment = computed(() => {
   })
 })
 
-// Check if active scenario has any OFP-relevant investments
-const hasOfpInvestments = computed(() => {
-  return hasFacadeInsulationInvestment.value ||
-    hasAtticFloorInsulationInvestment.value ||
-    hasWindowsInvestment.value ||
-    hasHeatPumpInvestment.value
-})
-
 // Get current scenario's OFP calculation
 const currentOfpCalculation = computed(() => {
   if (!activeScenario.value) return null
@@ -710,6 +712,11 @@ onBeforeUnmount(() => {
 })
 
 // Methods
+const replayAnimations = () => {
+  // Update timestamp to force GIF reload and replay from start
+  animationTimestamp.value = Date.now()
+}
+
 const handleSystemDesignToggle = (isOpen: boolean) => {
   emit('update:system-design-open', isOpen)
 }
@@ -755,55 +762,6 @@ const handleFinancingSaved = () => {
 
 const handleCommissionChanged = (rate: number) => {
   commissionRate.value = rate
-}
-
-// Handle OFP calculation
-const handleOfpCalculate = async () => {
-  if (!activeScenario.value) return
-
-  const toast = useToast()
-
-  // Get API key from user profile
-  const apiKey = await getOfpApiKey()
-  const userEmail = getUserEmail()
-
-  if (!apiKey) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'Az OFP API key nincs beállítva. Kérjük, állítsa be a profil beállításokban.',
-      color: 'yellow',
-    })
-    return
-  }
-
-  if (!userEmail) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'Felhasználói email nem található.',
-      color: 'red',
-    })
-    return
-  }
-
-  // Call OFP calculation
-  const result = await calculateOfp(activeScenario.value.id, apiKey, userEmail)
-
-  if (result) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'A kalkuláció sikeresen elkészült.',
-      color: 'green',
-    })
-
-    // Refresh scenario data to get updated ofp_calculation
-    await scenariosStore.loadScenarios(props.surveyId)
-  } else if (ofpError.value) {
-    toast.add({
-      title: 'OFP Kalkuláció hiba',
-      description: ofpError.value,
-      color: 'red',
-    })
-  }
 }
 
 // Load commission rate when active scenario changes
