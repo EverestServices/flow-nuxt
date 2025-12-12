@@ -381,42 +381,12 @@
                   :survey-id="surveyId"
                   :scenario-id="activeScenario.id"
                   :commission-rate="commissionRate"
+                  :ofp-calculation="currentOfpCalculation"
                 />
               </div>
             </div>
           </div>
 
-          <!-- OFP Calculation Accordion - Only for OFP-relevant investments -->
-          <div v-if="activeScenario && hasOfpInvestments" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <button
-              type="button"
-              class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="ofpCalculationOpen = !ofpCalculationOpen"
-            >
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-calculator" class="w-4 h-4" />
-                <span>OFP Kalkuláció</span>
-              </div>
-              <UIcon
-                :name="ofpCalculationOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                class="w-4 h-4"
-              />
-            </button>
-            <div
-              v-show="ofpCalculationOpen"
-              class="border-t border-gray-200 dark:border-gray-700"
-            >
-              <div class="p-3">
-                <!-- OFP Calculation Content -->
-                <ScenarioOfpCalculation
-                  v-if="activeScenario"
-                  :scenario-id="activeScenario.id"
-                  :ofp-calculation="currentOfpCalculation"
-                  @calculate="handleOfpCalculate"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </Transition>
@@ -468,8 +438,6 @@ import { useI18n } from 'vue-i18n'
 import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useSubsidies } from '~/composables/useSubsidies'
-import { useOfpCalculation } from '~/composables/useOfpCalculation'
-import { useExternalApiKeys } from '~/composables/useExternalApiKeys'
 import type { EligibilityConditions } from '~/types/subsidy'
 
 const { t } = useI18n()
@@ -503,8 +471,6 @@ const {
   eligibilityConditions,
   loading: subsidiesLoading
 } = useSubsidies()
-const { calculateOfp, loading: ofpLoading, error: ofpError } = useOfpCalculation()
-const { getOfpApiKey, getUserEmail, hasOfpApiKey } = useExternalApiKeys()
 
 // Check if this is an OFP survey
 const isOfpSurvey = ref(false)
@@ -514,7 +480,6 @@ const subsidyOpen = ref(false)
 const householdDataOpen = ref(false)
 const consultationDataOpen = ref(false)
 const contractDetailsOpen = ref(false)
-const ofpCalculationOpen = ref(false)
 
 // Panel widths - with localStorage persistence
 const STORAGE_KEY_SYSTEM_DESIGN = 'surveyConsultation.systemDesignWidth'
@@ -692,14 +657,6 @@ const hasSolarPanelInvestment = computed(() => {
   })
 })
 
-// Check if active scenario has any OFP-relevant investments
-const hasOfpInvestments = computed(() => {
-  return hasFacadeInsulationInvestment.value ||
-    hasAtticFloorInsulationInvestment.value ||
-    hasWindowsInvestment.value ||
-    hasHeatPumpInvestment.value
-})
-
 // Get current scenario's OFP calculation
 const currentOfpCalculation = computed(() => {
   if (!activeScenario.value) return null
@@ -805,55 +762,6 @@ const handleFinancingSaved = () => {
 
 const handleCommissionChanged = (rate: number) => {
   commissionRate.value = rate
-}
-
-// Handle OFP calculation
-const handleOfpCalculate = async () => {
-  if (!activeScenario.value) return
-
-  const toast = useToast()
-
-  // Get API key from user profile
-  const apiKey = await getOfpApiKey()
-  const userEmail = getUserEmail()
-
-  if (!apiKey) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'Az OFP API key nincs beállítva. Kérjük, állítsa be a profil beállításokban.',
-      color: 'yellow',
-    })
-    return
-  }
-
-  if (!userEmail) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'Felhasználói email nem található.',
-      color: 'red',
-    })
-    return
-  }
-
-  // Call OFP calculation
-  const result = await calculateOfp(activeScenario.value.id, apiKey, userEmail)
-
-  if (result) {
-    toast.add({
-      title: 'OFP Kalkuláció',
-      description: 'A kalkuláció sikeresen elkészült.',
-      color: 'green',
-    })
-
-    // Refresh scenario data to get updated ofp_calculation
-    await scenariosStore.loadScenarios(props.surveyId)
-  } else if (ofpError.value) {
-    toast.add({
-      title: 'OFP Kalkuláció hiba',
-      description: ofpError.value,
-      color: 'red',
-    })
-  }
 }
 
 // Load commission rate when active scenario changes

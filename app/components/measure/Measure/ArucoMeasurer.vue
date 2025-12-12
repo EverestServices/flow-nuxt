@@ -275,6 +275,98 @@
           </select>
         </div>
 
+        <!-- Readonly calculated fields -->
+        <div class="mb-3 space-y-2">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Fal hossza (m)</label>
+            <input
+              type="text"
+              :value="wall.wall_length ? wall.wall_length.toFixed(2) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Fal magassága (m)</label>
+            <input
+              type="text"
+              :value="wall.wall_height ? wall.wall_height.toFixed(2) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Lábazat magassága (cm)</label>
+            <input
+              type="text"
+              :value="wall.foundation_height ? wall.foundation_height.toFixed(0) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        <!-- Editable wall properties -->
+        <div class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Fal szerkezete</label>
+          <select
+            :value="wall.wall_structure || ''"
+            @change="onWallStructureChange(($event.target as HTMLSelectElement).value)"
+            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+          >
+            <option value="">—</option>
+            <option v-for="opt in wallStructureOptions" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+        </div>
+
+        <div v-if="wall.wall_structure === 'Egyéb'" class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Fal szerkezetének pontos típusa</label>
+          <input
+            type="text"
+            :value="wallStructureOther"
+            @input="onWallStructureOtherChange(($event.target as HTMLInputElement).value)"
+            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            placeholder="Pl.: Fahéj tégla"
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Fal vastagsága (cm)</label>
+          <input
+            type="number"
+            :value="wall.wall_thickness || ''"
+            @input="onWallThicknessChange(Number(($event.target as HTMLInputElement).value))"
+            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            placeholder="Pl.: 38"
+            min="0"
+            step="1"
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Lábazat típusa</label>
+          <select
+            :value="wall.foundation_type || ''"
+            @change="onFoundationTypeChange(($event.target as HTMLSelectElement).value)"
+            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+          >
+            <option value="">—</option>
+            <option v-for="opt in foundationTypeOptions" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Ki/beugrás mérete (cm)</label>
+          <input
+            type="number"
+            :value="wall.protrusion_size || ''"
+            @input="onProtrusionSizeChange(Number(($event.target as HTMLInputElement).value))"
+            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            placeholder="Pl.: 10"
+            step="1"
+          />
+        </div>
+
         <PolygonList
           v-if="imageRef"
           :polygons="polygons as any"
@@ -590,6 +682,72 @@ const wallOrientation = computed<Orientation | null>({
     }
   },
 });
+
+// Wall structure and foundation options
+const wallStructureOptions = [
+  "Vegyes",
+  "Tömör tégla (kisméretű vagy nagyméretű)",
+  "Mészhomok tégla",
+  "Kevéslyukú tégla",
+  "Soklyukú tégla",
+  "Tégla falazóblokk (1950-1980-ig)",
+  "Tégla falazóblokk (1980-1990-ig)",
+  "Tégla falazóblokk (1990 után)",
+  "Gázszilikát (1990 előtti pórusbeton)",
+  "Ytong (1990 utáni pórusbeton)",
+  "Vasbeton (monolit)",
+  "Vasbeton panel",
+  "Szalma",
+  "Vályog",
+  "Könnyűszerkezetes",
+  "Egyéb"
+];
+
+const foundationTypeOptions = [
+  "Pozitív",
+  "Negatív"
+];
+
+const wallStructureOther = ref<string>('');
+
+// Wall property change handlers
+const onWallStructureChange = (val: string) => {
+  if (wall.value) {
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, wall_structure: val || undefined });
+    // Trigger sync to survey
+    syncWallsToSurvey(surveyId.value).catch(console.error);
+  }
+};
+
+const onWallStructureOtherChange = (val: string) => {
+  wallStructureOther.value = val;
+  // Note: wall_structure_other is stored in survey, not in Wall model
+  // We'll handle this during sync
+};
+
+const onWallThicknessChange = (val: number) => {
+  if (wall.value && Number.isFinite(val) && val > 0) {
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, wall_thickness: val });
+    // Trigger sync to survey
+    syncWallsToSurvey(surveyId.value).catch(console.error);
+  }
+};
+
+const onFoundationTypeChange = (val: string) => {
+  if (wall.value) {
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, foundation_type: val || undefined });
+    // Trigger sync to survey
+    syncWallsToSurvey(surveyId.value).catch(console.error);
+  }
+};
+
+const onProtrusionSizeChange = (val: number) => {
+  if (wall.value && Number.isFinite(val)) {
+    store.setWall(surveyId.value, wall.value.id, { ...wall.value, protrusion_size: val });
+    // Trigger sync to survey
+    syncWallsToSurvey(surveyId.value).catch(console.error);
+  }
+};
 const editingWallName = ref<boolean>(false);
 const startEditingWallName = () => {
   editingWallName.value = true;
@@ -695,6 +853,42 @@ watch(polygons, (list) => {
 watch(manualActive, (v) => {
   if (v) setMode('edit');
 });
+
+// Auto-recalculate wall dimensions when FACADE or WALL_PLINTH polygons change
+let dimensionSyncTimer: NodeJS.Timeout | null = null;
+let initialSyncDone = ref(false);
+watch(
+  () => wall.value?.polygons,
+  (newPolygons, oldPolygons) => {
+    // Check if there are any FACADE or WALL_PLINTH polygons
+    const hasFacadeOrPlinth = newPolygons?.some(
+      p => (p.type === SurfaceType.FACADE || p.type === SurfaceType.WALL_PLINTH) && p.closed
+    );
+
+    if (!hasFacadeOrPlinth && initialSyncDone.value) return;
+
+    // On initial load, sync immediately to populate readonly fields
+    if (!initialSyncDone.value && hasFacadeOrPlinth) {
+      initialSyncDone.value = true;
+      // Small delay to ensure image is loaded
+      setTimeout(() => {
+        syncWallsToSurvey(surveyId.value).catch(console.error);
+      }, 100);
+      return;
+    }
+
+    // Skip if no actual change (same reference) after initial sync
+    if (newPolygons === oldPolygons && initialSyncDone.value) return;
+
+    // Debounce the sync to avoid too frequent updates
+    if (dimensionSyncTimer) clearTimeout(dimensionSyncTimer);
+    dimensionSyncTimer = setTimeout(() => {
+      syncWallsToSurvey(surveyId.value).catch(console.error);
+    }, 500);
+  },
+  { deep: true, immediate: true }
+);
+
 const draggingPoint = ref<{
   polygonId?: string;
   index: number;

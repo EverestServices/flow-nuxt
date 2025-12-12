@@ -127,7 +127,7 @@
             {{ t('survey.consultationData.estimationAccuracy') }}
           </label>
           <span class="text-sm font-semibold text-primary-600 dark:text-primary-400">
-            {{ formatPercentage(estimationAccuracy) }}
+            {{ formatROIPercentage(estimationAccuracy) }}
           </span>
         </div>
 
@@ -142,10 +142,285 @@
             class="w-full h-5 bg-gray-200 rounded-lg appearance-none cursor-not-allowed dark:bg-gray-700"
             :style="{ background: estimationAccuracyGradient }"
           />
+        </div>
+      </div>
 
-          <div class="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-            <span>{{ answeredRequiredQuestions }} / {{ totalRequiredQuestions }} {{ t('survey.consultationData.questionsAnswered') }}</span>
-            <span>{{ formatPercentage(estimationAccuracy) }}</span>
+      <!-- Divider -->
+      <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+      <!-- Energy Savings (GJ/kWh) - Individual Investment Accordions -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
+          Energia megtakarítás (GJ/kWh)
+        </h4>
+
+        <!-- Loading state -->
+        <div v-if="energyLoading" class="flex items-center justify-center py-4">
+          <UIcon name="i-lucide-loader-2" class="w-5 h-5 animate-spin text-gray-400" />
+        </div>
+
+        <!-- Energy savings content -->
+        <template v-else-if="energySavingsResult">
+          <!-- Per-investment accordions -->
+          <div v-if="Object.keys(energySavingsResult.perInvestment).length > 0" class="space-y-2">
+            <div
+              v-for="(data, key) in energySavingsResult.perInvestment"
+              :key="key"
+              class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+            >
+              <button
+                type="button"
+                class="flex items-center justify-between w-full py-2 px-3 text-sm font-medium text-left text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="() => {
+                  investmentAccordionStates[key] = !investmentAccordionStates[key]
+                }"
+              >
+                <div class="flex items-center gap-2">
+                  <UIcon :name="getInvestmentIcon(key)" class="w-4 h-4" />
+                  <span>{{ getInvestmentLabel(key) }}</span>
+                  <span class="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                    {{ data.savingsPercentage.toFixed(1) }}%
+                  </span>
+                </div>
+                <UIcon
+                  :name="investmentAccordionStates[key] ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="w-4 h-4"
+                />
+              </button>
+              <div
+                v-show="investmentAccordionStates[key]"
+                class="border-t border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900"
+              >
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span class="text-gray-600 dark:text-gray-400">GJ/év:</span>
+                    <span class="ml-1 font-semibold text-gray-900 dark:text-white">
+                      {{ formatGJ(data.annualHeatingSavingsGJ) }}
+                    </span>
+                  </div>
+                  <div>
+                    <span class="text-gray-600 dark:text-gray-400">kWh/év:</span>
+                    <span class="ml-1 font-semibold text-gray-900 dark:text-white">
+                      {{ formatKWh(data.annualHeatingSavingsKWh) }}
+                    </span>
+                  </div>
+                  <div v-if="data.actualArea">
+                    <span class="text-gray-600 dark:text-gray-400">Terület:</span>
+                    <span class="ml-1 font-semibold text-gray-900 dark:text-white">
+                      {{ data.actualArea }} m²
+                    </span>
+                  </div>
+                  <div v-if="data.capacity">
+                    <span class="text-gray-600 dark:text-gray-400">Kapacitás:</span>
+                    <span class="ml-1 font-semibold text-gray-900 dark:text-white">
+                      {{ data.capacity }} kW
+                    </span>
+                  </div>
+                  <div v-if="getOfpCostForInvestment(key)" class="col-span-2">
+                    <span class="text-gray-600 dark:text-gray-400">Bruttó költség:</span>
+                    <span class="ml-1 font-semibold text-gray-900 dark:text-white">
+                      {{ formatOfpCurrency(getOfpCostForInvestment(key)!) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No investments message -->
+          <div v-else class="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-center">
+            <UIcon name="i-lucide-info" class="w-5 h-5 text-gray-400 mx-auto mb-2" />
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Nincs számítható beruházás. Válasszon beruházásokat és adja meg a mennyiségeket.
+            </p>
+          </div>
+
+          <!-- Calculate button -->
+          <UButton
+            v-if="Object.keys(energySavingsResult.perInvestment).length > 0"
+            color="primary"
+            size="sm"
+            variant="outline"
+            @click="calculateEnergySavingsForScenario"
+            :loading="energyLoading"
+            class="w-full"
+          >
+            <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
+            Újraszámolás
+          </UButton>
+        </template>
+
+        <!-- Error state -->
+        <div v-else-if="energyError" class="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+          <div class="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+            <UIcon name="i-lucide-alert-triangle" class="w-5 h-5" />
+            <span>{{ energyError }}</span>
+          </div>
+        </div>
+
+        <!-- Initial state - calculate button -->
+        <div v-else class="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg text-center">
+          <UButton
+            color="primary"
+            @click="calculateEnergySavingsForScenario"
+            :loading="energyLoading"
+          >
+            <UIcon name="i-lucide-calculator" class="w-4 h-4 mr-2" />
+            Energia megtakarítás számítása
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+      <!-- KEHOP Summary Card -->
+      <div v-if="energySavingsResult">
+        <div
+          class="p-4 rounded-lg border-2"
+          :class="energySavingsResult.kehopSummary.meets30Percent
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-500'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-500'"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-sm font-semibold"
+              :class="energySavingsResult.kehopSummary.meets30Percent
+                ? 'text-green-900 dark:text-green-100'
+                : 'text-red-900 dark:text-red-100'"
+            >
+              KEHOP Plusz pályázat összesítése
+            </h5>
+            <UIcon
+              :name="energySavingsResult.kehopSummary.meets30Percent
+                ? 'i-lucide-check-circle'
+                : 'i-lucide-alert-circle'"
+              class="w-5 h-5"
+              :class="energySavingsResult.kehopSummary.meets30Percent
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-red-600 dark:text-red-400'"
+            />
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div>
+              <div class="text-xs"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'"
+              >
+                Összesen GJ
+              </div>
+              <div class="text-sm font-bold"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-900 dark:text-green-100'
+                  : 'text-red-900 dark:text-red-100'"
+              >
+                {{ formatGJ(energySavingsResult.kehopSummary.totalGJ) }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-xs"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'"
+              >
+                Összesen kWh
+              </div>
+              <div class="text-sm font-bold"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-900 dark:text-green-100'
+                  : 'text-red-900 dark:text-red-100'"
+              >
+                {{ formatKWh(energySavingsResult.kehopSummary.totalKWh) }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-xs"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'"
+              >
+                Összesen %
+              </div>
+              <div class="text-sm font-bold"
+                :class="energySavingsResult.kehopSummary.meets30Percent
+                  ? 'text-green-900 dark:text-green-100'
+                  : 'text-red-900 dark:text-red-100'"
+              >
+                {{ formatPercentage(energySavingsResult.kehopSummary.totalPercentage) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs"
+            :class="energySavingsResult.kehopSummary.meets30Percent
+              ? 'text-green-700 dark:text-green-300'
+              : 'text-red-700 dark:text-red-300'"
+          >
+            <template v-if="energySavingsResult.kehopSummary.meets30Percent">
+              ✓ A 30%-os KEHOP követelmény teljesül
+            </template>
+            <template v-else>
+              ✗ A 30%-os KEHOP követelmény nem teljesül ({{ (30 - energySavingsResult.kehopSummary.totalPercentage).toFixed(1) }}% hiányzik)
+            </template>
+          </div>
+        </div>
+
+        <!-- Warning if architectural calculation was used (NOT RECOMMENDED) -->
+        <div v-if="energySavingsResult.warnings && energySavingsResult.warnings.length > 0" class="mt-3">
+          <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-500 rounded-lg">
+            <div class="flex items-start gap-3">
+              <UIcon name="i-lucide-alert-triangle" class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div class="flex-1">
+                <h6 class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+                  ⚠️ Figyelmeztetés: Pontatlan számítás
+                </h6>
+                <ul class="space-y-2">
+                  <li
+                    v-for="(warning, index) in energySavingsResult.warnings"
+                    :key="index"
+                    class="text-xs text-yellow-800 dark:text-yellow-200"
+                  >
+                    {{ warning }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+      <!-- OFP Summary Box -->
+      <div v-if="ofpCalculation">
+        <div class="grid grid-cols-2 gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Teljes beruházás (bruttó)</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ formatOfpCurrency(ofpCalculation.totals.total_investment_gross) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Önerő ({{ (ofpCalculation.percentage * 0.143).toFixed(1) }}%)</p>
+            <p class="text-lg font-bold text-orange-600 dark:text-orange-400">
+              {{ formatOfpCurrency(ofpCalculation.totals.total_self_strength) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Vissza nem térítendő ({{ ofpCalculation.percentage }}%)</p>
+            <p class="text-lg font-bold text-green-600 dark:text-green-400">
+              {{ formatOfpCurrency(ofpCalculation.totals.total_non_refundable) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Kamatmentes kölcsön</p>
+            <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
+              {{ formatOfpCurrency(ofpCalculation.totals.total_interest_free_loan) }}
+            </p>
           </div>
         </div>
       </div>
@@ -246,6 +521,10 @@ import { useScenariosStore } from '~/stores/scenarios'
 import { useSurveyInvestmentsStore } from '~/stores/surveyInvestments'
 import { useROICalculations } from '~/composables/useROICalculations'
 import type { ROIData } from '~/composables/useROICalculations'
+import { useEnergyCalculations } from '~/composables/useEnergyCalculations'
+import type { EnergySavingsResult } from '~/composables/useEnergyCalculations'
+import { useOfpCalculation } from '~/composables/useOfpCalculation'
+import type { OfpCalculationResult } from '~/composables/useOfpCalculation'
 
 const { t } = useI18n()
 
@@ -265,9 +544,32 @@ const investmentsStore = useSurveyInvestmentsStore()
 const {
   calculateROI,
   formatCurrency,
-  formatPercentage,
+  formatPercentage: formatROIPercentage,
   formatYears
 } = useROICalculations()
+
+const {
+  calculateEnergySavings,
+  getEnergySavings,
+  formatGJ,
+  formatKWh,
+  formatPercentage,
+  getInvestmentLabel,
+  getInvestmentIcon,
+  getMissingDataMessage
+} = useEnergyCalculations()
+
+const { formatCurrency: formatOfpCurrency } = useOfpCalculation()
+
+// Energy savings state
+const energyLoading = ref(false)
+const energyError = ref<string | null>(null)
+const energySavingsResult = ref<EnergySavingsResult | null>(null)
+const energySavingsOpen = ref(true) // Collapsible state
+const investmentAccordionStates = ref<Record<string, boolean>>({})
+
+// OFP calculation state
+const ofpCalculation = ref<OfpCalculationResult | null>(null)
 
 const loading = ref(false)
 const inflationRate = ref(0.02) // 2% default
@@ -297,12 +599,37 @@ const investmentNames = {
   heatPump: 'Hőszivattyú'
 }
 
-// OFP-based energy efficiency improvements (as decimal: 20.6% = 0.206)
-const investmentImprovements = {
-  facadeInsulation: 0.206,
-  roofInsulation: 0.171,
-  windows: 0.001,
-  heatPump: 0
+// Energy efficiency improvements from database (as decimal: 10% = 0.10)
+const investmentImprovements = ref({
+  facadeInsulation: 0.10,
+  roofInsulation: 0.08,
+  windows: 0.05,
+  heatPump: 0.15
+})
+
+// Load actual energy efficiency values from available investments
+const loadInvestmentImprovements = () => {
+  investmentsStore.availableInvestments.forEach(investment => {
+    if (investment.persist_name && investment.energy_efficiency_improvement) {
+      const key = investment.persist_name as keyof typeof investmentImprovements.value
+      if (key in investmentImprovements.value) {
+        investmentImprovements.value[key] = investment.energy_efficiency_improvement
+      }
+    }
+  })
+}
+
+// Update investment improvements from energy savings result
+const updateInvestmentImprovementsFromEnergySavings = () => {
+  if (!energySavingsResult.value?.perInvestment) return
+
+  for (const [key, data] of Object.entries(energySavingsResult.value.perInvestment)) {
+    const investmentKey = key as keyof typeof investmentImprovements.value
+    if (investmentKey in investmentImprovements.value) {
+      // Convert percentage (e.g., 24.0) to decimal (e.g., 0.24)
+      investmentImprovements.value[investmentKey] = data.savingsPercentage / 100
+    }
+  }
 }
 
 // Computed properties for each switch (required for USwitch v-model)
@@ -352,7 +679,7 @@ const enabledInvestmentsList = computed(() => {
   for (const [key, isEnabled] of Object.entries(investmentStates.value)) {
     if (isEnabled) {
       // Use OFP-based improvement values
-      const improvementValue = investmentImprovements[key as keyof typeof investmentImprovements] || 0
+      const improvementValue = investmentImprovements.value[key as keyof typeof investmentImprovements.value] || 0
       enabled.push({
         key,
         name: investmentNames[key as keyof typeof investmentNames],
@@ -501,7 +828,6 @@ const initializeInvestmentStates = () => {
 const handleInvestmentToggle = async (persistName: string, enabled: boolean) => {
   const activeScenarioId = scenariosStore.activeScenarioId
   if (!activeScenarioId) {
-    console.error('No active scenario')
     return
   }
 
@@ -547,6 +873,9 @@ const handleInvestmentToggle = async (persistName: string, enabled: boolean) => 
 
     // Reload scenarios to update the UI
     await scenariosStore.loadScenarios(props.surveyId)
+
+    // Recalculate energy savings after investment toggle
+    await calculateEnergySavingsForScenario()
   } catch (error) {
     console.error('Error toggling investment:', error)
     // TODO: Show error toast
@@ -592,10 +921,99 @@ const handleInflationChange = async (rate: number) => {
   await loadROIData()
 }
 
+// Calculate energy savings for the active scenario
+const calculateEnergySavingsForScenario = async () => {
+  const activeScenarioId = scenariosStore.activeScenarioId
+  if (!activeScenarioId) {
+    energyError.value = 'Nincs aktív szcenárió'
+    return
+  }
+
+  energyLoading.value = true
+  energyError.value = null
+
+  try {
+    const result = await calculateEnergySavings(props.surveyId, activeScenarioId)
+    if (result) {
+      energySavingsResult.value = result
+      // Update button percentages
+      updateInvestmentImprovementsFromEnergySavings()
+    } else {
+      energyError.value = 'Nem sikerült kiszámítani az energia megtakarítást'
+    }
+  } catch (error: any) {
+    energyError.value = error.message || 'Hiba történt a számítás során'
+  } finally {
+    energyLoading.value = false
+  }
+}
+
+// Load stored energy savings for the active scenario
+const loadEnergySavings = async () => {
+  const activeScenarioId = scenariosStore.activeScenarioId
+  if (!activeScenarioId) return
+
+  energyLoading.value = true
+  try {
+    const result = await getEnergySavings(activeScenarioId)
+    energySavingsResult.value = result
+    // Update button percentages
+    updateInvestmentImprovementsFromEnergySavings()
+  } catch (error: any) {
+    console.error('Failed to load energy savings:', error)
+  } finally {
+    energyLoading.value = false
+  }
+}
+
+// Load OFP calculation for the active scenario
+const loadOfpCalculation = async () => {
+  const activeScenarioId = scenariosStore.activeScenarioId
+  if (!activeScenarioId) return
+
+  try {
+    const supabase = useSupabaseClient()
+    const { data, error } = await supabase
+      .from('scenarios')
+      .select('ofp_calculation')
+      .eq('id', activeScenarioId)
+      .single()
+
+    if (error) throw error
+
+    ofpCalculation.value = data?.ofp_calculation || null
+  } catch (error: any) {
+    console.error('Failed to load OFP calculation:', error)
+    ofpCalculation.value = null
+  }
+}
+
+// Map OFP investment keys to energy savings keys
+const ofpKeyMap: Record<string, string> = {
+  'wall_insulation': 'facadeInsulation',
+  'roof_insulation': 'roofInsulation',
+  'window_replacement': 'windows',
+  'heat_pump': 'heatPump'
+}
+
+// Get OFP cost for an investment by energy savings key
+const getOfpCostForInvestment = (energySavingsKey: string): number | null => {
+  if (!ofpCalculation.value?.calculations) return null
+
+  // Find the OFP key that maps to this energy savings key
+  const ofpKey = Object.entries(ofpKeyMap).find(([_, value]) => value === energySavingsKey)?.[0]
+  if (!ofpKey) return null
+
+  const calculation = ofpCalculation.value.calculations[ofpKey]
+  return calculation?.total_cost_gross || null
+}
+
 // Watch for active scenario changes
 watch(() => scenariosStore.activeScenarioId, async () => {
   await loadROIData()
   initializeInvestmentStates()
+  await loadEnergySavings()
+  await loadOfpCalculation()
 })
 
 // Watch for consultant mode changes
@@ -607,8 +1025,11 @@ watch(() => props.isConsultantModeActive, () => {
 
 // Load data on mount
 onMounted(async () => {
+  loadInvestmentImprovements()
   await loadROIData()
   initializeInvestmentStates()
+  await loadEnergySavings()
+  await loadOfpCalculation()
 })
 </script>
 
