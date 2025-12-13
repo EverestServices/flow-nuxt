@@ -462,7 +462,8 @@ const handleImageChange = async (wall: Wall, image: WallImage | undefined, event
       console.log('Downloading processed image from ArUco API via proxy:', res.image_url);
       const processedImageBlob: Blob = await (async () => {
         const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 20000);
+        // Give the proxy more time to respond for large images
+        const t = setTimeout(() => controller.abort(), 60000);
         try {
           const r = await fetch('/api/proxy-image', {
             method: 'POST',
