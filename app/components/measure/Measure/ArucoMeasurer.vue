@@ -261,110 +261,113 @@
           <UBadge color="warning" size="xs">Kézi kijelölés</UBadge>
         </div>
 
-        
+        <!-- Fal adatok card -->
+        <div class="bg-base-100 p-4 rounded-2xl bg-white/80 dark:bg-black/80 shadow-inner mt-3 border border-white dark:border-black">
+          <h3 class="text-lg font-semibold mb-3 text-secondary">Fal adatok</h3>
 
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
-          <select
-            :value="wallOrientation || ''"
-            @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-          >
-            <option value="">—</option>
-            <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-        </div>
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
+            <select
+              :value="wallOrientation || ''"
+              @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            >
+              <option value="">—</option>
+              <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+          </div>
 
-        <!-- Readonly calculated fields -->
-        <div class="mb-3 space-y-2">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Fal hossza (m)</label>
+          <!-- Readonly calculated fields -->
+          <div class="mb-3 space-y-2">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Fal hossza (m)</label>
+              <input
+                type="text"
+                :value="wall.wall_length ? wall.wall_length.toFixed(2) : '—'"
+                readonly
+                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Fal magassága (m)</label>
+              <input
+                type="text"
+                :value="wall.wall_height ? wall.wall_height.toFixed(2) : '—'"
+                readonly
+                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Lábazat magassága (cm)</label>
+              <input
+                type="text"
+                :value="wall.foundation_height ? wall.foundation_height.toFixed(0) : '—'"
+                readonly
+                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <!-- Editable wall properties -->
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Fal szerkezete</label>
+            <select
+              :value="wall.wall_structure || ''"
+              @change="onWallStructureChange(($event.target as HTMLSelectElement).value)"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            >
+              <option value="">—</option>
+              <option v-for="opt in wallStructureOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+          </div>
+
+          <div v-if="wall.wall_structure === 'Egyéb'" class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Fal szerkezetének pontos típusa</label>
             <input
               type="text"
-              :value="wall.wall_length ? wall.wall_length.toFixed(2) : '—'"
-              readonly
-              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              :value="wallStructureOther"
+              @input="onWallStructureOtherChange(($event.target as HTMLInputElement).value)"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+              placeholder="Pl.: Fahéj tégla"
             />
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Fal magassága (m)</label>
+
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Fal vastagsága (cm)</label>
             <input
-              type="text"
-              :value="wall.wall_height ? wall.wall_height.toFixed(2) : '—'"
-              readonly
-              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              type="number"
+              :value="wall.wall_thickness || ''"
+              @input="onWallThicknessChange(Number(($event.target as HTMLInputElement).value))"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+              placeholder="Pl.: 38"
+              min="0"
+              step="1"
             />
           </div>
+
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Lábazat típusa</label>
+            <select
+              :value="wall.foundation_type || ''"
+              @change="onFoundationTypeChange(($event.target as HTMLSelectElement).value)"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+            >
+              <option value="">—</option>
+              <option v-for="opt in foundationTypeOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+          </div>
+
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Lábazat magassága (cm)</label>
+            <label class="block text-xs text-gray-500 mb-1">Ki/beugrás mérete (cm)</label>
             <input
-              type="text"
-              :value="wall.foundation_height ? wall.foundation_height.toFixed(0) : '—'"
-              readonly
-              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+              type="number"
+              :value="wall.protrusion_size || ''"
+              @input="onProtrusionSizeChange(Number(($event.target as HTMLInputElement).value))"
+              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
+              placeholder="Pl.: 10"
+              step="1"
             />
           </div>
-        </div>
-
-        <!-- Editable wall properties -->
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Fal szerkezete</label>
-          <select
-            :value="wall.wall_structure || ''"
-            @change="onWallStructureChange(($event.target as HTMLSelectElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-          >
-            <option value="">—</option>
-            <option v-for="opt in wallStructureOptions" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-        </div>
-
-        <div v-if="wall.wall_structure === 'Egyéb'" class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Fal szerkezetének pontos típusa</label>
-          <input
-            type="text"
-            :value="wallStructureOther"
-            @input="onWallStructureOtherChange(($event.target as HTMLInputElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-            placeholder="Pl.: Fahéj tégla"
-          />
-        </div>
-
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Fal vastagsága (cm)</label>
-          <input
-            type="number"
-            :value="wall.wall_thickness || ''"
-            @input="onWallThicknessChange(Number(($event.target as HTMLInputElement).value))"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-            placeholder="Pl.: 38"
-            min="0"
-            step="1"
-          />
-        </div>
-
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Lábazat típusa</label>
-          <select
-            :value="wall.foundation_type || ''"
-            @change="onFoundationTypeChange(($event.target as HTMLSelectElement).value)"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-          >
-            <option value="">—</option>
-            <option v-for="opt in foundationTypeOptions" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-        </div>
-
-        <div class="mb-3">
-          <label class="block text-xs text-gray-500 mb-1">Ki/beugrás mérete (cm)</label>
-          <input
-            type="number"
-            :value="wall.protrusion_size || ''"
-            @input="onProtrusionSizeChange(Number(($event.target as HTMLInputElement).value))"
-            class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-            placeholder="Pl.: 10"
-            step="1"
-          />
         </div>
 
         <PolygonList
