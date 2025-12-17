@@ -71,8 +71,10 @@ export function createModeManager(params: {
       refreshRectInputs()
     }
 
-    // Recalculate optimal zoom for the new mode and redraw
-    calculateOptimalZoom()
+    // Recalculate optimal zoom only for view and calibrate modes (keep current zoom for draw/edit)
+    if (mode === 'view' || mode === 'calibrate') {
+      calculateOptimalZoom()
+    }
     drawAllPolygons()
   }
 
