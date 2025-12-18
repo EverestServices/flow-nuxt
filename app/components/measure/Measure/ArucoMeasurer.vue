@@ -265,50 +265,16 @@
         <div class="bg-base-100 p-4 rounded-2xl bg-white/80 dark:bg-black/80 shadow-inner mt-3 border border-white dark:border-black">
           <h3 class="text-lg font-semibold mb-3 text-secondary">Fal adatok</h3>
 
+          <!-- Tájolás -->
           <div class="mb-3">
-            <label class="block text-xs text-gray-500 mb-1">Tájolás</label>
-            <select
-              :value="wallOrientation || ''"
-              @change="onOrientationChange(($event.target as HTMLSelectElement).value)"
-              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-            >
-              <option value="">—</option>
-              <option v-for="opt in orientationOptions" :key="opt" :value="opt">{{ opt }}</option>
-            </select>
+            <OrientationSelector
+              :model-value="wallOrientation || undefined"
+              label="Tájolás"
+              @update:model-value="onOrientationChange($event)"
+            />
           </div>
 
-          <!-- Readonly calculated fields -->
-          <div class="mb-3 space-y-2">
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Fal hossza (m)</label>
-              <input
-                type="text"
-                :value="wall.wall_length ? wall.wall_length.toFixed(2) : '—'"
-                readonly
-                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Fal magassága (m)</label>
-              <input
-                type="text"
-                :value="wall.wall_height ? wall.wall_height.toFixed(2) : '—'"
-                readonly
-                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Lábazat magassága (cm)</label>
-              <input
-                type="text"
-                :value="wall.foundation_height ? wall.foundation_height.toFixed(0) : '—'"
-                readonly
-                class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
-              />
-            </div>
-          </div>
-
-          <!-- Editable wall properties -->
+          <!-- Fal szerkezete -->
           <div class="mb-3">
             <label class="block text-xs text-gray-500 mb-1">Fal szerkezete</label>
             <select
@@ -332,6 +298,7 @@
             />
           </div>
 
+          <!-- Fal vastagsága (cm) -->
           <div class="mb-3">
             <label class="block text-xs text-gray-500 mb-1">Fal vastagsága (cm)</label>
             <input
@@ -345,19 +312,41 @@
             />
           </div>
 
+          <!-- Lábazat típusa -->
           <div class="mb-3">
             <label class="block text-xs text-gray-500 mb-1">Lábazat típusa</label>
-            <select
-              :value="wall.foundation_type || ''"
-              @change="onFoundationTypeChange(($event.target as HTMLSelectElement).value)"
-              class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
-            >
-              <option value="">—</option>
-              <option v-for="opt in foundationTypeOptions" :key="opt" :value="opt">{{ opt }}</option>
-            </select>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in foundationTypeOptionsWithIcons"
+                :key="option.value"
+                type="button"
+                class="px-4 py-3 flex flex-col items-center justify-center rounded-lg transition-all hover:scale-105 relative min-w-[100px]"
+                :class="[
+                  wall.foundation_type === option.value
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                ]"
+                @click="onFoundationTypeChange(option.value)"
+              >
+                <UIcon :name="option.icon" class="w-8 h-8 mb-1" />
+                <span class="text-sm font-medium">{{ option.label }}</span>
+              </button>
+            </div>
           </div>
 
-          <div>
+          <!-- Lábazat magassága (cm) - readonly - csak ha nem "Nincsen" -->
+          <div v-if="wall.foundation_type && wall.foundation_type !== 'Nincsen'" class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Lábazat magassága (cm)</label>
+            <input
+              type="text"
+              :value="wall.foundation_height ? wall.foundation_height.toFixed(0) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Ki/beugrás mérete (cm) - csak ha nem "Nincsen" -->
+          <div v-if="wall.foundation_type && wall.foundation_type !== 'Nincsen'" class="mb-3">
             <label class="block text-xs text-gray-500 mb-1">Ki/beugrás mérete (cm)</label>
             <input
               type="number"
@@ -366,6 +355,28 @@
               class="w-full h-8 rounded-md border border-base-300 bg-base-100 text-sm px-2"
               placeholder="Pl.: 10"
               step="1"
+            />
+          </div>
+
+          <!-- Fal hossza (m) - readonly -->
+          <div class="mb-3">
+            <label class="block text-xs text-gray-500 mb-1">Fal hossza (m)</label>
+            <input
+              type="text"
+              :value="wall.wall_length ? wall.wall_length.toFixed(2) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Fal magassága (m) - readonly -->
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Fal magassága (m)</label>
+            <input
+              type="text"
+              :value="wall.wall_height ? wall.wall_height.toFixed(2) : '—'"
+              readonly
+              class="w-full h-8 rounded-md border border-base-300 bg-base-200 text-sm px-2 cursor-not-allowed"
             />
           </div>
         </div>
@@ -532,6 +543,7 @@ import PolygonList from './PolygonList.vue';
 import type { Point, PolygonSurface, Wall } from '@/model/Measure/ArucoWallSurface';
 import { SurfaceType } from '@/model/Measure/ArucoWallSurface';
 import ExtraItemIcoList from './ExtraItemIcoList.vue';
+import OrientationSelector from '@/components/shared/OrientationSelector.vue';
 import { useWallStore, clonePolygonData } from '@/stores/WallStore';
 import { useRoute, useRouter } from 'vue-router';
 import { canvasOffset } from '@/service/Measurment/overlayPosition';
@@ -708,7 +720,14 @@ const wallStructureOptions = [
 
 const foundationTypeOptions = [
   "Pozitív",
-  "Negatív"
+  "Negatív",
+  "Nincsen"
+];
+
+const foundationTypeOptionsWithIcons = [
+  { value: "Pozitív", label: "Pozitív", icon: "i-lucide-arrow-up" },
+  { value: "Negatív", label: "Negatív", icon: "i-lucide-arrow-down" },
+  { value: "Nincsen", label: "Nincsen", icon: "i-lucide-x" }
 ];
 
 const wallStructureOther = ref<string>('');
