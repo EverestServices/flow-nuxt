@@ -99,6 +99,15 @@ export const useMeasure = () => {
     return data as { id: string, survey_id: string, name: string }
   }
 
+  const updateWallName = async (wallId: string, name: string) => {
+    const { error } = await supabase
+      .from('measure_walls')
+      .update({ name })
+      .eq('id', wallId)
+    if (error) throw error
+    return true
+  }
+
   const insertWallImage = async (wallId: string, payload: {
     originalUrl?: string | null,
     processedUrl?: string | null,
@@ -387,6 +396,7 @@ export const useMeasure = () => {
 
     // walls/images/polygons
     createWall,
+    updateWallName,
     insertWallImage,
     updateWallImage,
     getManualShapes,
