@@ -68,7 +68,7 @@ export default defineNuxtConfig({
     redirectOptions: {
       login: '/login',
       callback: '/confirm',
-      exclude: ['/login', '/register', '/forgot-password', '/confirm', '/reset-password'],
+      exclude: ['/login', '/register', '/forgot-password', '/confirm', '/reset-password', '/auth/external-callback'],
     },
     cookieOptions: {
       secure: process.env.NODE_ENV === 'production',
