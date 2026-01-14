@@ -6,6 +6,9 @@
     <div class="min-h-screen w-screen pl-28 pr-8 pb-8">
       <slot></slot>
     </div>
+
+    <!-- Toast notifications -->
+    <UNotifications />
   </div>
 </template>
 

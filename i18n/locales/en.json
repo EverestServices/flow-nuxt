@@ -75,14 +75,27 @@
       "uploadSuccess": "Avatar uploaded successfully",
       "uploadError": "Failed to upload avatar"
     },
-    "socialLinks": {
-      "title": "Social Links",
-      "linkedin": "LinkedIn",
-      "twitter": "Twitter",
-      "github": "GitHub",
-      "save": "Save Social Links",
-      "saveSuccess": "Social links updated successfully",
-      "saveError": "Failed to update social links"
+    "password": {
+      "title": "Change Password",
+      "currentPassword": "Current Password",
+      "currentPasswordPlaceholder": "Enter your current password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Enter your new password",
+      "confirmPassword": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Confirm your new password",
+      "requirements": "Password must be at least 8 characters with 1 lowercase, 1 uppercase, 1 number, and 1 special character",
+      "minLength": "At least 8 characters",
+      "hasLowercase": "At least 1 lowercase letter",
+      "hasUppercase": "At least 1 uppercase letter",
+      "hasNumber": "At least 1 number",
+      "hasSpecialChar": "At least 1 special character",
+      "passwordsMustMatch": "Passwords must match",
+      "changePassword": "Change Password",
+      "changeSuccess": "Password changed successfully",
+      "successMessage": "Your password has been updated. You can now use your new password to log in.",
+      "changeError": "Failed to change password",
+      "currentPasswordIncorrect": "Current password is incorrect",
+      "samePasswordError": "New password must be different from the current password"
     },
     "notifications": {
       "title": "Notifications",

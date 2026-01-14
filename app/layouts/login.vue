@@ -13,6 +13,9 @@
   </div>
 
   <slot />
+
+  <!-- Toast notifications -->
+  <UNotifications />
 </template>
 <script setup lang="ts">
 </script>

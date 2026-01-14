@@ -4,6 +4,9 @@
     <div class="min-h-screen w-screen">
       <slot></slot>
     </div>
+
+    <!-- Toast notifications -->
+    <UNotifications />
   </div>
 </template>
 
