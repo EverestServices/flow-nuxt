@@ -254,58 +254,127 @@
       </UIBox>
     </div>
 
-    <!-- Social Links & Notification Settings -->
+    <!-- Password Change & Notification Settings -->
     <div class="grid lg:grid-cols-2 gap-x-4 gap-y-8">
-      <!-- Social Links -->
+      <!-- Password Change -->
       <UIBox>
         <div class="w-full p-6">
           <div class="flex justify-between mb-6">
-            <UIH2>Social Links</UIH2>
+            <UIH2>{{ $t('settings.password.title') }}</UIH2>
           </div>
 
-          <form @submit.prevent="saveSocialLinks" class="space-y-4">
+          <!-- Success message -->
+          <div v-if="passwordChangeSuccess" class="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <div class="flex items-start">
+              <Icon name="i-lucide-check-circle" class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-semibold text-green-800 dark:text-green-300">
+                  {{ $t('settings.password.changeSuccess') }}
+                </h3>
+                <p class="text-xs text-green-700 dark:text-green-400 mt-1">
+                  {{ $t('settings.password.successMessage') }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error message -->
+          <div v-if="passwordChangeError" class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div class="flex items-start">
+              <Icon name="i-lucide-alert-circle" class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
+                  {{ $t('common.error') }}
+                </h3>
+                <p class="text-xs text-red-700 dark:text-red-400 mt-1">
+                  {{ passwordChangeError }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form @submit.prevent="changePassword" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Icon name="i-lucide-linkedin" class="inline w-4 h-4 mr-2" />
-                LinkedIn
+                {{ $t('settings.password.currentPassword') }}
               </label>
               <UIInput
-                v-model="profileData.linkedin_url"
-                placeholder="https://linkedin.com/in/username"
+                v-model="passwordData.currentPassword"
+                type="password"
+                :placeholder="$t('settings.password.currentPasswordPlaceholder')"
                 class="w-full"
+                required
               />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Icon name="i-lucide-twitter" class="inline w-4 h-4 mr-2" />
-                Twitter
+                {{ $t('settings.password.newPassword') }}
               </label>
               <UIInput
-                v-model="profileData.twitter_url"
-                placeholder="https://twitter.com/username"
+                v-model="passwordData.newPassword"
+                type="password"
+                :placeholder="$t('settings.password.newPasswordPlaceholder')"
                 class="w-full"
+                required
               />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {{ $t('settings.password.requirements') }}
+              </p>
+              <!-- Password strength indicator -->
+              <div v-if="passwordData.newPassword" class="mt-2">
+                <div class="flex items-center gap-2 text-xs">
+                  <span :class="passwordValidation.minLength ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                    {{ passwordValidation.minLength ? '✓' : '○' }} {{ $t('settings.password.minLength') }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 text-xs mt-1">
+                  <span :class="passwordValidation.hasLowercase ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                    {{ passwordValidation.hasLowercase ? '✓' : '○' }} {{ $t('settings.password.hasLowercase') }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 text-xs mt-1">
+                  <span :class="passwordValidation.hasUppercase ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                    {{ passwordValidation.hasUppercase ? '✓' : '○' }} {{ $t('settings.password.hasUppercase') }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 text-xs mt-1">
+                  <span :class="passwordValidation.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                    {{ passwordValidation.hasNumber ? '✓' : '○' }} {{ $t('settings.password.hasNumber') }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 text-xs mt-1">
+                  <span :class="passwordValidation.hasSpecialChar ? 'text-green-600 dark:text-green-400' : 'text-gray-400'">
+                    {{ passwordValidation.hasSpecialChar ? '✓' : '○' }} {{ $t('settings.password.hasSpecialChar') }}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Icon name="i-lucide-github" class="inline w-4 h-4 mr-2" />
-                GitHub
+                {{ $t('settings.password.confirmPassword') }}
               </label>
               <UIInput
-                v-model="profileData.github_url"
-                placeholder="https://github.com/username"
+                v-model="passwordData.confirmPassword"
+                type="password"
+                :placeholder="$t('settings.password.confirmPasswordPlaceholder')"
                 class="w-full"
+                required
               />
+              <p v-if="passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword"
+                 class="text-xs text-red-600 dark:text-red-400 mt-1">
+                {{ $t('settings.password.passwordsMustMatch') }}
+              </p>
             </div>
 
             <UIButtonEnhanced
               type="submit"
-              :loading="savingSocialLinks"
+              :loading="changingPassword"
+              :disabled="!isPasswordValid"
               class="w-full"
             >
-              Save Social Links
+              {{ $t('settings.password.changePassword') }}
             </UIButtonEnhanced>
           </form>
         </div>
@@ -481,9 +550,6 @@ const profileData = ref({
   date_format: 'MM/DD/YYYY',
   time_format: '12h',
   theme: 'system',
-  linkedin_url: '',
-  twitter_url: '',
-  github_url: '',
   notification_email: true,
   notification_push: true,
   notification_sms: false,
@@ -492,12 +558,21 @@ const profileData = ref({
   privacy_show_online_status: true,
 })
 
+// Password change state
+const passwordData = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+
 // Loading states
 const savingPersonalInfo = ref(false)
 const savingPreferences = ref(false)
-const savingSocialLinks = ref(false)
 const savingNotifications = ref(false)
 const savingPrivacySettings = ref(false)
+const changingPassword = ref(false)
+const passwordChangeSuccess = ref(false)
+const passwordChangeError = ref('')
 
 // Dropdown options
 const timezoneOptions = [
@@ -537,6 +612,43 @@ const themeOptions = [
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
 ]
+
+// Password validation
+const passwordValidation = computed(() => {
+  const password = passwordData.value.newPassword
+  return {
+    minLength: password.length >= 8,
+    hasLowercase: /[a-z]/.test(password),
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+  }
+})
+
+const isPasswordValid = computed(() => {
+  const validation = passwordValidation.value
+  const passwordsMatch = passwordData.value.newPassword === passwordData.value.confirmPassword
+  const allFieldsFilled = passwordData.value.currentPassword &&
+                          passwordData.value.newPassword &&
+                          passwordData.value.confirmPassword
+
+  return allFieldsFilled &&
+         passwordsMatch &&
+         validation.minLength &&
+         validation.hasLowercase &&
+         validation.hasUppercase &&
+         validation.hasNumber &&
+         validation.hasSpecialChar
+})
+
+// Watch password data changes to hide success/error messages
+watch(passwordData, (newVal) => {
+  // Only hide messages if user is typing (fields have content)
+  if ((passwordChangeSuccess.value || passwordChangeError.value) && (newVal.currentPassword || newVal.newPassword || newVal.confirmPassword)) {
+    passwordChangeSuccess.value = false
+    passwordChangeError.value = ''
+  }
+}, { deep: true })
 
 // Fetch user profile
 const fetchProfile = async () => {
@@ -669,33 +781,54 @@ const savePreferences = async () => {
   }
 }
 
-const saveSocialLinks = async () => {
-  savingSocialLinks.value = true
+const changePassword = async () => {
+  changingPassword.value = true
+  // Clear any previous messages
+  passwordChangeSuccess.value = false
+  passwordChangeError.value = ''
+
   try {
-    const { error } = await client
-      .from('user_profiles')
-      .update({
-        linkedin_url: profileData.value.linkedin_url,
-        twitter_url: profileData.value.twitter_url,
-        github_url: profileData.value.github_url,
-      })
-      .eq('user_id', user.value?.id)
-
-    if (error) throw error
-
-    toast.add({
-      title: 'Success',
-      description: 'Social links updated successfully',
-      color: 'green',
+    // First, verify the current password by signing in
+    const { error: signInError } = await client.auth.signInWithPassword({
+      email: profileData.value.email,
+      password: passwordData.value.currentPassword,
     })
-  } catch (error) {
-    toast.add({
-      title: 'Error',
-      description: 'Failed to update social links',
-      color: 'red',
+
+    if (signInError) {
+      passwordChangeError.value = t('settings.password.currentPasswordIncorrect')
+      return
+    }
+
+    // Update the password
+    const { error: updateError } = await client.auth.updateUser({
+      password: passwordData.value.newPassword,
     })
+
+    if (updateError) {
+      // Handle specific error for same password
+      if (updateError.message.includes('should be different')) {
+        passwordChangeError.value = t('settings.password.samePasswordError')
+      } else {
+        passwordChangeError.value = updateError.message || t('settings.password.changeError')
+      }
+      return
+    }
+
+    // Show success message in card FIRST
+    passwordChangeSuccess.value = true
+
+    // Clear the form AFTER setting success flag
+    await nextTick()
+    passwordData.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    }
+  } catch (error: any) {
+    console.error('Password change error:', error)
+    passwordChangeError.value = error.message || t('settings.password.changeError')
   } finally {
-    savingSocialLinks.value = false
+    changingPassword.value = false
   }
 }
 
@@ -802,8 +935,6 @@ const handleAvatarUpload = async (event: Event) => {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.value?.id}/${Date.now()}.${fileExt}`
 
-    console.log('Uploading file:', fileName)
-
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await client.storage
       .from('avatars')
@@ -817,15 +948,12 @@ const handleAvatarUpload = async (event: Event) => {
       throw uploadError
     }
 
-    console.log('Upload successful:', uploadData)
-
     // Get public URL
     const { data: urlData } = client.storage
       .from('avatars')
       .getPublicUrl(fileName)
 
     const publicUrl = urlData.publicUrl
-    console.log('Public URL:', publicUrl)
 
     // First check if user profile exists
     const { data: existingProfile, error: checkError } = await client
@@ -833,8 +961,6 @@ const handleAvatarUpload = async (event: Event) => {
       .select('*')
       .eq('user_id', user.value?.id)
       .maybeSingle()
-
-    console.log('Existing profile:', existingProfile)
 
     if (checkError) {
       console.error('Check error:', checkError)
@@ -844,7 +970,6 @@ const handleAvatarUpload = async (event: Event) => {
 
     if (existingProfile) {
       // Profile exists - UPDATE only
-      console.log('Updating existing profile...')
       const result = await client
         .from('user_profiles')
         .update({
@@ -858,7 +983,6 @@ const handleAvatarUpload = async (event: Event) => {
       updateError = result.error
     } else {
       // Profile doesn't exist - INSERT
-      console.log('Creating new profile...')
       const result = await client
         .from('user_profiles')
         .insert({
@@ -879,8 +1003,6 @@ const handleAvatarUpload = async (event: Event) => {
       console.error('Update error:', updateError)
       throw updateError
     }
-
-    console.log('Profile updated:', profileUpdate)
 
     // Update local state
     profileData.value.avatar_url = publicUrl

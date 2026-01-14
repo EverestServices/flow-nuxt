@@ -75,14 +75,27 @@
       "uploadSuccess": "Profilkép sikeresen feltöltve",
       "uploadError": "Nem sikerült feltölteni a profilképet"
     },
-    "socialLinks": {
-      "title": "Közösségi média",
-      "linkedin": "LinkedIn",
-      "twitter": "Twitter",
-      "github": "GitHub",
-      "save": "Közösségi média mentése",
-      "saveSuccess": "Közösségi média linkek sikeresen frissítve",
-      "saveError": "Nem sikerült frissíteni a közösségi média linkeket"
+    "password": {
+      "title": "Jelszó megváltoztatása",
+      "currentPassword": "Jelenlegi jelszó",
+      "currentPasswordPlaceholder": "Adja meg a jelenlegi jelszavát",
+      "newPassword": "Új jelszó",
+      "newPasswordPlaceholder": "Adja meg az új jelszavát",
+      "confirmPassword": "Új jelszó megerősítése",
+      "confirmPasswordPlaceholder": "Erősítse meg az új jelszavát",
+      "requirements": "A jelszónak legalább 8 karakter hosszúnak kell lennie, tartalmaznia kell 1 kisbetűt, 1 nagybetűt, 1 számot és 1 speciális karaktert",
+      "minLength": "Legalább 8 karakter",
+      "hasLowercase": "Legalább 1 kisbetű",
+      "hasUppercase": "Legalább 1 nagybetű",
+      "hasNumber": "Legalább 1 szám",
+      "hasSpecialChar": "Legalább 1 speciális karakter",
+      "passwordsMustMatch": "A jelszavaknak egyezniük kell",
+      "changePassword": "Jelszó megváltoztatása",
+      "changeSuccess": "Jelszó sikeresen megváltoztatva",
+      "successMessage": "Jelszava sikeresen frissítve. Mostantól az új jelszavával tud bejelentkezni.",
+      "changeError": "Nem sikerült megváltoztatni a jelszót",
+      "currentPasswordIncorrect": "A jelenlegi jelszó hibás",
+      "samePasswordError": "Az új jelszónak különböznie kell a jelenlegi jelszótól"
     },
     "notifications": {
       "title": "Értesítések",
