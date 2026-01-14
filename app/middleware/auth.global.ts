@@ -1,17 +1,23 @@
 // middleware/auth.global.ts
 export default defineNuxtRouteMiddleware(async (to) => {
     // Public routes that don't require authentication
-    const publicRoutes = ['/login', '/register', '/forgot-password', '/confirm', '/reset-password']
+    // Check this FIRST, before anything else
+    const publicRoutes = ['/login', '/register', '/forgot-password', '/confirm', '/reset-password', '/auth/external-callback']
 
-    // If the route is public, we don't need to check authentication
     if (publicRoutes.includes(to.path)) {
+        return
+    }
+
+    // Skip auth check if the route explicitly disables it
+    if (to.meta.auth === false) {
         return
     }
 
     // Get the user state
     const user = useSupabaseUser()
 
-    // If we're on the client side and no user, redirect to login
+    // ONLY redirect on the client side (not during SSR)
+    // This prevents redirect loops and allows auth callbacks to work
     if (process.client && !user.value) {
         return navigateTo('/login')
     }

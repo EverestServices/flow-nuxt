@@ -60,13 +60,7 @@ serve(async (req) => {
     // 4. Validate API key
     const { data: keyRecord, error: keyError } = await supabaseAdmin
       .from('user_external_api_keys')
-      .select(`
-        *,
-        user:user_id (
-          id,
-          email
-        )
-      `)
+      .select('*')
       .eq('api_key_hash', apiKeyHash)
       .eq('is_active', true)
       .single()
@@ -82,9 +76,23 @@ serve(async (req) => {
       )
     }
 
-    // 5. Verify email matches
-    if (keyRecord.user.email !== userEmail) {
-      console.error('Email mismatch:', { expected: keyRecord.user.email, provided: userEmail })
+    // 5. Get user details
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(keyRecord.user_id)
+
+    if (userError || !userData.user) {
+      console.error('User not found:', userError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'User not found' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        }
+      )
+    }
+
+    // 6. Verify email matches
+    if (userData.user.email !== userEmail) {
+      console.error('Email mismatch:', { expected: userData.user.email, provided: userEmail })
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid API key or email' }),
         {
@@ -94,20 +102,20 @@ serve(async (req) => {
       )
     }
 
-    // 6. Update last_used_at timestamp
+    // 7. Update last_used_at timestamp
     await supabaseAdmin
       .from('user_external_api_keys')
       .update({ last_used_at: new Date().toISOString() })
       .eq('id', keyRecord.id)
 
-    // 7. Generate Supabase session token
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+    // 8. Generate a magic link to get a token
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
     })
 
-    if (sessionError || !sessionData) {
-      console.error('Failed to create session:', sessionError)
+    if (linkError || !linkData) {
+      console.error('Failed to generate magic link:', linkError)
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to create session' }),
         {
@@ -117,16 +125,30 @@ serve(async (req) => {
       )
     }
 
-    // 8. Build redirect URL
-    const baseUrl = Deno.env.get('FLOW_BASE_URL') || 'localhost:3000'
-    const accessToken = sessionData.properties?.access_token
-    const redirectUrl = `${baseUrl}/auth/external-callback?token=${encodeURIComponent(accessToken)}&redirect=${encodeURIComponent(redirectTo)}`
+    // 9. Extract token from the magic link URL
+    // The token is in the properties.hashed_token field
+    const token = linkData.properties.hashed_token
 
-    // 9. Return response
+    if (!token) {
+      console.error('No token in link data:', linkData)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to generate access token' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
+    // 10. Build redirect URL
+    const baseUrl = Deno.env.get('FLOW_BASE_URL') || 'http://localhost:3000'
+    const redirectUrl = `${baseUrl}/auth/external-callback?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(redirectTo)}`
+
+    // 11. Return response
     return new Response(
       JSON.stringify({
         success: true,
-        sessionToken: accessToken,
+        sessionToken: token,
         redirectUrl,
       }),
       {
