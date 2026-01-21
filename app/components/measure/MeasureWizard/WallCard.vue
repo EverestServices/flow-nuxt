@@ -155,6 +155,7 @@ import { useWallStore } from '@/stores/WallStore';
 import type { Wall } from '@/model/Measure/ArucoWallSurface';
 import WallSurfaceSummary from '../Measure/WallSurfaceSummary.vue';
 import { RouterLink, useRoute } from 'vue-router';
+import { useMeasure } from '@/composables/useMeasure';
 
 const props = defineProps<{
   wall: Wall;
@@ -167,6 +168,7 @@ const emit = defineEmits(['remove', 'add-image', 'remove-image', 'image-change']
 const store = useWallStore();
 const editingName = ref(false);
 const route = useRoute();
+const { updateWallName } = useMeasure();
 
 function startEditing() {
   editingName.value = true;
@@ -177,6 +179,11 @@ function startEditing() {
 }
 function stopEditing() {
   editingName.value = false;
+  const sid = String(route.params.surveyId);
+  // Ensure local store state is updated and persisted
+  store.setWall(sid, props.wall.id, { ...props.wall, name: props.wall.name });
+  // Persist name to Supabase in the background (no await needed for UX)
+  void updateWallName(props.wall.id, props.wall.name || '');
 }
 
 const statusColor = (status: string) => {
